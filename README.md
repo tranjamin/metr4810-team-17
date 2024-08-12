@@ -17,7 +17,7 @@ For Linux:
 ## Running
 
 - `git clone <dir>` to clone the directory
-- `git submodule update --init --recursive`
+- `git submodule update --init --recursive --remote`
 
 In a linux shell (either native linux or git bash), run:
 - `cd src; ./make.sh` to build the `main.c` file
@@ -25,7 +25,7 @@ In a linux shell (either native linux or git bash), run:
 
 If this doesn't work, try explicitly checking out the branch:
 - `cd pico-sdk`
-- `git checkout 45984e276f85aa24d33aa0ab62ed1e6df96a0784`
+- `git checkout master`
 
 ## Latest Verified Submodule Versions
 Current as of 12/08/24:
