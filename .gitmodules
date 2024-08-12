@@ -1,0 +1,7 @@
+[submodule "pico-sdk"]
+	path = pico-sdk
+	url = https://github.com/RaspberryPi/pico-sdk
+[submodule "FreeRTOS-Kernel"]
+	path = FreeRTOS-Kernel
+	url = https://github.com/FreeRTOS/FreeRTOS-Kernel
+	branch = smp
