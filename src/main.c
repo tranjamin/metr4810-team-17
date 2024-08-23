@@ -34,8 +34,7 @@ void pico_set_led(bool led_on) {
 }
 
 void vBlinkTask() {
-    int rc = pico_led_init();
-    hard_assert(rc == PICO_OK);
+    hard_assert(pico_led_init() == PICO_OK);
 
     for (;;) {
         pico_set_led(true);
@@ -46,8 +45,6 @@ void vBlinkTask() {
 }
 
 void main() {
-    gpio_init(PICO_DEFAULT_LED_PIN);
-    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
     xTaskCreate(vBlinkTask, "Blink Task", 128, NULL, 1, NULL);
     vTaskStartScheduler();
 }
