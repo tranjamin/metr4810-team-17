@@ -2,49 +2,13 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#ifdef CYW43_WL_GPIO_LED_PIN
-#include "pico/cyw43_arch.h"
-#endif
+#include "led.h"
+#include "wifi.h"
 
-#ifndef LED_DELAY_MS
-#define LED_DELAY_MS 250
-#endif
-
-int pico_led_init(void) {
-#if defined(PICO_DEFAULT_LED_PIN)
-    // A device like Pico that uses a GPIO for the LED will define PICO_DEFAULT_LED_PIN
-    // so we can use normal GPIO functionality to turn the led on and off
-    gpio_init(PICO_DEFAULT_LED_PIN);
-    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-    return PICO_OK;
-#elif defined(CYW43_WL_GPIO_LED_PIN)
-    // For Pico W devices we need to initialise the driver etc
-    return cyw43_arch_init();
-#endif
-}
-
-void pico_set_led(bool led_on) {
-#if defined(PICO_DEFAULT_LED_PIN)
-    // Just set the GPIO on or off
-    gpio_put(PICO_DEFAULT_LED_PIN, led_on);
-#elif defined(CYW43_WL_GPIO_LED_PIN)
-    // Ask the wifi "driver" to set the GPIO on or off
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_on);
-#endif
-}
-
-void vBlinkTask() {
-    hard_assert(pico_led_init() == PICO_OK);
-
-    for (;;) {
-        pico_set_led(true);
-        sleep_ms(LED_DELAY_MS);
-        pico_set_led(false);
-        sleep_ms(LED_DELAY_MS);
-    }
-}
 
 void main() {
-    xTaskCreate(vBlinkTask, "Blink Task", 128, NULL, 1, NULL);
-    vTaskStartScheduler();
+    vWifiTask();
+    // xTaskCreate(vBlinkTask, "Blink Task", 128, NULL, 2, NULL);
+    // xTaskCreate(vWifiTask, "WiFi Task", 128, NULL, 1, NULL);
+    // vTaskStartScheduler();
 }

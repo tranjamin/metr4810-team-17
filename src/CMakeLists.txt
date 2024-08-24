@@ -13,18 +13,22 @@ set(CMAKE_CXX_STANDARD 17)
 # Initialize the SDK
 pico_sdk_init()
 
-add_executable(main main.c)
-
-target_include_directories(main PRIVATE ${CMAKE_CURRENT_LIST_DIR})
- 
-# pull in common dependencies
-target_link_libraries(
-    main 
-    pico_stdlib 
-    FreeRTOS-Kernel 
-    FreeRTOS-Kernel-Heap4
+add_executable( main 
+    main.c
+    wifi.c
+    led.c
+    dhcpserver/dhcpserver.c
+    dnsserver/dnsserver.c
     )
 
+target_include_directories(
+    main PRIVATE 
+    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/..
+    ${CMAKE_CURRENT_LIST_DIR}/dhcpserver
+    ${CMAKE_CURRENT_LIST_DIR}/dnsserver
+)
+ 
 #for Pico W
 if (PICO_CYW43_SUPPORTED)
 target_link_libraries(
@@ -32,7 +36,7 @@ target_link_libraries(
     pico_stdlib 
     FreeRTOS-Kernel 
     FreeRTOS-Kernel-Heap4
-    pico_cyw43_arch_none
+    pico_cyw43_arch_lwip_poll
     )
 endif()
 
