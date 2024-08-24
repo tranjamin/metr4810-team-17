@@ -258,29 +258,8 @@ static bool tcp_server_open(void *arg, const char *ap_name) {
     tcp_arg(state->server_pcb, state);
     tcp_accept(state->server_pcb, tcp_server_accept);
 
-    printf("Try connecting to '%s' (press 'd' to disable access point)\n", ap_name);
+    printf("Try connecting to '%s'\n", ap_name);
     return true;
-}
-
-// This "worker" function is called to safely perform work when instructed by key_pressed_func
-void key_pressed_worker_func(async_context_t *context, async_when_pending_worker_t *worker) {
-    assert(worker->user_data);
-    printf("Disabling wifi\n");
-    cyw43_arch_disable_ap_mode();
-    ((TCP_SERVER_T*)(worker->user_data))->complete = true;
-}
-
-static async_when_pending_worker_t key_pressed_worker = {
-        .do_work = key_pressed_worker_func
-};
-
-void key_pressed_func(void *param) {
-    assert(param);
-    int key = getchar_timeout_us(0); // get any pending key press but don't wait
-    if (key == 'd' || key == 'D') {
-        // We are probably in irq context so call wifi in a "worker"
-        async_context_set_work_pending(((TCP_SERVER_T*)param)->context, &key_pressed_worker);
-    }
 }
 
 void vWifiTask() {
@@ -289,19 +268,13 @@ void vWifiTask() {
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
     if (!state) {
         DEBUG_printf("failed to allocate state\n");
-        return 1;
+        return;
     }
 
     if (cyw43_arch_init()) {
         DEBUG_printf("failed to initialise\n");
-        return 1;
+        return;
     }
-
-    // Get notified if the user presses a key
-    state->context = cyw43_arch_async_context();
-    key_pressed_worker.user_data = state;
-    async_context_add_when_pending_worker(cyw43_arch_async_context(), &key_pressed_worker);
-    stdio_set_chars_available_callback(key_pressed_func, state);
 
     const char *ap_name = "METR4810 Team 17";
     const char *password = "password";
@@ -322,7 +295,7 @@ void vWifiTask() {
 
     if (!tcp_server_open(state, ap_name)) {
         DEBUG_printf("failed to open server\n");
-        return 1;
+        return;
     }
 
     state->complete = false;
