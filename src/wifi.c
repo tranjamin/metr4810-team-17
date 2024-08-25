@@ -264,6 +264,10 @@ static bool tcp_server_open(void *arg, const char *ap_name) {
     return true;
 }
 
+void vWifiInit() {
+    
+}
+
 void vWifiTask() {
     stdio_init_all();
 

@@ -6,9 +6,7 @@
 #include "pico/cyw43_arch.h"
 #endif
 
-#ifndef LED_DELAY_MS
-#define LED_DELAY_MS 250
-#endif
+#define VDELAY 250
 
 int pico_led_init(void) {
 #if defined(PICO_DEFAULT_LED_PIN)
@@ -35,10 +33,10 @@ void pico_set_led(bool led_on) {
 
 void vBlinkTask() {
    for (;;) {
-        pico_set_led(true);
-        vTaskDelay(LED_DELAY_MS);
-        pico_set_led(false);
-        vTaskDelay(LED_DELAY_MS);
+    pico_set_led(true);
+    vTaskDelay(VDELAY);
+    pico_set_led(false);
+    vTaskDelay(VDELAY);
     }
 }
 

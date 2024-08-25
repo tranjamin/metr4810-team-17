@@ -15,8 +15,16 @@ pico_sdk_init()
 
 add_executable( main 
     main.c
+    controller.c
+    delivery.c
+    detection.c
+    diagnostics.c
+    extraction.c
+    blink.c
+    localisation.c
+    motors.c
+    pathplanning.c
     wifi.c
-    led.c
     dhcpserver/dhcpserver.c
     dnsserver/dnsserver.c
     )
@@ -36,8 +44,8 @@ target_link_libraries(
     pico_stdlib 
     FreeRTOS-Kernel 
     FreeRTOS-Kernel-Heap4
-    # pico_cyw43_arch_lwip_threadsafe_background
-    pico_cyw43_arch_lwip_sys_freertos
+    pico_cyw43_arch_lwip_threadsafe_background
+    # pico_cyw43_arch_lwip_sys_freertos
     )
 endif()
 
