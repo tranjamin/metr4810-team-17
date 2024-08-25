@@ -2,5 +2,6 @@
 #define LED_H
 
 void vBlinkTask();
+void vBlinkInit();
 
 #endif

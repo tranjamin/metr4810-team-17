@@ -34,12 +34,14 @@ void pico_set_led(bool led_on) {
 }
 
 void vBlinkTask() {
-    hard_assert(pico_led_init() == PICO_OK);
-
-    for (;;) {
+   for (;;) {
         pico_set_led(true);
-        sleep_ms(LED_DELAY_MS);
+        vTaskDelay(LED_DELAY_MS);
         pico_set_led(false);
-        sleep_ms(LED_DELAY_MS);
+        vTaskDelay(LED_DELAY_MS);
     }
+}
+
+void vBlinkInit() {
+    hard_assert(pico_led_init() == PICO_OK);
 }
