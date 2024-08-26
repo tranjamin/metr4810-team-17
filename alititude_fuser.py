@@ -48,7 +48,7 @@ def rotate_2d_matrix(theta: float):
 if __name__ == '__main__':
     np.random.seed(4810)
     LOOPSIZE = 100
-    TOTAL_TIME = 600 # seconds
+    TOTAL_TIME = 30 # seconds
     TIME_STEP_SENSOR = 0.01 # seconds
     TIME_STEP_PLOT = TIME_STEP_SENSOR # time step used for plotting true path
 
@@ -67,8 +67,8 @@ if __name__ == '__main__':
     xdot = np.ones(len(time))
     y = np.sin(time)
     ydot = np.cos(time)
-    theta = np.zeros(len(time)) * pi / TOTAL_TIME
-    theta_dot = np.zeros(len(time)) * pi / TOTAL_TIME
+    theta = time * 2*pi / TOTAL_TIME
+    theta_dot = np.ones(len(time)) * 2*pi / TOTAL_TIME
     true_states = np.array([x, xdot, y, ydot, theta, theta_dot])
 
     count = 0
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     fused_y = np.zeros(timesteps)
     fused_states = np.zeros([6, timesteps])
 
-    initial_state = np.array([2, 0, 0, 0, 1, 0]) #true_states[:,0] # this is actually wrong, let's see if it corrects
+    initial_state = np.array([2, 0, 1, -1, 1, 0]) #true_states[:,0] # this is actually wrong, let's see if it corrects
 
     # initial dummy 'first' prediction
     ekf.predict(initial_state, np.zeros([6,6]), P) 
@@ -123,6 +123,7 @@ if __name__ == '__main__':
         # log these corrected measurements
         fused_x[k] = ekf.get()[0]
         fused_y[k] = ekf.get()[2]
+        fused_states[:,k] = ekf.get()
 
         ## PREDICT
         # use current acceleration data to predict the next timestep
@@ -161,7 +162,7 @@ if __name__ == '__main__':
         F_control = B_not_rotated @ rotate_2d_matrix(theta_est + pi/2) @ a_measured
 
         # Actual F matrix depends on control input too due to rotation
-        F = F_state #+ F_control
+        F = F_state + F_control
         ## Predict location based off measured acceleration
 
         # noise changes distribution depending on direction
@@ -171,9 +172,16 @@ if __name__ == '__main__':
         ## Now we have increased the noise, go back round the loop to update based on measurement (at next timestep)
         
 
+    # Make some plot to show results
         
+    plt.rcParams['text.usetex'] = True
+    labels = [r"$x$ position", r"$x$ velocity", r"$y$ position", r"$y$ velocity", r"$\theta$ position", r"$\theta$ velocity"]
+    for i in range(0,6):
+        plt.subplot(3,2,i+1)
+        plt.plot(time, fused_states[i,:], label = r"fused state")
+        plt.plot(time, true_states[i,:], label = r"true state")
+        plt.xlabel(r"Time")
+        plt.ylabel(labels[i])
+        plt.legend()
 
-
-    plt.plot(true_states[0, :], true_states[2, :])
-    plt.plot(fused_x, fused_y)
     plt.show()
