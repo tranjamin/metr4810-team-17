@@ -48,7 +48,7 @@ def rotate_2d_matrix(theta: float):
 if __name__ == '__main__':
     np.random.seed(4810)
     LOOPSIZE = 100
-    TOTAL_TIME = 30 # seconds
+    TOTAL_TIME = 10 # seconds
     TIME_STEP_SENSOR = 0.01 # seconds
     TIME_STEP_PLOT = TIME_STEP_SENSOR # time step used for plotting true path
 
@@ -62,7 +62,6 @@ if __name__ == '__main__':
     ## CREATE TRUE DATA
 
     time = np.arange(0, TOTAL_TIME, TIME_STEP_PLOT)
-    w = 1
     x = time
     xdot = np.ones(len(time))
     y = np.sin(time)
@@ -71,24 +70,15 @@ if __name__ == '__main__':
     theta_dot = np.ones(len(time)) * 2*pi / TOTAL_TIME
     true_states = np.array([x, xdot, y, ydot, theta, theta_dot])
 
-    count = 0
-
-    N = 100
-
-    # One state (ASL), two measurements (baro, sonar), with
-    # larger-than-usual measurement covariance noise to help with sonar
-    # blips.
-    IMU_NOISE = 1.8*9.81/1000 # value from datasheet
-    CAMERA_NOISE = 0.01  # 5e-4
+    # Define noises
+    IMU_NOISE = 10* 1.8*9.81/1000 # value from datasheet
+    CAMERA_NOISE = 10*0.01  # 5e-4
     P = np.eye(6) * 5e-1
     Q = np.eye(2) * IMU_NOISE #1e-1 # applies directly to sensor measurements, gets distributed on the fly
     R = np.eye(4) * 0.01 #5e-5
 
     ekf = EKF(P)
 
-    baro = np.zeros(N)
-    sonar = np.zeros(N)
-    fused = np.zeros(N)
     timesteps = len(time)
     fused_x = np.zeros(timesteps)
     fused_y = np.zeros(timesteps)
