@@ -67,8 +67,8 @@ if __name__ == '__main__':
     xdot = np.ones(len(time))
     y = np.sin(time)
     ydot = np.cos(time)
-    theta = time
-    theta_dot = np.ones(len(time))
+    theta = np.zeros(len(time)) #  time * pi / TOTAL_TIME
+    theta_dot = np.zeros(len(time)) * pi / TOTAL_TIME
     true_states = np.array([x, xdot, y, ydot, theta, theta_dot])
 
     count = 0
@@ -78,11 +78,11 @@ if __name__ == '__main__':
     # One state (ASL), two measurements (baro, sonar), with
     # larger-than-usual measurement covariance noise to help with sonar
     # blips.
-    IMU_NOISE = 0.0
-    CAMERA_NOISE = 0.0
-    P = np.eye(6) * 1e-1
-    Q = np.eye(2) * 5e-1 # applies directly to sensor measurements, gets distributed on the fly
-    R = np.eye(4) * 1e-5
+    IMU_NOISE = 0 # 1.8*9.81/1000 # value from datasheet
+    CAMERA_NOISE = 0 # 5e-4
+    P = np.eye(6) * 5e-1
+    Q = np.eye(2) * 10e-1 # applies directly to sensor measurements, gets distributed on the fly
+    R = np.eye(4) * 5e-9
 
     ekf = EKF(P)
 
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     fused_x = np.zeros(timesteps)
     fused_y = np.zeros(timesteps)
 
-    initial_state = np.zeros(6) # this is actually wrong, let's see if it corrects
+    initial_state = true_states[:,0] # this is actually wrong, let's see if it corrects
 
     # initial dummy 'first' prediction
     ekf.predict(initial_state, np.zeros([6,6]), P) 
@@ -133,8 +133,8 @@ if __name__ == '__main__':
         true_acceleration_y_world = -np.sin(t)
         a_world = np.array([[true_acceleration_x_world],[true_acceleration_y_world]])
 
-        a_robot = np.linalg.inv(rotate_2d_matrix(prev_state[4])) @ a_world
-
+        a_robot = np.linalg.inv(rotate_2d_matrix(true_states[4,k])) @ a_world
+        # the acceleration measure depends on the TRUE angle and TRUE acceleration
         # add some noise
 
         a_measured = a_robot + np.atleast_2d(np.random.normal(0, IMU_NOISE, 2)).T
@@ -162,6 +162,7 @@ if __name__ == '__main__':
 
         # noise changes distribution depending on direction
         Q_curr = B_rotated.dot(Q).dot(B_rotated.T)
+        Q_curr = np.zeros([6,6])
         ekf.predict(fx, F, Q_curr)
 
         ## Now we have increased the noise, go back round the loop to update based on measurement (at next timestep)
