@@ -11,7 +11,7 @@ Copyright (C) 2016 Simon D. Levy
 MIT License
 '''
 
-from math import sin, pi
+from math import pi
 import numpy as np
 import matplotlib.pyplot as plt
 from TinyEKF.python.tinyekf import EKF
