@@ -46,9 +46,9 @@ def rotate_2d_matrix(theta: float):
                      [np.sin(theta), np.cos(theta)]])
 
 if __name__ == '__main__':
-
+    np.random.seed(4810)
     LOOPSIZE = 100
-    TOTAL_TIME = 60 # seconds
+    TOTAL_TIME = 600 # seconds
     TIME_STEP_SENSOR = 0.01 # seconds
     TIME_STEP_PLOT = TIME_STEP_SENSOR # time step used for plotting true path
 
@@ -67,7 +67,7 @@ if __name__ == '__main__':
     xdot = np.ones(len(time))
     y = np.sin(time)
     ydot = np.cos(time)
-    theta = np.zeros(len(time)) #  time * pi / TOTAL_TIME
+    theta = np.zeros(len(time)) * pi / TOTAL_TIME
     theta_dot = np.zeros(len(time)) * pi / TOTAL_TIME
     true_states = np.array([x, xdot, y, ydot, theta, theta_dot])
 
@@ -78,11 +78,11 @@ if __name__ == '__main__':
     # One state (ASL), two measurements (baro, sonar), with
     # larger-than-usual measurement covariance noise to help with sonar
     # blips.
-    IMU_NOISE = 0.0 # 1.8*9.81/1000 # value from datasheet
-    CAMERA_NOISE = 0.00  # 5e-4
+    IMU_NOISE = 1.8*9.81/1000 # value from datasheet
+    CAMERA_NOISE = 0.01  # 5e-4
     P = np.eye(6) * 5e-1
-    Q = np.eye(2) * 0.01 #1e-1 # applies directly to sensor measurements, gets distributed on the fly
-    R = np.eye(4) * 0.001 #5e-5
+    Q = np.eye(2) * IMU_NOISE #1e-1 # applies directly to sensor measurements, gets distributed on the fly
+    R = np.eye(4) * 0.01 #5e-5
 
     ekf = EKF(P)
 
@@ -92,8 +92,9 @@ if __name__ == '__main__':
     timesteps = len(time)
     fused_x = np.zeros(timesteps)
     fused_y = np.zeros(timesteps)
+    fused_states = np.zeros([6, timesteps])
 
-    initial_state = true_states[:,0] # this is actually wrong, let's see if it corrects
+    initial_state = np.array([2, 0, 0, 0, 1, 0]) #true_states[:,0] # this is actually wrong, let's see if it corrects
 
     # initial dummy 'first' prediction
     ekf.predict(initial_state, np.zeros([6,6]), P) 
@@ -119,8 +120,6 @@ if __name__ == '__main__':
 
         ekf.update(z, hx, H, R)
 
-        
-
         # log these corrected measurements
         fused_x[k] = ekf.get()[0]
         fused_y[k] = ekf.get()[2]
@@ -143,7 +142,7 @@ if __name__ == '__main__':
 
         # State-transition function f is actually already linear (in the state)
 
-        F = np.array([
+        F_state = np.array([
             [1, TIME_STEP_SENSOR, 0, 0, 0, 0],
             [0, 1, 0, 0, 0, 0],
             [0, 0, 1, TIME_STEP_SENSOR, 0, 0],
@@ -153,16 +152,20 @@ if __name__ == '__main__':
             ]
         )
 
+
         B_not_rotated = np.array([[0.5*TIME_STEP_SENSOR**2, 0],[TIME_STEP_SENSOR, 0], [0, 0.5*TIME_STEP_SENSOR**2], [0, TIME_STEP_SENSOR], [0, 0], [0, 0]])
         theta_est = ekf.get()[4]
         B_rotated = B_not_rotated @ rotate_2d_matrix(theta_est)
-        fx = np.ravel(F @ np.atleast_2d(ekf.get()).T + B_rotated @ a_measured)
+        fx = np.ravel(F_state @ np.atleast_2d(ekf.get()).T + B_rotated @ a_measured)
 
+        F_control = B_not_rotated @ rotate_2d_matrix(theta_est + pi/2) @ a_measured
+
+        # Actual F matrix depends on control input too due to rotation
+        F = F_state #+ F_control
         ## Predict location based off measured acceleration
 
         # noise changes distribution depending on direction
         Q_curr = B_rotated.dot(Q).dot(B_rotated.T)
-        Q_curr = np.zeros([6,6])
         ekf.predict(fx, F, Q_curr)
 
         ## Now we have increased the noise, go back round the loop to update based on measurement (at next timestep)
