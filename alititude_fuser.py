@@ -50,7 +50,7 @@ if __name__ == '__main__':
     LOOPSIZE = 100
     TOTAL_TIME = 60 # seconds
     TIME_STEP_SENSOR = 0.01 # seconds
-    TIME_STEP_PLOT = TIME_STEP_SENSOR / 10 # time step used for plotting true path
+    TIME_STEP_PLOT = TIME_STEP_SENSOR # time step used for plotting true path
 
     # simulate a path of (t, sin(t))
     # this path has velocity (1, cos(t)), acceleration (0, -sin(t))
@@ -78,11 +78,11 @@ if __name__ == '__main__':
     # One state (ASL), two measurements (baro, sonar), with
     # larger-than-usual measurement covariance noise to help with sonar
     # blips.
-    IMU_NOISE = 0 # 1.8*9.81/1000 # value from datasheet
-    CAMERA_NOISE = 0 # 5e-4
+    IMU_NOISE = 0.0 # 1.8*9.81/1000 # value from datasheet
+    CAMERA_NOISE = 0.00  # 5e-4
     P = np.eye(6) * 5e-1
-    Q = np.eye(2) * 10e-1 # applies directly to sensor measurements, gets distributed on the fly
-    R = np.eye(4) * 5e-9
+    Q = np.eye(2) * 0.01 #1e-1 # applies directly to sensor measurements, gets distributed on the fly
+    R = np.eye(4) * 0.001 #5e-5
 
     ekf = EKF(P)
 
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     # initial dummy 'first' prediction
     ekf.predict(initial_state, np.zeros([6,6]), P) 
 
-    prev_state = initial_state
+    #prev_state = initial_state
     for k, t in enumerate(time):
 
         # MEASURE, then UPDATE
@@ -147,7 +147,7 @@ if __name__ == '__main__':
             [1, TIME_STEP_SENSOR, 0, 0, 0, 0],
             [0, 1, 0, 0, 0, 0],
             [0, 0, 1, TIME_STEP_SENSOR, 0, 0],
-            [0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 1, 0, 0],
             [0, 0, 0, 0, 1, TIME_STEP_SENSOR],
             [0, 0, 0, 0, 0, 1]
             ]
