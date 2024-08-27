@@ -6,7 +6,7 @@ criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
  
 # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
 objp = np.zeros((6*8,3), np.float32)
-objp[:,:2] = np.mgrid[0:8,0:6].T.reshape(-1,2)
+objp[:,:2] = np.mgrid[0:8,0:6].T.reshape(-1,2)*24
 print(objp)
 # Arrays to store object points and image points from all the images.
 objpoints = [] # 3d point in real world space
@@ -16,7 +16,7 @@ imgpoints = [] # 2d points in image plane.
 # Below code taken from Miguel's OpenCV UQ Mars talk in 2023
 # https://github.com/uqmars/workshop-resources/blob/master/CV/2023/4_camera_calibration.py
 
-cap = cv.VideoCapture(2) # set to 2 to select external webcam
+cap = cv.VideoCapture(0) # set to 2 to select external webcam
 cap.set(cv.CAP_PROP_AUTOFOCUS, 0)
 focus = 255  # min: 0, max: 255, increment:5
 cap.set(28, focus)

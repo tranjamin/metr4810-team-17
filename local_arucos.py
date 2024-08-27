@@ -1,6 +1,8 @@
 import numpy as np
 import cv2 as cv
 
+MARKER_SIZE = 97 # mm
+
 cap = cv.VideoCapture(2, cv.CAP_DSHOW)
 
 if not cap.isOpened():
@@ -9,6 +11,7 @@ if not cap.isOpened():
 
 camera_matrix = np.load('mtx.npy')
 dist_coeffs = np.load('dist.npy')
+distances = []
 # copied from https://stackoverflow.com/questions/75750177/solve-pnp-or-estimate-pose-single-markers-which-is-better
 def my_estimatePoseSingleMarkers(corners, marker_size, mtx, distortion):
     '''
@@ -51,14 +54,26 @@ while True:
         for corners, id in zip(corners_list, ids):
             pts = np.array(corners,dtype=np.int32)
             cv.polylines(img, pts, True, (0, 0, 255), 10)
-            markerLength = 0.147 # 28 mm
+            markerLength = MARKER_SIZE # 28 mm
             rvec, tvec, _ = my_estimatePoseSingleMarkers(corners, markerLength, camera_matrix, dist_coeffs)
             rvecs.append(rvec)
             tvecs.append(tvec)
         if len(ids) == 2:
-            p1 = tvecs[0][0][0]
-            p2 = tvecs[1][0][0]
-            dist = np.linalg.norm(p1 - p2)
+            p1 = tvecs[0][0]#[0] Let's start by NOT IGNORING THE TWO OTHER COMPONENTS...
+            p2 = tvecs[1][0]#[0]
+            print(f"1 --> {np.linalg.norm(p1)}")
+            print(f"2 --> {np.linalg.norm(p2)}")
+            r1 = rvecs[0][0]
+            r2 = rvecs[1][0]
+            R1, _ = cv.Rodrigues(r1)
+            R2, _ = cv.Rodrigues(r2)
+            p1c = -R1.T @ p1
+            p2c = -R2.T @ p2
+
+            for i in [0,1]:
+                point = cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvecs[i][0], tvecs[i][0], 0.4,4)
+            dist = np.linalg.norm(p1c - p2c)
+            distances.append(dist)
             x1, y1 = np.mean(corners_list[0][0], axis=0).astype(np.int64)
             x2, y2 = np.mean(corners_list[1][0], axis=0).astype(np.int64)
             x3, y3 = ((x1 + x2) // 2, (y1 + y2) // 2)
@@ -66,11 +81,15 @@ while True:
             cv.putText(img, '{:.3f}'.format(dist), (x3, y3), cv.FONT_HERSHEY_PLAIN, 5, (0, 255, 0), 4)
             
 
-
-
     cv.imshow('frame', img)
     if cv.waitKey(1) == ord('q'):
         break
+
+print(f"Standard deviation {np.std(distances)}")
+print(f"Mean {np.mean(distances)}")
+print(f"Max {np.max(distances)}")
+print(f"Min {np.min(distances)}")
+
 
 cap.release()
 cv.destroyAllWindows()
