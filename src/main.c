@@ -49,7 +49,7 @@ void main() {
     xTaskCreate(vLocalisationTask, LOCALISATION_TASK_NAME, LOCALISATION_TASK_STACK_SIZE, NULL, LOCALISATION_TASK_PRIORITY, &xLocalisationHandle);
     xTaskCreate(vMotorsTask, MOTORS_TASK_NAME, MOTORS_TASK_STACK_SIZE, NULL, MOTORS_TASK_PRIORITY, &xMotorsHandle);
     xTaskCreate(vPathplanningTask, PATHPLANNING_TASK_NAME, PATHPLANNING_TASK_STACK_SIZE, NULL, PATHPLANNING_TASK_PRIORITY, &xPathplanningHandle);
-    // xTaskCreate(vWifiTask, WIFI_TASK_NAME, WIFI_TASK_STACK_SIZE, NULL, WIFI_TASK_PRIORITY, &xWifiHandle);
+    xTaskCreate(vWifiTask, WIFI_TASK_NAME, WIFI_TASK_STACK_SIZE, NULL, WIFI_TASK_PRIORITY, &xWifiHandle);
 
     // set core affinities
     vTaskCoreAffinitySet(xControllerHandle, (UBaseType_t) CONTROLLER_TASK_COREMASK);

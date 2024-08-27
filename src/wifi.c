@@ -272,15 +272,6 @@ void vWifiTask() {
     stdio_init_all();
 
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
-    if (!state) {
-        DEBUG_printf("failed to allocate state\n");
-        return;
-    }
-
-    if (cyw43_arch_init()) {
-        DEBUG_printf("failed to initialise\n");
-        return;
-    }
 
     const char *ap_name = "METR4810 Team 17";
     const char *password = "password";
@@ -303,15 +294,15 @@ void vWifiTask() {
         DEBUG_printf("failed to open server\n");
         return;
     }
-
+    
     state->complete = false;
     while(!state->complete) {
         vTaskDelay(VDELAY);
     }
 
-    tcp_server_close(state);
-    dns_server_deinit(&dns_server);
-    dhcp_server_deinit(&dhcp_server);
-    cyw43_arch_deinit();
+    // tcp_server_close(state);
+    // dns_server_deinit(&dns_server);
+    // dhcp_server_deinit(&dhcp_server);
+    // cyw43_arch_deinit();
     return;
 }
