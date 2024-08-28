@@ -1,4 +1,6 @@
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
@@ -12,7 +14,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#define VDELAY 3
+#define VDELAY 100
 
 #define TCP_PORT 80
 #define DEBUG_printf printf
@@ -22,6 +24,8 @@
 #define LED_TEST_BODY "<html><body><h1>Hello from Pico W.</h1><p>Led is %s</p><p><a href=\"?led=%d\">Turn led %s</a></body></html>"
 #define LED_PARAM "led=%d"
 #define LED_TEST "/ledtest"
+#define DIAGNOSTICS_PATH "/diagnostics"
+#define DIAGNOSTICS_BODY "<html><body>%s</body></html>"
 #define LED_GPIO 0
 #define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_TEST "\n\n"
 
@@ -36,7 +40,7 @@ typedef struct TCP_CONNECT_STATE_T_ {
     struct tcp_pcb *pcb;
     int sent_len;
     char headers[128];
-    char result[256];
+    char result[400];
     int header_len;
     int result_len;
     ip_addr_t *gw;
@@ -109,6 +113,28 @@ static int test_server_content(const char *request, const char *params, char *re
         } else {
             len = snprintf(result, max_result_len, LED_TEST_BODY, "OFF", 1, "ON");
         }
+    } else if (strncmp(request, DIAGNOSTICS_PATH, sizeof(DIAGNOSTICS_PATH) - 1) == 0) {
+        TaskStatus_t* tasks;
+        volatile UBaseType_t num_tasks = uxTaskGetNumberOfTasks();
+        tasks = pvPortMalloc(num_tasks * sizeof(TaskStatus_t));
+        num_tasks = uxTaskGetSystemState(tasks, num_tasks, NULL);
+        
+        int task_no = 0;
+        char* total_string = (char*) calloc(400, sizeof(char));
+        while (task_no < num_tasks) {
+            TaskStatus_t task = tasks[task_no];
+            char* task_name = task.pcTaskName;
+            configSTACK_DEPTH_TYPE task_overflow = task.usStackHighWaterMark;
+            char task_string[50];
+            snprintf(task_string, 50, "Task %d: %s Memory Remaining: %i <br/>", task_no, task_name, task_overflow);
+            strncat(total_string, task_string, 399 - strlen(total_string));
+            task_no++;
+        }
+
+
+        len = snprintf(result, max_result_len, DIAGNOSTICS_BODY, total_string);
+        // len = snprintf(result, max_result_len, LED_TEST_BODY, "OFF", 1, "ON");
+        vPortFree(tasks);
     }
     return len;
 }
@@ -297,7 +323,8 @@ void vWifiTask() {
     
     state->complete = false;
     while(!state->complete) {
-        vTaskDelay(VDELAY);
+        cyw43_arch_poll();
+        vTaskDelay(pdMS_TO_TICKS(VDELAY));
     }
 
     // tcp_server_close(state);

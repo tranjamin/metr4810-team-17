@@ -27,6 +27,7 @@ add_executable( main
     wifi.c
     dhcpserver/dhcpserver.c
     dnsserver/dnsserver.c
+    ../FreeRTOS-Kernel/portable/MemMang/heap_4.c
     )
 
 target_include_directories(
@@ -44,6 +45,7 @@ target_link_libraries(
     pico_stdlib 
     FreeRTOS-Kernel 
     FreeRTOS-Kernel-Heap4
+    # pico_cyw43_arch_lwip_poll
     pico_cyw43_arch_lwip_threadsafe_background
     # pico_cyw43_arch_lwip_sys_freertos
     )
