@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
     # Define noises
     IMU_NOISE = 10* 1.8*9.81/1000 # value from datasheet
-    CAMERA_NOISE = 10*0.01  # 5e-4
+    CAMERA_NOISE = 0.05  # 5e-4
     P = np.eye(6) * 5e-1
     Q = np.eye(2) * IMU_NOISE #1e-1 # applies directly to sensor measurements, gets distributed on the fly
     R = np.eye(4) * 0.01 #5e-5
@@ -175,3 +175,12 @@ if __name__ == '__main__':
         plt.legend()
 
     plt.show()
+    plt.figure(2)
+    labels = [r"$x$ position", r"$x$ velocity", r"$y$ position", r"$y$ velocity", r"$\theta$ position", r"$\theta$ velocity"]
+    for i in range(0,6):
+        plt.subplot(3,2,i+1)
+        plt.plot(time, fused_states[i,:] - true_states[i,:], label = r"fused state")
+        plt.xlabel(r"Time")
+        plt.ylabel(labels[i])
+        plt.legend()
+    plt.show() 
