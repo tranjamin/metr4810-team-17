@@ -3,7 +3,7 @@ import cv2 as cv
 
 MARKER_SIZE = 97 # mm
 
-cap = cv.VideoCapture(2, cv.CAP_DSHOW)
+cap = cv.VideoCapture(0)#, cv.CAP_DSHOW)
 
 if not cap.isOpened():
     print("Cannot open camera")
