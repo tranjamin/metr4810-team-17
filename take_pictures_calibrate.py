@@ -1,7 +1,7 @@
 import numpy as np
 import cv2 as cv
 
-IMAGE_FOLDER = "tom_iphone_calibration"
+IMAGE_FOLDER = "eos2_calibration"
 
 criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 image_counter = 0
