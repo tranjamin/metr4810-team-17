@@ -10,11 +10,14 @@
 #define QUEUE_LENGTH 1
 #define QUEUE_WAIT_TICKS 100
 
+#define LOG_QUEUE_LENGTH 1
+
 // function prototypes
 void vDiagnosticsTask();
 void vDiagnosticsInit();
 
 QueueHandle_t xDiagnosticQueue;
+QueueHandle_t xLogQueue;
 
 BaseType_t xGetDiagnosticMessage(DiagnosticMessage* buffer) {
     if (xDiagnosticQueue == NULL) {
@@ -25,6 +28,7 @@ BaseType_t xGetDiagnosticMessage(DiagnosticMessage* buffer) {
 
 void vDiagnosticsInit() {
     xDiagnosticQueue = xQueueCreate(QUEUE_LENGTH, sizeof(DiagnosticMessage));
+    xLogQueue = xQueueCreate(LOG_QUEUE_LENGTH, LOG_MAX_LENGTH);
 }
 
 void vTaskDiagnostics() {
@@ -58,9 +62,26 @@ void vTaskDiagnostics() {
     vPortFree(tasks);
 }
 
+BaseType_t xGetDebugLog(char buffer[LOG_MAX_LENGTH]) {
+    if (xLogQueue == NULL) {
+        return pdFALSE;
+    }
+    return xQueueReceiveFromISR(xLogQueue, (void*) buffer, NULL);
+}
+
+void vDebugLog(char str[LOG_MAX_LENGTH]) {
+    if (str == NULL) return;
+    
+    xQueueSendToBack(xLogQueue, str, QUEUE_WAIT_TICKS);
+    #ifdef DEBUG_printf
+        DEBUG_printf(str);
+    #endif
+}
+
 void vDiagnosticsTask() {
     for (;;) {
         vTaskDiagnostics();
+        // vDebugLog("HAPPY\n");
 
         // block for some time
         vTaskDelay(VDELAY);

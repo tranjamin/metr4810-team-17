@@ -30,11 +30,17 @@
 #define DIAGNOSTICS_BODY "<html><body>%s</body></html>"
 #define LED_GPIO 0
 #define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_TEST "\n\n"
+#define LOG_PATH "/log"
+#define LOG_BODY "<html><body>%s</body></html>"
+
 #define MAX_RESULT_SIZE 2000
 
 #ifdef DIAGNOSTICS_H
     #if MAX_RESULT_SIZE < DIAGNOSTICS_MAX_SIZE
         #warning "MAX_RESULT_SIZE must be larger than DIAGNOSTICS_MAX_SIZE"
+    #endif
+    #if MAX_RESULT_SIZE < LOG_MAX_LENGTH
+        #warning "MAX_RESULT_SIZE must be larger than LOG_MAX_LENGTH"
     #endif
 #endif
 
@@ -131,7 +137,14 @@ static int test_server_content(const char *request, const char *params, char *re
             snprintf(msg.message, DIAGNOSTICS_MAX_SIZE, "No Diagnostics Available\n");
         }
         len = snprintf(result, max_result_len, msg.message);
-        // len = snprintf(result, max_result_len, LED_TEST_BODY, "OFF", 1, "ON");
+    } else if (strncmp(request, LOG_PATH, sizeof(LOG_PATH) - 1) == 0) {
+        char msg[LOG_MAX_LENGTH];
+        if (xGetDebugLog(msg) == pdTRUE) {
+
+        } else {
+            snprintf(msg, DIAGNOSTICS_MAX_SIZE, "Log is Empty\n");
+        }
+        len = snprintf(result, max_result_len, msg);
     }
     return len;
 }
