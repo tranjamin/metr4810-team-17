@@ -28,6 +28,9 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
+#define configMAX_TASK_NAME_LEN 20
+#define configRECORD_STACK_HIGH_ADDRESS 1
+
 /* Scheduler Related */
 #define configUSE_PREEMPTION                    1
 #define configUSE_TICKLESS_IDLE                 0

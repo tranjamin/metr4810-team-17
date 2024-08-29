@@ -30,7 +30,14 @@
 #define DIAGNOSTICS_BODY "<html><body>%s</body></html>"
 #define LED_GPIO 0
 #define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_TEST "\n\n"
-#define MAX_RESULT_SIZE 400
+#define MAX_RESULT_SIZE 2000
+
+#ifdef DIAGNOSTICS_H
+    #if MAX_RESULT_SIZE < DIAGNOSTICS_MAX_SIZE
+        #warning "MAX_RESULT_SIZE must be larger than DIAGNOSTICS_MAX_SIZE"
+    #endif
+#endif
+
 
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
@@ -121,7 +128,7 @@ static int test_server_content(const char *request, const char *params, char *re
         if (xGetDiagnosticMessage(&msg) == pdTRUE) {
 
         } else {
-            snprintf(msg.message, MESSAGE_MAX_SIZE, "No Diagnostics Available\n");
+            snprintf(msg.message, DIAGNOSTICS_MAX_SIZE, "No Diagnostics Available\n");
         }
         len = snprintf(result, max_result_len, msg.message);
         // len = snprintf(result, max_result_len, LED_TEST_BODY, "OFF", 1, "ON");
