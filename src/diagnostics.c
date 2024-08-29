@@ -7,22 +7,25 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+// Define these two macros to enable UART logging
 #define DEBUG_vprintf vprintf
 #define DEBUG_printf printf
 
 #define VDELAY 1000
-#define QUEUE_LENGTH 1
-#define QUEUE_WAIT_TICKS 0
 
-#define LOG_QUEUE_LENGTH 10
+#define DIAGNOSTICS_QUEUE_LENGTH 1 // how long the diagnostics queue
+#define LOG_QUEUE_LENGTH 10 // how long is the (wifi) log queue
+#define QUEUE_WAIT_TICKS 0 // how long to wait when trying to add to the log queue
 
 // function prototypes
 void vDiagnosticsTask();
 void vDiagnosticsInit();
 
+// Queues to hold data
 QueueHandle_t xDiagnosticQueue;
 QueueHandle_t xLogQueue;
 
+// Get a diagnostic message off the queue
 BaseType_t xGetDiagnosticMessage(DiagnosticMessage* buffer) {
     if (xDiagnosticQueue == NULL) {
         return pdFALSE;
@@ -30,11 +33,7 @@ BaseType_t xGetDiagnosticMessage(DiagnosticMessage* buffer) {
     return xQueueReceiveFromISR(xDiagnosticQueue, (void*) buffer, NULL);
 }
 
-void vDiagnosticsInit() {
-    xDiagnosticQueue = xQueueCreate(QUEUE_LENGTH, sizeof(DiagnosticMessage));
-    xLogQueue = xQueueCreate(LOG_QUEUE_LENGTH, sizeof(char) * LOG_MAX_LENGTH);
-}
-
+// Get diagnostics on the current tasks and store them in the queue
 void vTaskDiagnostics() {
     DiagnosticMessage msg;
     memset(msg.message, 0, DIAGNOSTICS_MAX_SIZE);
@@ -72,6 +71,7 @@ void vTaskDiagnostics() {
     vPortFree(tasks);
 }
 
+// Get a debug message off te queue
 BaseType_t xGetDebugLog(char buffer[LOG_MAX_LENGTH]) {
     if (xLogQueue == NULL) {
         return pdFALSE;
@@ -79,6 +79,7 @@ BaseType_t xGetDebugLog(char buffer[LOG_MAX_LENGTH]) {
     return xQueueReceiveFromISR(xLogQueue, (void*) buffer, NULL);
 }
 
+// Send a debug message into the queue
 void vDebugLog(char* format, ...) {
     va_list str_args;
     va_start(str_args, format);
@@ -94,11 +95,14 @@ void vDebugLog(char* format, ...) {
 
 }
 
+void vDiagnosticsInit() {
+    xDiagnosticQueue = xQueueCreate(DIAGNOSTICS_QUEUE_LENGTH, sizeof(DiagnosticMessage));
+    xLogQueue = xQueueCreate(LOG_QUEUE_LENGTH, sizeof(char) * LOG_MAX_LENGTH);
+}
+
 void vDiagnosticsTask() {
     for (;;) {
         vTaskDiagnostics();
-
-        // block for some time
         vTaskDelay(VDELAY);
     }
 }

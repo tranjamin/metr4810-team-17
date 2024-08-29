@@ -63,5 +63,6 @@ void main() {
     vTaskCoreAffinitySet(xPathplanningHandle, (UBaseType_t) PATHPLANNING_TASK_COREMASK);
     vTaskCoreAffinitySet(xWifiHandle, (UBaseType_t) WIFI_TASK_COREMASK);
 
+    // start the scheduling of tasks
     vTaskStartScheduler();
 }
