@@ -5,12 +5,16 @@
 #include "diagnostics.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
+
+#define DEBUG_vprintf vprintf
+#define DEBUG_printf printf
 
 #define VDELAY 1000
 #define QUEUE_LENGTH 1
-#define QUEUE_WAIT_TICKS 100
+#define QUEUE_WAIT_TICKS 0
 
-#define LOG_QUEUE_LENGTH 1
+#define LOG_QUEUE_LENGTH 10
 
 // function prototypes
 void vDiagnosticsTask();
@@ -28,7 +32,7 @@ BaseType_t xGetDiagnosticMessage(DiagnosticMessage* buffer) {
 
 void vDiagnosticsInit() {
     xDiagnosticQueue = xQueueCreate(QUEUE_LENGTH, sizeof(DiagnosticMessage));
-    xLogQueue = xQueueCreate(LOG_QUEUE_LENGTH, LOG_MAX_LENGTH);
+    xLogQueue = xQueueCreate(LOG_QUEUE_LENGTH, sizeof(char) * LOG_MAX_LENGTH);
 }
 
 void vTaskDiagnostics() {
@@ -45,6 +49,12 @@ void vTaskDiagnostics() {
     char helper_string[30];
     snprintf(helper_string, 30, "Number of Tasks: %d <br/>", num_tasks);
     strncat(msg.message, helper_string, 30);
+
+    HeapStats_t stats;
+    vPortGetHeapStats(&stats);
+    char buf[60];
+    snprintf(buf, 60, "Heap Remaining: %d/%dKB (%d percent) <br/>", stats.xMinimumEverFreeBytesRemaining/1024, configTOTAL_HEAP_SIZE/1024, stats.xMinimumEverFreeBytesRemaining*100/configTOTAL_HEAP_SIZE);
+    strncat(msg.message, buf, DIAGNOSTICS_MAX_SIZE - 1 - strlen(msg.message));
 
     while (task_no < num_tasks) {
         TaskStatus_t task = tasks[task_no];
@@ -69,19 +79,24 @@ BaseType_t xGetDebugLog(char buffer[LOG_MAX_LENGTH]) {
     return xQueueReceiveFromISR(xLogQueue, (void*) buffer, NULL);
 }
 
-void vDebugLog(char str[LOG_MAX_LENGTH]) {
-    if (str == NULL) return;
-    
-    xQueueSendToBack(xLogQueue, str, QUEUE_WAIT_TICKS);
-    #ifdef DEBUG_printf
-        DEBUG_printf(str);
+void vDebugLog(char* format, ...) {
+    va_list str_args;
+    va_start(str_args, format);
+    #ifdef DEBUG_vprintf
+        DEBUG_printf(format, str_args);
     #endif
+
+    char str[LOG_MAX_LENGTH];
+    vsnprintf(str, LOG_MAX_LENGTH, format, str_args);
+
+    if (str == NULL) return;
+    if (xLogQueue != NULL) xQueueSendToBackFromISR(xLogQueue, str, QUEUE_WAIT_TICKS);
+
 }
 
 void vDiagnosticsTask() {
     for (;;) {
         vTaskDiagnostics();
-        // vDebugLog("HAPPY\n");
 
         // block for some time
         vTaskDelay(VDELAY);
