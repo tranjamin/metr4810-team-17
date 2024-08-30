@@ -26,9 +26,6 @@
 #define SET_TRAVERSAL_LHS_BRAKED() (gpio_put(TRAVERSAL_LHS_INA, 1), gpio_put(TRAVERSAL_LHS_INB, 1))
 #define SET_TRAVERSAL_RHS_BRAKED() (gpio_put(TRAVERSAL_RHS_INA, 1), gpio_put(TRAVERSAL_RHS_INB, 1))
 
-#define SET_TRAVERSAL_LHS_PWM(level) (pwm_set_gpio_level(TRAVERSAL_LHS_PWM, level))
-#define SET_TRAVERSAL_RHS_PWM(level) (pwm_set_gpio_level(TRAVERSAL_RHS_PWM, level))
-
 #define CLK_DIVIDER 128
 #define PWM_TOP 8192
 
@@ -84,6 +81,10 @@ void vMotorsInit() {
     // set initial pwm to 50%
     SET_TRAVERSAL_LHS_PWM(50.0);
     SET_TRAVERSAL_RHS_PWM(50.0);
+
+    // set motors to be intially off
+    SET_TRAVERSAL_LHS_STOPPED();
+    SET_TRAVERSAL_RHS_STOPPED();
 }
 
 void vMotorsTask() {
