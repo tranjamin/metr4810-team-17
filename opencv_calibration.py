@@ -15,7 +15,7 @@ objp[:,:2] = np.mgrid[0:8,0:6].T.reshape(-1,2)*MARKER_SIZE
 objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
  
-images = glob.glob('tom_iphone_calibration/*.jpg')
+images = glob.glob('eos2_calibration/*.jpg')
  
 for fname in images:
     img = cv.imread(fname)

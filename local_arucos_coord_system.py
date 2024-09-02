@@ -10,6 +10,9 @@ if not cap.isOpened():
     print("Cannot open camera")
     exit()
 
+RVECS = 0
+TVECS = 1
+
 camera_matrix = np.load('camera_matrix.npy')
 dist_coeffs = np.load('dist_coeffs.npy')
 distances = []
@@ -50,6 +53,7 @@ while True:
     (corners_list, ids, rejected) = detector.detectMarkers(img)
 
     if corners_list:
+        markers = {}
         rvecs = []
         tvecs = []
         for corners, id in zip(corners_list, ids):
@@ -57,17 +61,27 @@ while True:
             cv.polylines(img, pts, True, (0, 0, 255), 10)
             markerLength = MARKER_SIZE # 28 mm
             rvec, tvec, _ = my_estimatePoseSingleMarkers(corners, markerLength, camera_matrix, dist_coeffs)
-            rvecs.append(rvec)
-            tvecs.append(tvec)
+            markers[id] = (rvec, tvec)
         if len(ids) == 2:
+            # setup origin at marker 0
+            p_origin_camera_frame = markers[0][TVECS][0]
+            rvec_camera_to_origin = markers[0][RVECS][0]
+            
+            # find other markers relative to origin
+            for id, vecs in markers:
+                if id == 0:
+                    continue
+                p_marker_camera_frame = vecs[TVECS][0]
+                rvec_camera_to_marker = vecs[RVECS][0]
+                
             p1 = tvecs[0][0]#[0] Let's start by NOT IGNORING THE TWO OTHER COMPONENTS...
             p2 = tvecs[1][0]#[0]
             # print(f"1 --> {np.linalg.norm(p1)}")
             # print(f"2 --> {np.linalg.norm(p2)}")
             r1 = rvecs[0][0]
             r2 = rvecs[1][0]
-            R1, _ = cv.Rodrigues(r1)
-            R2, _ = cv.Rodrigues(r2)
+            R_camera_to_1, _ = cv.Rodrigues(r1)
+            R_camera_to_2, _ = cv.Rodrigues(r2)
             p1c = -R1.T @ p1
             p2c = -R2.T @ p2
 
