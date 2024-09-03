@@ -13,6 +13,7 @@
 #include "motors.h"
 #include "pathplanning.h"
 #include "wifi.h"
+#include "rgb.h"
 
 void main() {
     // set up all hardware
@@ -26,6 +27,7 @@ void main() {
     vMotorsInit();
     vPathplanningInit();
     vWifiInit();
+    vRGBInit();
 
     // store references to each task for diagnostics
     TaskHandle_t xControllerHandle;
@@ -38,6 +40,7 @@ void main() {
     TaskHandle_t xMotorsHandle;
     TaskHandle_t xPathplanningHandle;
     TaskHandle_t xWifiHandle;
+    TaskHandle_t xRGBHandle;
 
     // create all tasks
     xTaskCreate(vControllerTask, CONTROLLER_TASK_NAME, CONTROLLER_TASK_STACK_SIZE, NULL, CONTROLLER_TASK_PRIORITY, &xControllerHandle);
@@ -50,6 +53,7 @@ void main() {
     xTaskCreate(vMotorsTask, MOTORS_TASK_NAME, MOTORS_TASK_STACK_SIZE, NULL, MOTORS_TASK_PRIORITY, &xMotorsHandle);
     xTaskCreate(vPathplanningTask, PATHPLANNING_TASK_NAME, PATHPLANNING_TASK_STACK_SIZE, NULL, PATHPLANNING_TASK_PRIORITY, &xPathplanningHandle);
     xTaskCreate(vWifiTask, WIFI_TASK_NAME, WIFI_TASK_STACK_SIZE, NULL, WIFI_TASK_PRIORITY, &xWifiHandle);
+    xTaskCreate(vRGBTask, RGB_TASK_NAME, RGB_TASK_STACK_SIZE, NULL, RGB_TASK_PRIORITY, &xRGBHandle);
 
     // set core affinities
     vTaskCoreAffinitySet(xControllerHandle, (UBaseType_t) CONTROLLER_TASK_COREMASK);
@@ -62,6 +66,7 @@ void main() {
     vTaskCoreAffinitySet(xMotorsHandle, (UBaseType_t) MOTORS_TASK_COREMASK);
     vTaskCoreAffinitySet(xPathplanningHandle, (UBaseType_t) PATHPLANNING_TASK_COREMASK);
     vTaskCoreAffinitySet(xWifiHandle, (UBaseType_t) WIFI_TASK_COREMASK);
+    vTaskCoreAffinitySet(xRGBHandle, (UBaseType_t) RGB_TASK_COREMASK);
 
     // start the scheduling of tasks
     vTaskStartScheduler();
