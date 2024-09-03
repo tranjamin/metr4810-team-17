@@ -44,6 +44,7 @@ if (PICO_CYW43_SUPPORTED)
 target_link_libraries(
     main
     pico_stdlib 
+    hardware_pwm
     FreeRTOS-Kernel 
     FreeRTOS-Kernel-Heap4
     # pico_cyw43_arch_lwip_poll
