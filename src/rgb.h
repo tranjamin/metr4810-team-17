@@ -8,6 +8,7 @@
 #define RGB_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE)
 #define RGB_TASK_COREMASK 0x01
 
+// Sets the intensity of colour as a percent (i.e. 0-100)
 void setRGB_Red(float);
 void setRGB_Green(float);
 void setRGB_Blue(float);

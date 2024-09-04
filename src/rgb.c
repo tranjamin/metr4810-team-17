@@ -22,6 +22,9 @@
 // function prototypes
 void vRGBTask();
 void vRGBInit();
+void setRGB_RED(float);
+void setRGB_GREEN(float);
+void setRGB_BLUE(float);
 
 void setRGB_RED(float percent) {
     pwm_set_chan_level(RGB_RED_SLICE, RGB_RED_CHAN, (uint16_t) PWM_TOP * percent / 100);
@@ -36,10 +39,12 @@ void setRGB_BLUE(float percent) {
 }
 
 void vRGBInit() {
+    // initialise gpio pins
     gpio_init(RGB_RED);
     gpio_init(RGB_GREEN);
     gpio_init(RGB_BLUE);
 
+    // set direction as output
     gpio_set_dir(RGB_RED, GPIO_OUT);
     gpio_set_dir(RGB_GREEN, GPIO_OUT);
     gpio_set_dir(RGB_BLUE, GPIO_OUT);
@@ -49,7 +54,7 @@ void vRGBInit() {
     gpio_pull_up(RGB_GREEN);
     gpio_pull_up(RGB_BLUE);
 
-    // set gpio function
+    // set gpio function to be pwm
     gpio_set_function(RGB_RED, GPIO_FUNC_PWM);
     gpio_set_function(RGB_GREEN, GPIO_FUNC_PWM);
     gpio_set_function(RGB_BLUE, GPIO_FUNC_PWM);
