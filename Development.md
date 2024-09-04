@@ -136,6 +136,22 @@ For the function table of each pin, see https://www.raspberrypi.com/documentatio
 
 UART is currently enabled for diagnostics through the USB port. This can be enabled in `CMakeLists.txt` using `pico_enable_stdio_usb(main 1)` and `pico_enable_stdio_uart(main 1)`. Currently, any calls to `stdout`, `stdin` or `stderr` will be routed through UART (through the USB).
 
+#### PWM
+
+PWM can be used by linking the `hardware_pwm` library and including `hardware/pwm.h`. The Pico has 16 slices (individual instances) of pwm, with each slice having two channels (output compares). The slices are completely independent but the two channels of the same slice have a shared timer, so their frequency is the same. However, they can have different duty cycles. Slices are GP0-1, GP2-3, GP4-5, etc. up to GP14-15. GP16-17 then replicates GP0-1, GP18-19 replicates GP2-3 and so on, so it is recommended that this second half of pins is not used. 
+
+Common PWM API calls are (see `motors.c` for code examples and recommended layout):
+- `pwm_gpio_to_slice_num(pin_numer)`: identifies the slice a GPIO is on. This should usually be a macro.
+- `pwm_gpio_to_channel(pin_number)`: identifies the channel a GPIO is on. This should usually be a macro.
+- `gpio_set_function(pin_number, GPIO_FUNC_PWM)`: set a GPIO to use PWM (part of stdlib).
+- `pwm_set_phase_correct(slice_number, bool)`: turn phase correction on or off. On is usually good for motor efficiency.
+- `pwm_set_clkdiv(slice_number, divider)`: set the clock divider of the PWM.
+- `pwm_set_wrap(slice_number, wrap)`: set the wrap/TOP/overflow value of the PWM. Together with the clock divider specifies the frequency of the signal.
+- `pwm_set_enabled(slice)`: enable pwm on a slice.
+- `pwm_set_chan_level(slice, channel, compare_value)`: set the duty cycle of a channel in ticks.
+
+In general, you need to initialise the gpio pin, set its direction, set its alternate function to PWM, set the pwm clock divider, wrap and level, and then enable the pwm.
+
 #### LwIP
 
 WiFi is enabled using the `pico_cyw43_arch_lwip_threadsafe_background` library. This is black magic to me so good luck trying to figure it out.
