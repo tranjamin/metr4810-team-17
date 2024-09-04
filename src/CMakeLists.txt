@@ -26,6 +26,8 @@ add_executable( main
     pathplanning.c
     wifi.c
     rgb.c
+    digitalio.c
+
     dhcpserver/dhcpserver.c
     dnsserver/dnsserver.c
     ../FreeRTOS-Kernel/portable/MemMang/heap_4.c
