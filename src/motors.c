@@ -79,8 +79,8 @@ void vMotorsInit() {
     pwm_set_enabled(TRAVERSAL_RHS_PWM_SLICE, true);
 
     // set initial pwm to 50%
-    SET_TRAVERSAL_LHS_PWM(50.0);
-    SET_TRAVERSAL_RHS_PWM(50.0);
+    setTraversalDuty_LHS(50);
+    setTraversalDuty_RHS(50);
 
     // set motors to be intially off
     SET_TRAVERSAL_LHS_STOPPED();
@@ -98,7 +98,7 @@ void vMotorsTask() {
         i++;
         if (i >= 100) i = 0;
 
-        // block for some time
+    //     // block for some time
         vTaskDelay(VDELAY);
     }
 }
