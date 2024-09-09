@@ -9,6 +9,131 @@ RVECS = 0
 TVECS = 1
 CORNERS = 2
 
+EULER_ORDER = 'zyx' # check this is correct as argument to R.from_euler()/R.as_euler()
+
+class MarkerCollection:
+    def __init__(self) -> None:
+        # dictionary to contain mapping from Aruco id to object points
+        self._points: dict[int, np.ndarray] = {}
+
+    def register_marker(self, id: int, marker_size: float, tvec: np.ndarray,
+                        rotation: R, reference_tvec: np.ndarray = None,
+                        reference_rotation: R = None):
+        """Adds the given marker to this collection. The marker is specified by
+        its size (in same units as camera calibration matrices, probably mm),
+        and the location of the marker relative to this collection's origin.
+
+        Alternatively, if reference_tvec and reference_rotation are provided,
+        the tvec and rotation arguments are interpreted as being relative to
+        these.
+
+        Args:
+            id (int): aruco id of the marker
+            marker_size (float): size of physical marker
+            tvec (np.ndarray): vector location of marker's top left corner in
+                collection frame (three-dimensional)
+            rotation (Rotation): rotation from origin (or reference rotation)
+                to marker frame
+            reference_tvec (np.ndarray, optional): Optional reference from which to define tvec. Defaults to None.
+            reference_rotation (Rotation, optional): Optional reference from which to define rotation. Defaults to None.
+        """
+        base_points = np.array([[0, 0, 0],
+                              [marker_size, 0, 0],
+                              [marker_size, marker_size, 0],
+                              [0, marker_size, 0]], dtype=np.float32)
+
+        # Base points are defined in a frame centred at the top left corner of
+        # the marker, with the x axis pointing to the top right corner and the
+        # y axis pointing to the bottom left corner
+
+        # Note if changing this, I think the base points must be defined in
+        # clockwise order starting from the top left (to match with
+        # Aruco.detectMarkers())
+
+        actual_points = rotation.apply(base_points)
+        actual_points = np.add(actual_points, tvec)
+
+        if reference_rotation is not None and reference_tvec is not None:
+            actual_points = reference_rotation.apply(actual_points)
+            actual_points = np.add(actual_points, reference_tvec)
+        
+        if (reference_rotation is not None) ^ (reference_tvec is not None):
+            # one provided but not the other
+            raise Exception("One reference provided but not the other")
+        
+        self._points[id] = actual_points
+
+    def estimate_pose(self, corners_list: np.ndarray, ids: np.ndarray,
+                      camera_matrix: cv.UMat, dist_coeffs: cv.UMat) -> tuple[bool, np.ndarray, np.ndarray]:
+        """Estimate the pose of this collection's frame given a list of corners
+        and corresponding marker ids where at least some of the markers detected
+        are part of this collection. Uses cv.solvePnp for pose estimation, so
+        requires camera matrix and distortion coefficients provided by camera
+        calibration.
+
+        Optionally, annotates the given image with the pose
+
+        Args:
+            corners_list (np.ndarray): list of corners returned by
+                cv.Aruco.detectMarkers
+            ids (np.ndarray): ids returned by cv.Aruco.detectMarkers
+            camera_matrix (cv.UMat): camera matrix from calibration 
+            dist_coeffs (cv.UMat): distortion coefficients from calibration 
+
+        Returns:
+            tuple[bool, np.ndarray, np.ndarray]: validity (whether collection
+            was found), rvecs, tvecs
+        """
+
+        # step 1, figure out which markers in the image are from this
+        # Collection, and build the list of object points
+
+        # find relevant corners
+        corner_collection = [corners[0]
+                             for index, corners in enumerate(corners_list)
+                             if ids[index] in self._points.keys()]
+        if not corner_collection:
+            # list is empty
+            return False, None, None
+        # this list comprehension makes a list of the corner lists
+        relevant_corners = np.concatenate(corner_collection)
+
+        # find relevant object points
+
+        objpts_collection = [self._points[id]
+                             for id in ids if id in self._points.keys()]
+
+        relevant_object_points = np.concatenate(objpts_collection)
+
+        _, rvecs, tvecs = cv.solvePnP(relevant_object_points,
+                                      relevant_corners,
+                                      camera_matrix,
+                                      dist_coeffs,
+                                      False,
+                                      cv.SOLVEPNP_SQPNP)
+        return True, rvecs, tvecs
+
+    def annotate(self, corners_list: np.ndarray, ids: np.ndarray,
+                 img: cv.typing.MatLike, color: tuple[int, int, int],
+                 thickness: int = 10):
+        """Annotates the markers in the given image that are relevant to this
+        collection by drawing boxes around them in the given colour and
+        thickness.
+
+        Args:
+            corners_list (np.ndarray): corners from cv.Aruco.detectMarkers
+            ids (np.ndarray): ids from cv.Aruco.detectMarkers
+            img (cv.typing.MatLike): image to be annotated
+            color (tuple[int, int, int]): (blue, green, red) colour
+            thickness (int): line thickness
+        """
+        for index, corners in enumerate(corners_list):
+            if ids[index] in self._points.keys():
+                pts = np.array(corners[0], dtype=np.int32)
+                cv.polylines(img, pts, True, color, thickness)
+
+
+        
 
 # copied from https://stackoverflow.com/questions/75750177/solve-pnp-or-estimate-pose-single-markers-which-is-better
 def my_estimatePoseSingleMarkers(corners, marker_size, mtx, distortion):
