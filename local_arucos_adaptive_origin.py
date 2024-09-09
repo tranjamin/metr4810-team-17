@@ -145,53 +145,6 @@ class MarkerCollection:
                 cv.polylines(img, [pts], True, color, thickness)
 
 
-        
-
-# copied from https://stackoverflow.com/questions/75750177/solve-pnp-or-estimate-pose-single-markers-which-is-better
-def my_estimatePoseSingleMarkers(corners, marker_size, mtx, distortion):
-    '''
-    This will estimate the rvec and tvec for each of the marker corners detected by:
-       corners, ids, rejectedImgPoints = detector.detectMarkers(image)
-    corners - is an array of detected corners for each detected marker in the image
-    marker_size - is the size of the detected markers
-    mtx - is the camera matrix
-    distortion - is the camera distortion matrix
-    RETURN list of rvecs, tvecs, and trash (so that it corresponds to the old estimatePoseSingleMarkers())
-    '''
-    marker_points = np.array([[-marker_size / 2, marker_size / 2, 0],
-                              [marker_size / 2, marker_size / 2, 0],
-                              [marker_size / 2, -marker_size / 2, 0],
-                              [-marker_size / 2, -marker_size / 2, 0]], dtype=np.float32)
-    trash = []
-    rvecs = []
-    tvecs = []
-    
-    for c in corners:
-        nada, R, t = cv.solvePnP(marker_points, c, mtx, distortion, False, cv.SOLVEPNP_IPPE_SQUARE)
-        rvecs.append(R)
-        tvecs.append(t)
-        trash.append(nada)
-    return rvecs, tvecs, trash
-
-def solve_origin_pose(marker_size, corners, camera_matrix, dist_coeffs):
-    """
-    Returns rvec and tvec corresponding to origin
-    """
-    origin_marker_points = np.array([
-        [-marker_size / 2, marker_size / 2, 0],
-        [marker_size / 2, marker_size / 2, 0],
-        [marker_size / 2, -marker_size / 2, 0],
-        [-marker_size / 2, -marker_size / 2, 0],
-        [-marker_size / 2 + ORIGIN_X_DELTA, marker_size / 2 + ORIGIN_Y_DELTA, 0],
-        [marker_size / 2 + ORIGIN_X_DELTA, marker_size / 2 + ORIGIN_Y_DELTA, 0],
-        [marker_size / 2 + ORIGIN_X_DELTA, -marker_size / 2 + ORIGIN_Y_DELTA, 0],
-        [-marker_size / 2 + ORIGIN_X_DELTA, -marker_size / 2 + ORIGIN_Y_DELTA, 0]
-        ], dtype=np.float32)
-
-    nada, R, t = cv.solvePnP(origin_marker_points, corners, camera_matrix, dist_coeffs, False, cv.SOLVEPNP_IPPE)
-    return R, t
-
-
 origin = MarkerCollection()
 origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.identity())
 origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.identity())
