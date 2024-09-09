@@ -84,13 +84,13 @@ void vRGBTask() {
     float i = 0;
     for (;;) {
         // do stuff
-        taskENTER_CRITICAL();
-        setRGB_RED(i);
-        setRGB_BLUE(i);
-        setRGB_GREEN(i);
-        taskEXIT_CRITICAL();
-        i++;
-        if (i >= 100) i = 0;
+        // taskENTER_CRITICAL();
+        // setRGB_RED(i);
+        // setRGB_BLUE(i);
+        // setRGB_GREEN(i);
+        // taskEXIT_CRITICAL();
+        // i++;
+        // if (i >= 100) i = 0;
 
         // block for some time
         vTaskDelay(VDELAY);

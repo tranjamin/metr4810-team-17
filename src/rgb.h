@@ -9,9 +9,9 @@
 #define RGB_TASK_COREMASK 0x01
 
 // Sets the intensity of colour as a percent (i.e. 0-100)
-void setRGB_Red(float);
-void setRGB_Green(float);
-void setRGB_Blue(float);
+void setRGB_RED(float);
+void setRGB_GREEN(float);
+void setRGB_BLUE(float);
 
 void vRGBTask();
 void vRGBInit();

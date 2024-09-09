@@ -45,7 +45,8 @@ target_include_directories(
 if (PICO_CYW43_SUPPORTED)
 target_link_libraries(
     main
-    pico_stdlib 
+    pico_stdlib
+    pico_time
     hardware_pwm
     FreeRTOS-Kernel 
     FreeRTOS-Kernel-Heap4
