@@ -9,9 +9,19 @@ RVECS = 0
 TVECS = 1
 CORNERS = 2
 
-EULER_ORDER = 'zyx' # check this is correct as argument to R.from_euler()/R.as_euler()
+EULER_ORDER = 'ZYX' # determines conversion from angles to rotations
+
+# I believe the above is correctas it
+# 1. specifies yaw, then pitch, then roll
+# 2. uses intrinsic rotations (subsequent rotations are done about the axes that
+#    have already been rotated)
+
 
 class MarkerCollection:
+    """
+    Class to represent an object we want to track that has a variety of markers
+    rigidly connected to it.
+    """
     def __init__(self) -> None:
         # dictionary to contain mapping from Aruco id to object points
         self._points: dict[int, np.ndarray] = {}
@@ -34,8 +44,10 @@ class MarkerCollection:
                 collection frame (three-dimensional)
             rotation (Rotation): rotation from origin (or reference rotation)
                 to marker frame
-            reference_tvec (np.ndarray, optional): Optional reference from which to define tvec. Defaults to None.
-            reference_rotation (Rotation, optional): Optional reference from which to define rotation. Defaults to None.
+            reference_tvec (np.ndarray, optional): Optional reference from which to define tvec.
+                Origin -> reference. Defaults to None.
+            reference_rotation (Rotation, optional): Optional reference from which to define rotation.
+                Origin -> reference. Defaults to None.
         """
         base_points = np.array([[0, 0, 0],
                               [marker_size, 0, 0],
@@ -185,7 +197,9 @@ origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.identity())
 origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.identity())
 
 target = MarkerCollection()
-target.register_marker(4, 90.5, [0, 0, 0], R.identity())
+target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+# demonstrate specifying second relative to first
+target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
 
 def get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame,
                       rvec_camera_to_target, p_target_camera_frame) -> tuple[R, np.ndarray]:
@@ -240,12 +254,12 @@ def process_image(img, camera_matrix, dist_coeffs, logger):
 
     rot_relative, tvec_relative = get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame, rvec_camera_to_target, p_target_camera_frame)
 
-    x_origin, y_origin = get_frame_image_coords(camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame)
-
     yaw, pitch, roll = rot_relative.as_euler('zyx',degrees=True)
 
     dist = np.linalg.norm(tvec_relative)
+
     # Draw data onto image
+    x_origin, y_origin = get_frame_image_coords(camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame)
     x, y = get_frame_image_coords(camera_matrix, dist_coeffs, rvec_camera_to_target, p_target_camera_frame)
     # x_mid, y_mid = ((x_origin*0 + x) // 2, (y_origin*0 + y) // 2)
     x_mid, y_mid = (x, y)
@@ -255,139 +269,13 @@ def process_image(img, camera_matrix, dist_coeffs, logger):
     cv.putText(img, 'yaw: {:.3f}'.format(yaw), (x_mid, y_mid+100), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
     cv.putText(img, 'dist: {:.3f}'.format(dist), (x_mid, y_mid+150), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
 
-    # if ids is None:
-    #     return
-    # # step 1: find the origin constellation
-
-    # origin_found, origin_rvec, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
-    # if not origin_found:
-    #     return
-
-    # R_camera_to_origin, _ = cv.Rodrigues(origin_rvec)
-    # origin.annotate(corners_list, ids, img, (0, 255, 255), 10)
-    # cv.drawFrameAxes(img, camera_matrix, dist_coeffs, origin_rvec, p_origin_camera_frame, 50,4)
-    # x_origin, y_origin = get_frame_image_coords(camera_matrix, dist_coeffs, origin_rvec, p_origin_camera_frame)
-
-    # if ORIGIN_ID_1 in ids and ORIGIN_ID_2 in ids:
-    #     # origin was detected
-    #     first_marker_index = int(np.where(ids==ORIGIN_ID_1)[0][0])
-    #     x_origin, y_origin = np.mean(corners_list[first_marker_index][0], axis=0).astype(np.int64)
-    #     second_marker_index = int(np.where(ids==ORIGIN_ID_2)[0][0])
-    #     first_corners = corners_list[first_marker_index]
-    #     second_corners = corners_list[second_marker_index]
-    #     all_corners = np.concatenate((first_corners[0], second_corners[0]))
-
-    #     # draw green boxes around origin markers
-    #     pts = np.array(first_corners,dtype=np.int32)
-    #     cv.polylines(img, pts, True, (0, 255, 0), 10)
-    #     pts = np.array(second_corners,dtype=np.int32)
-    #     cv.polylines(img, pts, True, (0, 255, 0), 10)
-
-    #     origin_rvec, p_origin_camera_frame = solve_origin_pose(MARKER_SIZE, all_corners, camera_matrix, dist_coeffs) 
-    #     R_camera_to_origin, _ = cv.Rodrigues(origin_rvec)
-    #     point = cv.drawFrameAxes(img, camera_matrix, dist_coeffs, origin_rvec, p_origin_camera_frame, 50,4)
-    # else:
-    #     return
-
-    # Origin found, let's see if there are any other markers visible,
-    # Then find their positions in the origin frame
-
-
-    # if corners_list:
-    #     markers = []
-    #     rvecs = []
-    #     tvecs = []
-    #     found_origin = False
-    #     for corners, id in zip(corners_list, ids):
-    #         if id == ORIGIN_ID_1 or id == ORIGIN_ID_2:
-    #             continue
-    #         # marker is not one of the origin ones
-
-    #         pts = np.array(corners,dtype=np.int32)
-    #         cv.polylines(img, pts, True, (0, 0, 255), 10)
-    #         markerLength = 88 # wow I love magic, MARKER_SIZE
-    #         rvec, tvec, _ = my_estimatePoseSingleMarkers(corners, markerLength, camera_matrix, dist_coeffs)
-    #         p_marker_camera_frame = tvec[0]
-    #         rvec_camera_to_marker = rvec[0]
-    #         position_delta_camera_frame = p_marker_camera_frame - p_origin_camera_frame
-    #         R_camera_to_marker, _ = cv.Rodrigues(rvec_camera_to_marker)
-    #         R_origin_to_marker = R_camera_to_origin.T @ R_camera_to_marker
-    #         position_delta_origin_frame = R_camera_to_origin.T @ position_delta_camera_frame
-    #         r = R.from_matrix(R_origin_to_marker)
-    #         yaw, pitch, roll = r.as_euler('zyx',degrees=True)
-
-    #         dist = np.linalg.norm(position_delta_origin_frame)
-    #         # Draw data onto image
-    #         x, y = np.mean(corners[0], axis=0).astype(np.int64)
-    #         # x_mid, y_mid = ((x_origin*0 + x) // 2, (y_origin*0 + y) // 2)
-    #         x_mid, y_mid = (x, y)
-    #         cv.line(img, (x_origin, y_origin), (x, y), (255, 0, 0), 2)
-    #         cv.putText(img, '{:.3f}'.format(position_delta_origin_frame[0][0]), (x_mid, y_mid), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-    #         cv.putText(img, '{:.3f}'.format(position_delta_origin_frame[1][0]), (x_mid, y_mid+50), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-    #         cv.putText(img, '{:.3f}'.format(yaw), (x_mid, y_mid+100), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-    #         cv.putText(img, '{:.3f}'.format(dist), (x_mid, y_mid+150), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-
-    #         # log the values for statistics
+    # log the values for statistics
 
     #         if int(id[0]) not in logger:
     #             logger[int(id[0])] = [[],[],[]]
     #         for i in [0, 1, 2]:
     #             logger[int(id[0])][i].append(position_delta_origin_frame[i][0])
 
-
-                
-
-            # markers.append((id, rvec, tvec, corners))
-            # if id == ORIGIN_ID:
-            #     found_origin = True
-            #     p_origin_camera_frame = tvec[0]
-            #     rvec_camera_to_origin = rvec[0]
-            #     origin_corners = markers[0][CORNERS]
-            #     R_camera_to_origin, _ = cv.Rodrigues(rvec_camera_to_origin)
-            #     x_origin, y_origin = np.mean(corners_list[0][0], axis=0).astype(np.int64)
-            #     point = cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec[0], tvec[0], 50,4)
-        # if len(ids) >= 2 and found_origin:
-        #     # find other markers relative to origin
-        #     for id, rvec, tvec, corners in markers:
-        #         if id == ORIGIN_ID:
-        #             continue
-        #         p_marker_camera_frame = tvec[0]
-        #         rvec_camera_to_marker = rvec[0]
-        #         position_delta_camera_frame = p_marker_camera_frame - p_origin_camera_frame
-        #         R_camera_to_marker, _ = cv.Rodrigues(rvec_camera_to_marker)
-        #         R_origin_to_marker = R_camera_to_origin.T @ R_camera_to_marker
-        #         position_delta_origin_frame = R_camera_to_origin.T @ position_delta_camera_frame
-
-        #         dist = np.linalg.norm(position_delta_origin_frame)
-        #         # Draw data onto image
-        #         x, y = np.mean(corners_list[1][0], axis=0).astype(np.int64)
-        #         x_mid, y_mid = ((x_origin + x) // 2, (y_origin + y) // 2)
-        #         cv.line(img, (x_origin, y_origin), (x, y), (255, 0, 0), 2)
-        #         cv.putText(img, '{:.3f}'.format(position_delta_origin_frame[0][0]), (x_mid, y_mid), cv.FONT_HERSHEY_PLAIN, 2.5, (0, 255, 0), 4)
-        #         cv.putText(img, '{:.3f}'.format(position_delta_origin_frame[1][0]), (x_mid, y_mid+50), cv.FONT_HERSHEY_PLAIN, 2.5, (0, 255, 0), 4)
-        #         cv.putText(img, '{:.3f}'.format(position_delta_origin_frame[2][0]), (x_mid, y_mid+100), cv.FONT_HERSHEY_PLAIN, 2.5, (0, 255, 0), 4)
-        #         cv.putText(img, '{:.3f}'.format(dist), (x_mid, y_mid+150), cv.FONT_HERSHEY_PLAIN, 2.5, (0, 255, 0), 4)
-            
-
-
-                
-            # p1 = tvecs[0][0]#[0] Let's start by NOT IGNORING THE TWO OTHER COMPONENTS...
-            # p2 = tvecs[1][0]#[0]
-            # # print(f"1 --> {np.linalg.norm(p1)}")
-            # # print(f"2 --> {np.linalg.norm(p2)}")
-            # r1 = rvecs[0][0]
-            # r2 = rvecs[1][0]
-            # R_camera_to_1, _ = cv.Rodrigues(r1)
-            # R_camera_to_2, _ = cv.Rodrigues(r2)
-            # p1c = -R1.T @ p1
-            # p2c = -R2.T @ p2
-
-            # for i in [0,1]:
-            #     point = cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvecs[i][0], tvecs[i][0], 50,4)
-            # dist = np.linalg.norm(p1 - p2)
-            # vector = p1 - p2
-            # distances.append(dist)
-        
 
 def main():
     cap = cv.VideoCapture(3, cv.CAP_DSHOW) # set to 2 to select external webcam
