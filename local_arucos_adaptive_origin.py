@@ -181,29 +181,92 @@ def solve_origin_pose(marker_size, corners, camera_matrix, dist_coeffs):
 
 
 origin = MarkerCollection()
-origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.from_euler(EULER_ORDER, [0, 0, 0]))
-origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.from_euler(EULER_ORDER, [0, 0, 0]))
+origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.identity())
+origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.identity())
+
+target = MarkerCollection()
+target.register_marker(4, 90.5, [0, 0, 0], R.identity())
+
+def get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame,
+                      rvec_camera_to_target, p_target_camera_frame) -> tuple[R, np.ndarray]:
+
+    position_delta_camera_frame = p_target_camera_frame - p_origin_camera_frame
+    rot_camera_to_origin = R.from_rotvec(rvec_camera_to_origin.ravel())
+    rot_camera_to_target = R.from_rotvec(rvec_camera_to_target.ravel())
+    rot_origin_to_target = rot_camera_to_origin.inv() * rot_camera_to_target
+    position_delta_origin_frame = rot_camera_to_origin.inv().apply(position_delta_camera_frame.ravel())
+    
+    return rot_origin_to_target, position_delta_origin_frame
+
+
+def get_frame_image_coords(camera_matrix: cv.typing.MatLike,
+                           dist_coeffs: cv.typing.MatLike,
+                           frame_rvec: cv.typing.MatLike,
+                           p_frame_camera_frame: cv.typing.MatLike) -> tuple[int, int]:
+    """Returns the x, y position in image coordinates of the origin of the
+    specified frame. Useful for drawing lines on images.
+
+    Args:
+        camera_matrix (cv.typing.MatLike): camera matrix from calibration
+        dist_coeffs (cv.typing.MatLike): distortion coeffs from calibration
+        frame_rvec (cv.typing.MatLike): rvec to frame (from pose estimation)
+        p_frame_camera_frame (cv.typing.MatLike): tvec to frame (from pose estimation)
+
+    Returns:
+        tuple[int, int]: x, y location in image (pixel coordinates) 
+    """
+    point, _ = cv.projectPoints(np.array([0, 0, 0], dtype=np.float32),
+                                frame_rvec, p_frame_camera_frame,
+                                camera_matrix, dist_coeffs)
+    x_origin, y_origin = np.round(point.ravel()).astype(int).tolist()
+    return x_origin, y_origin
 
 def process_image(img, camera_matrix, dist_coeffs, logger):
     dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_100)
     detector = cv.aruco.ArucoDetector(dictionary)
-    (corners_list, ids, rejected) = detector.detectMarkers(img)
-    ORIGIN_ID_1 = 0
-    ORIGIN_ID_2 = 3
+    corners_list, ids, _ = detector.detectMarkers(img)
 
-    if ids is None:
-        return
-    # step 1: find the origin constellation
-
-    origin_found, origin_rvec, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
+    # find origin
+    origin_found, rvec_camera_to_origin, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
     if not origin_found:
-        return
-
-    R_camera_to_origin, _ = cv.Rodrigues(origin_rvec)
+        return False, None, None
     origin.annotate(corners_list, ids, img, (0, 255, 255), 10)
-    cv.drawFrameAxes(img, camera_matrix, dist_coeffs, origin_rvec, p_origin_camera_frame, 50,4)
-    point, _ = cv.projectPoints(np.array([0, 0, 0], dtype=np.float32), origin_rvec, p_origin_camera_frame, camera_matrix, dist_coeffs)
-    x_origin, y_origin = np.round(point.ravel()).astype(int).tolist()
+    cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame, 50,4)
+
+    target_found, rvec_camera_to_target, p_target_camera_frame = target.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
+    if not target_found:
+        return False, None, None
+    target.annotate(corners_list, ids, img, (255, 255, 0), 10)
+
+    rot_relative, tvec_relative = get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame, rvec_camera_to_target, p_target_camera_frame)
+
+    x_origin, y_origin = get_frame_image_coords(camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame)
+
+    yaw, pitch, roll = rot_relative.as_euler('zyx',degrees=True)
+
+    dist = np.linalg.norm(tvec_relative)
+    # Draw data onto image
+    x, y = get_frame_image_coords(camera_matrix, dist_coeffs, rvec_camera_to_target, p_target_camera_frame)
+    # x_mid, y_mid = ((x_origin*0 + x) // 2, (y_origin*0 + y) // 2)
+    x_mid, y_mid = (x, y)
+    cv.line(img, (x_origin, y_origin), (x, y), (255, 0, 0), 2)
+    cv.putText(img, 'x: {:.3f}'.format(tvec_relative[0]), (x_mid, y_mid), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+    cv.putText(img, 'y: {:.3f}'.format(tvec_relative[1]), (x_mid, y_mid+50), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+    cv.putText(img, 'yaw: {:.3f}'.format(yaw), (x_mid, y_mid+100), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+    cv.putText(img, 'dist: {:.3f}'.format(dist), (x_mid, y_mid+150), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+
+    # if ids is None:
+    #     return
+    # # step 1: find the origin constellation
+
+    # origin_found, origin_rvec, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
+    # if not origin_found:
+    #     return
+
+    # R_camera_to_origin, _ = cv.Rodrigues(origin_rvec)
+    # origin.annotate(corners_list, ids, img, (0, 255, 255), 10)
+    # cv.drawFrameAxes(img, camera_matrix, dist_coeffs, origin_rvec, p_origin_camera_frame, 50,4)
+    # x_origin, y_origin = get_frame_image_coords(camera_matrix, dist_coeffs, origin_rvec, p_origin_camera_frame)
 
     # if ORIGIN_ID_1 in ids and ORIGIN_ID_2 in ids:
     #     # origin was detected
@@ -230,46 +293,47 @@ def process_image(img, camera_matrix, dist_coeffs, logger):
     # Then find their positions in the origin frame
 
 
-    if corners_list:
-        markers = []
-        rvecs = []
-        tvecs = []
-        found_origin = False
-        for corners, id in zip(corners_list, ids):
-            if id == ORIGIN_ID_1 or id == ORIGIN_ID_2:
-                continue
-            # marker is not one of the origin ones
+    # if corners_list:
+    #     markers = []
+    #     rvecs = []
+    #     tvecs = []
+    #     found_origin = False
+    #     for corners, id in zip(corners_list, ids):
+    #         if id == ORIGIN_ID_1 or id == ORIGIN_ID_2:
+    #             continue
+    #         # marker is not one of the origin ones
 
-            pts = np.array(corners,dtype=np.int32)
-            cv.polylines(img, pts, True, (0, 0, 255), 10)
-            markerLength = 88 # wow I love magic, MARKER_SIZE
-            rvec, tvec, _ = my_estimatePoseSingleMarkers(corners, markerLength, camera_matrix, dist_coeffs)
-            p_marker_camera_frame = tvec[0]
-            rvec_camera_to_marker = rvec[0]
-            position_delta_camera_frame = p_marker_camera_frame - p_origin_camera_frame
-            R_camera_to_marker, _ = cv.Rodrigues(rvec_camera_to_marker)
-            R_origin_to_marker = R_camera_to_origin.T @ R_camera_to_marker
-            position_delta_origin_frame = R_camera_to_origin.T @ position_delta_camera_frame
-            r = R.from_matrix(R_origin_to_marker)
-            yaw, pitch, roll = r.as_euler('zyx',degrees=True)
+    #         pts = np.array(corners,dtype=np.int32)
+    #         cv.polylines(img, pts, True, (0, 0, 255), 10)
+    #         markerLength = 88 # wow I love magic, MARKER_SIZE
+    #         rvec, tvec, _ = my_estimatePoseSingleMarkers(corners, markerLength, camera_matrix, dist_coeffs)
+    #         p_marker_camera_frame = tvec[0]
+    #         rvec_camera_to_marker = rvec[0]
+    #         position_delta_camera_frame = p_marker_camera_frame - p_origin_camera_frame
+    #         R_camera_to_marker, _ = cv.Rodrigues(rvec_camera_to_marker)
+    #         R_origin_to_marker = R_camera_to_origin.T @ R_camera_to_marker
+    #         position_delta_origin_frame = R_camera_to_origin.T @ position_delta_camera_frame
+    #         r = R.from_matrix(R_origin_to_marker)
+    #         yaw, pitch, roll = r.as_euler('zyx',degrees=True)
 
-            dist = np.linalg.norm(position_delta_origin_frame)
-            # Draw data onto image
-            x, y = np.mean(corners[0], axis=0).astype(np.int64)
-            # x_mid, y_mid = ((x_origin*0 + x) // 2, (y_origin*0 + y) // 2)
-            x_mid, y_mid = (x, y)
-            cv.line(img, (x_origin, y_origin), (x, y), (255, 0, 0), 2)
-            cv.putText(img, '{:.3f}'.format(position_delta_origin_frame[0][0]), (x_mid, y_mid), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-            cv.putText(img, '{:.3f}'.format(position_delta_origin_frame[1][0]), (x_mid, y_mid+50), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-            cv.putText(img, '{:.3f}'.format(yaw), (x_mid, y_mid+100), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-            cv.putText(img, '{:.3f}'.format(dist), (x_mid, y_mid+150), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+    #         dist = np.linalg.norm(position_delta_origin_frame)
+    #         # Draw data onto image
+    #         x, y = np.mean(corners[0], axis=0).astype(np.int64)
+    #         # x_mid, y_mid = ((x_origin*0 + x) // 2, (y_origin*0 + y) // 2)
+    #         x_mid, y_mid = (x, y)
+    #         cv.line(img, (x_origin, y_origin), (x, y), (255, 0, 0), 2)
+    #         cv.putText(img, '{:.3f}'.format(position_delta_origin_frame[0][0]), (x_mid, y_mid), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+    #         cv.putText(img, '{:.3f}'.format(position_delta_origin_frame[1][0]), (x_mid, y_mid+50), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+    #         cv.putText(img, '{:.3f}'.format(yaw), (x_mid, y_mid+100), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+    #         cv.putText(img, '{:.3f}'.format(dist), (x_mid, y_mid+150), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
 
-            # log the values for statistics
+    #         # log the values for statistics
 
-            if int(id[0]) not in logger:
-                logger[int(id[0])] = [[],[],[]]
-            for i in [0, 1, 2]:
-                logger[int(id[0])][i].append(position_delta_origin_frame[i][0])
+    #         if int(id[0]) not in logger:
+    #             logger[int(id[0])] = [[],[],[]]
+    #         for i in [0, 1, 2]:
+    #             logger[int(id[0])][i].append(position_delta_origin_frame[i][0])
+
 
                 
 
