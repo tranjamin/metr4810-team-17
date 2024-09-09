@@ -91,7 +91,7 @@ class MarkerCollection:
         # find relevant corners
         corner_collection = [corners[0]
                              for index, corners in enumerate(corners_list)
-                             if ids[index] in self._points.keys()]
+                             if int(ids[index][0]) in self._points.keys()]
         if not corner_collection:
             # list is empty
             return False, None, None
@@ -100,8 +100,8 @@ class MarkerCollection:
 
         # find relevant object points
 
-        objpts_collection = [self._points[id]
-                             for id in ids if id in self._points.keys()]
+        objpts_collection = [self._points[id[0]]
+                             for id in ids if int(id[0]) in self._points.keys()]
 
         relevant_object_points = np.concatenate(objpts_collection)
 
@@ -128,9 +128,9 @@ class MarkerCollection:
             thickness (int): line thickness
         """
         for index, corners in enumerate(corners_list):
-            if ids[index] in self._points.keys():
+            if int(ids[index][0]) in self._points.keys():
                 pts = np.array(corners[0], dtype=np.int32)
-                cv.polylines(img, pts, True, color, thickness)
+                cv.polylines(img, [pts], True, color, thickness)
 
 
         
@@ -179,6 +179,11 @@ def solve_origin_pose(marker_size, corners, camera_matrix, dist_coeffs):
     nada, R, t = cv.solvePnP(origin_marker_points, corners, camera_matrix, dist_coeffs, False, cv.SOLVEPNP_IPPE)
     return R, t
 
+
+origin = MarkerCollection()
+origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.from_euler(EULER_ORDER, [0, 0, 0]))
+origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.from_euler(EULER_ORDER, [0, 0, 0]))
+
 def process_image(img, camera_matrix, dist_coeffs, logger):
     dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_100)
     detector = cv.aruco.ArucoDetector(dictionary)
@@ -190,26 +195,36 @@ def process_image(img, camera_matrix, dist_coeffs, logger):
         return
     # step 1: find the origin constellation
 
-    if ORIGIN_ID_1 in ids and ORIGIN_ID_2 in ids:
-        # origin was detected
-        first_marker_index = int(np.where(ids==ORIGIN_ID_1)[0][0])
-        x_origin, y_origin = np.mean(corners_list[first_marker_index][0], axis=0).astype(np.int64)
-        second_marker_index = int(np.where(ids==ORIGIN_ID_2)[0][0])
-        first_corners = corners_list[first_marker_index]
-        second_corners = corners_list[second_marker_index]
-        all_corners = np.concatenate((first_corners[0], second_corners[0]))
-
-        # draw green boxes around origin markers
-        pts = np.array(first_corners,dtype=np.int32)
-        cv.polylines(img, pts, True, (0, 255, 0), 10)
-        pts = np.array(second_corners,dtype=np.int32)
-        cv.polylines(img, pts, True, (0, 255, 0), 10)
-
-        origin_rvec, p_origin_camera_frame = solve_origin_pose(MARKER_SIZE, all_corners, camera_matrix, dist_coeffs) 
-        R_camera_to_origin, _ = cv.Rodrigues(origin_rvec)
-        point = cv.drawFrameAxes(img, camera_matrix, dist_coeffs, origin_rvec, p_origin_camera_frame, 50,4)
-    else:
+    origin_found, origin_rvec, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
+    if not origin_found:
         return
+
+    R_camera_to_origin, _ = cv.Rodrigues(origin_rvec)
+    origin.annotate(corners_list, ids, img, (0, 255, 255), 10)
+    cv.drawFrameAxes(img, camera_matrix, dist_coeffs, origin_rvec, p_origin_camera_frame, 50,4)
+    point, _ = cv.projectPoints(np.array([0, 0, 0], dtype=np.float32), origin_rvec, p_origin_camera_frame, camera_matrix, dist_coeffs)
+    x_origin, y_origin = np.round(point.ravel()).astype(int).tolist()
+
+    # if ORIGIN_ID_1 in ids and ORIGIN_ID_2 in ids:
+    #     # origin was detected
+    #     first_marker_index = int(np.where(ids==ORIGIN_ID_1)[0][0])
+    #     x_origin, y_origin = np.mean(corners_list[first_marker_index][0], axis=0).astype(np.int64)
+    #     second_marker_index = int(np.where(ids==ORIGIN_ID_2)[0][0])
+    #     first_corners = corners_list[first_marker_index]
+    #     second_corners = corners_list[second_marker_index]
+    #     all_corners = np.concatenate((first_corners[0], second_corners[0]))
+
+    #     # draw green boxes around origin markers
+    #     pts = np.array(first_corners,dtype=np.int32)
+    #     cv.polylines(img, pts, True, (0, 255, 0), 10)
+    #     pts = np.array(second_corners,dtype=np.int32)
+    #     cv.polylines(img, pts, True, (0, 255, 0), 10)
+
+    #     origin_rvec, p_origin_camera_frame = solve_origin_pose(MARKER_SIZE, all_corners, camera_matrix, dist_coeffs) 
+    #     R_camera_to_origin, _ = cv.Rodrigues(origin_rvec)
+    #     point = cv.drawFrameAxes(img, camera_matrix, dist_coeffs, origin_rvec, p_origin_camera_frame, 50,4)
+    # else:
+    #     return
 
     # Origin found, let's see if there are any other markers visible,
     # Then find their positions in the origin frame
