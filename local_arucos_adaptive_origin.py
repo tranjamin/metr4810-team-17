@@ -1,6 +1,8 @@
 import numpy as np
 import cv2 as cv
 from scipy.spatial.transform import Rotation as R
+from estimators import RigidBodyTracker
+import time
 
 MARKER_SIZE = 100 #97 # mm
 ORIGIN_X_DELTA = -59
@@ -195,6 +197,7 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     if not target_found:
         return False, None, None
     target.annotate(corners_list, ids, img, (255, 255, 0), 10)
+    cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_target, p_target_camera_frame, 50,4)
 
     rot_relative, tvec_relative = get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame, rvec_camera_to_target, p_target_camera_frame)
 
@@ -207,11 +210,11 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     x, y = get_frame_image_coords(camera_matrix, dist_coeffs, rvec_camera_to_target, p_target_camera_frame)
     # x_mid, y_mid = ((x_origin*0 + x) // 2, (y_origin*0 + y) // 2)
     x_mid, y_mid = (x, y)
-    cv.line(img, (x_origin, y_origin), (x, y), (255, 0, 0), 2)
-    cv.putText(img, 'x: {:.3f}'.format(tvec_relative[0]), (x_mid, y_mid), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-    cv.putText(img, 'y: {:.3f}'.format(tvec_relative[1]), (x_mid, y_mid+50), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-    cv.putText(img, 'yaw: {:.3f}'.format(yaw), (x_mid, y_mid+100), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-    cv.putText(img, 'dist: {:.3f}'.format(dist), (x_mid, y_mid+150), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+    # cv.line(img, (x_origin, y_origin), (x, y), (255, 0, 0), 2)
+    # cv.putText(img, 'x: {:.3f}'.format(tvec_relative[0]), (x_mid, y_mid), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+    # cv.putText(img, 'y: {:.3f}'.format(tvec_relative[1]), (x_mid, y_mid+50), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+    # cv.putText(img, 'yaw: {:.3f}'.format(yaw), (x_mid, y_mid+100), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+    # cv.putText(img, 'dist: {:.3f}'.format(dist), (x_mid, y_mid+150), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
 
     # log the values for statistics
 
@@ -245,12 +248,42 @@ def main():
     # demonstrate specifying second relative to first
     target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
 
+    R_dist = 0.01
+    Q_dist = np.array([[1, 0], [0, 1]])
+    R_angle = 0.01
+    Q_angle = np.array([[1, 0], [0, 1]])
+
+    robot = RigidBodyTracker(Q_dist, R_dist, Q_angle, R_angle)
+
+    last_measurement_time = None
     while True:
         ret, img = cap.read()
         if not ret:
             break
 
         valid, rot_relative, tvec_relative = process_image(img, camera_matrix, dist_coeffs, origin, target, logger)
+        measurement_time = time.time()
+
+        dt = 0
+        if last_measurement_time:
+            dt = measurement_time - last_measurement_time
+        # always run predict step
+        robot.predict_estimate(dt)
+        if valid:
+            robot.update_estimate(rot_relative, tvec_relative, EULER_ORDER)
+        
+        last_measurement_time = measurement_time
+
+        positions, angles = robot.predict_estimate(0)
+        labels = ["x", "y", "z", "yaw", "pitch", "roll"]
+        for index, item in enumerate(np.concatenate((positions, angles))):
+            if item is None:
+                continue
+            x, _ = item.ravel().tolist()
+
+            cv.putText(img, '{}: {:.3f}'.format(labels[index], x), (50, 50 + 50*index), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+
+
         cv.imshow('frame', img)
         if cv.waitKey(1) == ord('q'):
             break

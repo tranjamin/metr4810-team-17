@@ -60,7 +60,7 @@ class RigidBodyTracker():
         ]
         pass
 
-    def current_position_estimate(self, dt = 0.0):
+    def predict_estimate(self, dt = 0.0):
         # update current position given time from last call to this function
         positions = []
         angles = []
@@ -72,13 +72,10 @@ class RigidBodyTracker():
 
         return positions, angles
 
-    def update_estimate(self, dt: float, rotation: R, euler_order: str, tvec: np.ndarray):
+    def update_estimate(self, rotation: R, tvec: np.ndarray, euler_order: str):
 
         for index, angle in enumerate(rotation.as_euler(euler_order)):
-            self.angle_estimators[index].predict(dt)
             self.angle_estimators[index].update(angle)
         
         for index, position in enumerate(tvec.ravel().tolist()):
-            self.position_estimators[index].predict(dt)
             self.position_estimators[index].update(position)
-        pass
