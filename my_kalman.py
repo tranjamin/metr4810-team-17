@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from estimators import KalmanEstimator
+
 
 def main():
     t_end = 100
@@ -9,7 +11,7 @@ def main():
 
     F = np.array([[1, dt],[0, 1]])
 
-    H = np.array([1, 0])
+    H = np.array([[1, 0]])
     R = 0.01
     Q = np.array([[1, 0], [0, 1]])
     w = 0.1
@@ -21,10 +23,21 @@ def main():
     x_hats = [true_x[0]]
     x_dot_hats = [true_x_dot[0]]
 
+
+    f_func = lambda dt: np.array([[1, dt],[0, 1]])
+    estimator = KalmanEstimator(Q, R, H, f_func)
+    est_state = estimator.update(true_x[0])
+    x, v = est_state.ravel().tolist()
+    x_hats_class = [x]
+    x_dot_hats_class = [v]
+    
+
     for i in range(1,len(t)):
         # predict current based on previous
         x_hat_predict = F @ x_hat
         P = F @ P @ F.T + Q
+        
+        estimator.predict(dt)
 
         # update according to measurement
 
@@ -40,24 +53,45 @@ def main():
         x_hats.append(x_hat[0][0])
         x_dot_hats.append(x_hat[1][0])
 
+        est_state = estimator.update(z)
+        x, v = est_state.ravel().tolist()
+
+        x_hats_class.append(x)
+        x_dot_hats_class.append(v)
+
 
     plt.rcParams['text.usetex'] = True
-    fig, ax = plt.subplots(2,1)
-    plt.subplot(2,1,1)
+    fig, ax = plt.subplots(2,2)
+    plt.subplot(2,2,1)
     plt.plot(t, x_hats, label = r"estimated state")
     plt.plot(t, true_x, label = r"true state")
     plt.xlabel(r"Time [s]")
     plt.ylabel(r"$x$ [m]")
     plt.legend()
 
-    plt.subplot(2,1,2)
+    plt.subplot(2,2,3)
     plt.plot(t, x_dot_hats, label = r"estimated state")
     plt.plot(t, true_x_dot, label = r"true state")
     plt.xlabel(r"Time [s]")
     plt.ylabel(r"$\dot{x}$ [m/s]")
     plt.legend()
+
+    # graphs for class implementation
+    plt.subplot(2,2,2)
+    plt.plot(t, x_hats_class, label = r"estimated state")
+    plt.plot(t, true_x, label = r"true state")
+    plt.xlabel(r"Time [s]")
+    plt.ylabel(r"$x$ [m]")
+    plt.legend()
+
+    plt.subplot(2,2,4)
+    plt.plot(t, x_dot_hats_class, label = r"estimated state")
+    plt.plot(t, true_x_dot, label = r"true state")
+    plt.xlabel(r"Time [s]")
+    plt.ylabel(r"$\dot{x}$ [m/s]")
+    plt.legend()
     plt.show()
-    fig.savefig('myimage.svg', format='svg', dpi=1200)
+    # fig.savefig('myimage.svg', format='svg', dpi=1200)
 
     
 

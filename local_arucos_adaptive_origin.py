@@ -145,15 +145,6 @@ class MarkerCollection:
                 cv.polylines(img, [pts], True, color, thickness)
 
 
-origin = MarkerCollection()
-origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.identity())
-origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.identity())
-
-target = MarkerCollection()
-target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-# demonstrate specifying second relative to first
-target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
-
 def get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame,
                       rvec_camera_to_target, p_target_camera_frame) -> tuple[R, np.ndarray]:
 
@@ -188,7 +179,7 @@ def get_frame_image_coords(camera_matrix: cv.typing.MatLike,
     x_origin, y_origin = np.round(point.ravel()).astype(int).tolist()
     return x_origin, y_origin
 
-def process_image(img, camera_matrix, dist_coeffs, logger):
+def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, target: MarkerCollection, logger):
     dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_100)
     detector = cv.aruco.ArucoDetector(dictionary)
     corners_list, ids, _ = detector.detectMarkers(img)
@@ -207,7 +198,7 @@ def process_image(img, camera_matrix, dist_coeffs, logger):
 
     rot_relative, tvec_relative = get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame, rvec_camera_to_target, p_target_camera_frame)
 
-    yaw, pitch, roll = rot_relative.as_euler('zyx',degrees=True)
+    yaw, pitch, roll = rot_relative.as_euler(EULER_ORDER ,degrees=True)
 
     dist = np.linalg.norm(tvec_relative)
 
@@ -228,6 +219,7 @@ def process_image(img, camera_matrix, dist_coeffs, logger):
     #             logger[int(id[0])] = [[],[],[]]
     #         for i in [0, 1, 2]:
     #             logger[int(id[0])][i].append(position_delta_origin_frame[i][0])
+    return True, rot_relative, tvec_relative
 
 
 def main():
@@ -242,12 +234,23 @@ def main():
     camera_matrix = np.load('camera_matrix.npy')
     dist_coeffs = np.load('dist_coeffs.npy')
     logger = {}
+
+    # define objects to be tracked
+    origin = MarkerCollection()
+    origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+    origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[0,0,0])
+
+    target = MarkerCollection()
+    target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+    # demonstrate specifying second relative to first
+    target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
+
     while True:
         ret, img = cap.read()
         if not ret:
             break
 
-        process_image(img, camera_matrix, dist_coeffs, logger)
+        valid, rot_relative, tvec_relative = process_image(img, camera_matrix, dist_coeffs, origin, target, logger)
         cv.imshow('frame', img)
         if cv.waitKey(1) == ord('q'):
             break
