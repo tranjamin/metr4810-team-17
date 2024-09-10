@@ -14,6 +14,7 @@
 #include "task.h"
 
 #include "diagnostics.h"
+#include "delivery.h"
 
 #define VDELAY 100
 
@@ -25,16 +26,20 @@
 #define LED_PATH "/ledtest"
 #define DIAGNOSTICS_PATH "/diagnostics"
 #define LOG_PATH "/log"
+#define CONTROL_PATH "/control"
+
+// params
+#define LED_PARAM "led=%d"
+#define CONTROL_PARAM "command=%d"
+#define LED_GPIO 0
 
 // HTTP formats
-#define DEFAULT_BODY "<html><body>%s</body></html>"
 #define LED_BODY "<html><body><h1>Hello from Pico W.</h1><p>Led is %s</p><p><a href=\"?led=%d\">Turn led %s</a></body></html>"
+#define CONTROL_BODY "<html><body><a href=\"?command=0\">Start Delivery</a><br><a href=\"?command=1\">Emergency</a></body></html>"
+
+
 #define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_PATH "\n\n"
 #define HTTP_RESPONSE_HEADERS "HTTP/1.1 %d OK\nContent-Length: %d\nContent-Type: text/html; charset=utf-8\nConnection: close\n\n"
-
-// LED params
-#define LED_PARAM "led=%d"
-#define LED_GPIO 0
 
 #define MAX_RESULT_SIZE 1200 // maximum size of a response 
 
@@ -326,6 +331,23 @@ static int generate_response(const char *request, const char *params, char *resu
         }
         len = snprintf(result, max_result_len, msg);
     }
+
+    // CONTROL PAGE
+    else if (strncmp(request, CONTROL_PATH, sizeof(CONTROL_PATH) - 1) == 0) {
+        int param;
+        if (params) {
+            int control_param = sscanf(params, CONTROL_PARAM, &param);
+            if (control_param) {
+                switch (param) {
+                    case 0:
+                        vStartDelivery();
+                    case 1:
+                }
+            }
+        }
+        len = snprintf(result, max_result_len, CONTROL_BODY);
+    }
+
     return len;
 }
 
