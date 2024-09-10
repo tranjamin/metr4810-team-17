@@ -10,5 +10,6 @@
 
 void vExtractionTask();
 void vExtractionInit();
+void setExtractionPWM(float);
 
 #endif
