@@ -26,6 +26,24 @@ void setRGB_RED(float);
 void setRGB_GREEN(float);
 void setRGB_BLUE(float);
 
+void setRGB_COLOUR_RED() {
+    setRGB_RED(100);
+    setRGB_BLUE(0);
+    setRGB_GREEN(0);
+}
+
+void setRGB_COLOUR_GREEN() {
+    setRGB_RED(0);
+    setRGB_BLUE(100);
+    setRGB_GREEN(0);
+}
+
+void setRGB_COLOUR_BLUE() {
+    setRGB_RED(0);
+    setRGB_BLUE(0);
+    setRGB_GREEN(100);
+}
+
 void setRGB_RED(float percent) {
     pwm_set_chan_level(RGB_RED_SLICE, RGB_RED_CHAN, (uint16_t) PWM_TOP * percent / 100);
 }

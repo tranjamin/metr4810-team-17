@@ -13,6 +13,10 @@ void setRGB_RED(float);
 void setRGB_GREEN(float);
 void setRGB_BLUE(float);
 
+void setRGB_COLOUR_RED();
+void setRGB_COLOUR_GREEN();
+void setRGB_COLOUR_BLUE();
+
 void vRGBTask();
 void vRGBInit();
 
