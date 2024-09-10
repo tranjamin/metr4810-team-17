@@ -8,7 +8,17 @@
 #define EXTRACTION_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE)
 #define EXTRACTION_TASK_COREMASK 0x01
 
+#define EXTRACTION_INA 7
+#define EXTRACTION_INB 6
+#define EXTRACTION_PWM 8
+
+#define SET_EXTRACTION_STOPPED() (gpio_put(EXTRACTION_INA, 0), gpio_put(EXTRACTION_INB, 0))
+#define SET_EXTRACTION_FORWARD() (gpio_put(EXTRACTION_INA, 1), gpio_put(EXTRACTION_INB, 0))
+#define SET_EXTRACTION_BACKWARD() (gpio_put(EXTRACTION_INA, 0), gpio_put(EXTRACTION_INB, 1))
+#define SET_EXTRACTION_BRAKED() (gpio_put(EXTRACTION_INA, 1), gpio_put(EXTRACTION_INB, 1))
+
 void vExtractionTask();
 void vExtractionInit();
+void setExtractionPWM(float);
 
 #endif

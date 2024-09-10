@@ -2,29 +2,12 @@
 #include "task.h"
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
+#include "motors.h"
 
-#define TRAVERSAL_LHS_INA 1
-#define TRAVERSAL_LHS_INB 0
-#define TRAVERSAL_LHS_PWM 2
-
-#define TRAVERSAL_RHS_INA 3
-#define TRAVERSAL_RHS_INB 4
-#define TRAVERSAL_RHS_PWM 5
-
-// get which slice and channel the motor PWMs are configured on
 #define TRAVERSAL_LHS_PWM_SLICE pwm_gpio_to_slice_num(TRAVERSAL_LHS_PWM)
 #define TRAVERSAL_LHS_PWM_CHAN pwm_gpio_to_channel(TRAVERSAL_LHS_PWM)
 #define TRAVERSAL_RHS_PWM_SLICE pwm_gpio_to_slice_num(TRAVERSAL_RHS_PWM)
 #define TRAVERSAL_RHS_PWM_CHAN pwm_gpio_to_channel(TRAVERSAL_RHS_PWM)
-
-#define SET_TRAVERSAL_LHS_STOPPED() (gpio_put(TRAVERSAL_LHS_INA, 0), gpio_put(TRAVERSAL_LHS_INB, 0))
-#define SET_TRAVERSAL_RHS_STOPPED() (gpio_put(TRAVERSAL_RHS_INA, 0), gpio_put(TRAVERSAL_RHS_INB, 0))
-#define SET_TRAVERSAL_LHS_BACKWARD() (gpio_put(TRAVERSAL_LHS_INA, 0), gpio_put(TRAVERSAL_LHS_INB, 1))
-#define SET_TRAVERSAL_RHS_BACKWARD() (gpio_put(TRAVERSAL_RHS_INA, 0), gpio_put(TRAVERSAL_RHS_INB, 1))
-#define SET_TRAVERSAL_LHS_FORWARD() (gpio_put(TRAVERSAL_LHS_INA, 1), gpio_put(TRAVERSAL_LHS_INB, 0))
-#define SET_TRAVERSAL_RHS_FORWARD() (gpio_put(TRAVERSAL_RHS_INA, 1), gpio_put(TRAVERSAL_RHS_INB, 0))
-#define SET_TRAVERSAL_LHS_BRAKED() (gpio_put(TRAVERSAL_LHS_INA, 1), gpio_put(TRAVERSAL_LHS_INB, 1))
-#define SET_TRAVERSAL_RHS_BRAKED() (gpio_put(TRAVERSAL_RHS_INA, 1), gpio_put(TRAVERSAL_RHS_INB, 1))
 
 #define CLK_DIVIDER 128
 #define PWM_TOP 8192
