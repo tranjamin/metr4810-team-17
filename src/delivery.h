@@ -11,4 +11,6 @@
 void vDeliveryTask();
 void vDeliveryInit();
 
+void vStartDelivery();
+
 #endif

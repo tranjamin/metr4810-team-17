@@ -85,7 +85,6 @@ void transition_to_idle() {
     alarm_pool_cancel_alarm(delivery_alarm_pool, current_alarm);
     delivery_state = IDLE;
     SET_DELIVERY_STOPPED();
-    vDebugLog("IDLING\n\r");
 }
 
 void transition_to_backward() {
@@ -93,14 +92,17 @@ void transition_to_backward() {
     delivery_state = BACKWARD;
     SET_DELIVERY_BACKWARD();
     current_alarm = alarm_pool_add_alarm_in_ms(delivery_alarm_pool, BACKWARD_TIME_MS, (alarm_callback_t) transition_to_idle, NULL, false);
-    vDebugLog("BACKING\n\r");
+}
+
+void vStartDelivery() {
+    xSemaphoreGiveFromISR(deliverySemaphore, NULL);
 }
 
 void vDeliveryTask() {
     for (;;) {
         switch (delivery_state) {
             case IDLE:
-                if (xSemaphoreTake(deliverySemaphore, SEMPH_TICKS) == pdFALSE) {
+                if (xSemaphoreTake(deliverySemaphore, SEMPH_TICKS) == pdTRUE) {
                     delivery_state = FORWARD;
                     
                     // suspend other tasks
@@ -113,7 +115,6 @@ void vDeliveryTask() {
                     
                     // run delivery motor
                     SET_DELIVERY_FORWARD();
-                    vDebugLog("FORWARDING\n\r");
                 }
                 break;
             case FORWARD:
