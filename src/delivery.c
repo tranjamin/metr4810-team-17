@@ -2,6 +2,11 @@
 #include "task.h"
 #include "pico/stdlib.h"
 #include "semphr.h"
+#include "hardware/pwm.h"
+
+#include "motors.h"
+#include "extraction.h"
+#include "diagnostics.h"
 
 #define DELIVERY_INA 10
 #define DELIVERY_INB 9
@@ -21,7 +26,18 @@
 #define CLK_DIVIDER 128
 #define PWM_TOP 8192
 
+#define IDLE 0
+#define FORWARD 1
+#define BACKWARD 2
+
+#define FORWARD_TIME_MS 5000
+#define BACKWARD_TIME_MS 5000
+
 SemaphoreHandle_t deliverySemaphore;
+volatile int delivery_state;
+alarm_pool_t* delivery_alarm_pool;
+volatile alarm_id_t current_alarm;
+
 
 void setDeliveryPWM(float percent) {
     pwm_set_chan_level(DELIVERY_PWM_SLICE, DELIVERY_PWM_CHAN, (uint16_t) PWM_TOP * percent / 100);
@@ -56,24 +72,56 @@ void vDeliveryInit() {
     // enable pwm
     pwm_set_enabled(DELIVERY_PWM_SLICE, true);
 
+    // set up semaphore
     deliverySemaphore = xSemaphoreCreateBinary();
+    delivery_state = IDLE;
+
+    // set up alarm
+    alarm_pool_init_default();
+    delivery_alarm_pool = alarm_pool_create(0, 2);
+}
+
+void transition_to_idle() {
+    alarm_pool_cancel_alarm(delivery_alarm_pool, current_alarm);
+    delivery_state = IDLE;
+    SET_DELIVERY_STOPPED();
+    vDebugLog("IDLING\n\r");
+}
+
+void transition_to_backward() {
+    alarm_pool_cancel_alarm(delivery_alarm_pool, current_alarm);
+    delivery_state = BACKWARD;
+    SET_DELIVERY_BACKWARD();
+    current_alarm = alarm_pool_add_alarm_in_ms(delivery_alarm_pool, BACKWARD_TIME_MS, (alarm_callback_t) transition_to_idle, NULL, false);
+    vDebugLog("BACKING\n\r");
 }
 
 void vDeliveryTask() {
     for (;;) {
-        // wait to take semaphore
-        if (xSemaphoreTake(deliverySemaphore, SEMPH_TICKS) == pdTRUE) {
-            // suspend other tasks
+        switch (delivery_state) {
+            case IDLE:
+                if (xSemaphoreTake(deliverySemaphore, SEMPH_TICKS) == pdFALSE) {
+                    delivery_state = FORWARD;
+                    
+                    // suspend other tasks
+                    SET_TRAVERSAL_RHS_STOPPED();
+                    SET_TRAVERSAL_LHS_STOPPED();
+                    SET_EXTRACTION_STOPPED();
 
-            // run delivery motor
-            SET_DELIVERY_FORWARD();
-
-            SET_DELIVERY_BACKWARD();
-
-            SET_DELIVERY_STOPPED();
-
-            xSemaphoreGive(deliverySemaphore);
+                    // set up alarm timer
+                    current_alarm = alarm_pool_add_alarm_in_ms(delivery_alarm_pool, FORWARD_TIME_MS, (alarm_callback_t) transition_to_backward, NULL, false);
+                    
+                    // run delivery motor
+                    SET_DELIVERY_FORWARD();
+                    vDebugLog("FORWARDING\n\r");
+                }
+                break;
+            case FORWARD:
+                break;
+            case BACKWARD:
+                break;
         }
+
         // block for some time
         vTaskDelay(VDELAY);
     }
