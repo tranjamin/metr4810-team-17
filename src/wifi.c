@@ -116,8 +116,8 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 
             // Generate content
             con_state->result_len = generate_response(request, params, con_state->result, sizeof(con_state->result));
-            // vDebugLog("Request: %s?%s\n", request, params);
-            // vDebugLog("Result: %d\n", con_state->result_len);
+            // // vDebugLog("Request: %s?%s\n", request, params);
+            // // vDebugLog("Result: %d\n", con_state->result_len);
 
             // Check we had enough buffer space
             if (con_state->result_len > sizeof(con_state->result) - 1) {

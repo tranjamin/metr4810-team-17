@@ -26,6 +26,8 @@ add_executable( main
     pathplanning.c
     wifi.c
     rgb.c
+    digitalio.c
+
     dhcpserver/dhcpserver.c
     dnsserver/dnsserver.c
     ../FreeRTOS-Kernel/portable/MemMang/heap_4.c
@@ -43,7 +45,8 @@ target_include_directories(
 if (PICO_CYW43_SUPPORTED)
 target_link_libraries(
     main
-    pico_stdlib 
+    pico_stdlib
+    pico_time
     hardware_pwm
     FreeRTOS-Kernel 
     FreeRTOS-Kernel-Heap4

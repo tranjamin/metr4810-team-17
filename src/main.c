@@ -14,6 +14,7 @@
 #include "pathplanning.h"
 #include "wifi.h"
 #include "rgb.h"
+#include "digitalio.h"
 
 void main() {
     // set up all hardware
@@ -28,6 +29,7 @@ void main() {
     vPathplanningInit();
     vWifiInit();
     vRGBInit();
+    vDigitalIOInit();
 
     // store references to each task for diagnostics
     TaskHandle_t xControllerHandle;
@@ -41,6 +43,7 @@ void main() {
     TaskHandle_t xPathplanningHandle;
     TaskHandle_t xWifiHandle;
     TaskHandle_t xRGBHandle;
+    TaskHandle_t xDigitalIOHandle;
 
     // create all tasks
     xTaskCreate(vControllerTask, CONTROLLER_TASK_NAME, CONTROLLER_TASK_STACK_SIZE, NULL, CONTROLLER_TASK_PRIORITY, &xControllerHandle);
@@ -54,6 +57,7 @@ void main() {
     xTaskCreate(vPathplanningTask, PATHPLANNING_TASK_NAME, PATHPLANNING_TASK_STACK_SIZE, NULL, PATHPLANNING_TASK_PRIORITY, &xPathplanningHandle);
     xTaskCreate(vWifiTask, WIFI_TASK_NAME, WIFI_TASK_STACK_SIZE, NULL, WIFI_TASK_PRIORITY, &xWifiHandle);
     xTaskCreate(vRGBTask, RGB_TASK_NAME, RGB_TASK_STACK_SIZE, NULL, RGB_TASK_PRIORITY, &xRGBHandle);
+    // xTaskCreate(vDigitalIOTask, DIGITALIO_TASK_NAME, DIGITALIO_TASK_STACK_SIZE, NULL, DIGITALIO_TASK_PRIORITY, &xDigitalIOHandle);
 
     // set core affinities
     vTaskCoreAffinitySet(xControllerHandle, (UBaseType_t) CONTROLLER_TASK_COREMASK);
@@ -67,6 +71,7 @@ void main() {
     vTaskCoreAffinitySet(xPathplanningHandle, (UBaseType_t) PATHPLANNING_TASK_COREMASK);
     vTaskCoreAffinitySet(xWifiHandle, (UBaseType_t) WIFI_TASK_COREMASK);
     vTaskCoreAffinitySet(xRGBHandle, (UBaseType_t) RGB_TASK_COREMASK);
+    // vTaskCoreAffinitySet(xDigitalIOHandle, (UBaseType_t) DIGITALIO_TASK_COREMASK);
 
     // start the scheduling of tasks
     vTaskStartScheduler();
