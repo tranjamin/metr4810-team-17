@@ -3,9 +3,9 @@
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
 
-#define RGB_RED 13
-#define RGB_GREEN 14
-#define RGB_BLUE 15
+#define RGB_RED 12
+#define RGB_GREEN 13
+#define RGB_BLUE 14
 
 #define RGB_RED_SLICE pwm_gpio_to_slice_num(RGB_RED)
 #define RGB_RED_CHAN pwm_gpio_to_channel(RGB_RED)
@@ -45,15 +45,15 @@ void setRGB_COLOUR_BLUE() {
 }
 
 void setRGB_RED(float percent) {
-    pwm_set_chan_level(RGB_RED_SLICE, RGB_RED_CHAN, (uint16_t) PWM_TOP * percent / 100);
+    pwm_set_chan_level(RGB_RED_SLICE, RGB_RED_CHAN, (uint16_t) PWM_TOP * (100 - percent) / 100);
 }
 
 void setRGB_GREEN(float percent) {
-    pwm_set_chan_level(RGB_GREEN_SLICE, RGB_GREEN_CHAN, (uint16_t) PWM_TOP * percent / 100);
+    pwm_set_chan_level(RGB_GREEN_SLICE, RGB_GREEN_CHAN, (uint16_t) PWM_TOP * (100 - percent) / 100);
 }
 
 void setRGB_BLUE(float percent) {
-    pwm_set_chan_level(RGB_BLUE_SLICE, RGB_BLUE_CHAN, (uint16_t) PWM_TOP * percent / 100);
+    pwm_set_chan_level(RGB_BLUE_SLICE, RGB_BLUE_CHAN, (uint16_t) PWM_TOP * (100 - percent) / 100);
 }
 
 void vRGBInit() {
@@ -93,9 +93,9 @@ void vRGBInit() {
     pwm_set_enabled(RGB_BLUE_SLICE, true);
 
     // set initial pwm to 50%
-    setRGB_RED(50.0);
-    setRGB_GREEN(50.0);
-    setRGB_BLUE(50.0);
+    setRGB_RED(0.0);
+    setRGB_GREEN(0.0);
+    setRGB_BLUE(0.0);
 }
 
 void vRGBTask() {

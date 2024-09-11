@@ -68,6 +68,9 @@ void vMotorsInit() {
     // set motors to be intially off
     SET_TRAVERSAL_LHS_STOPPED();
     SET_TRAVERSAL_RHS_STOPPED();
+
+    SET_TRAVERSAL_LHS_FORWARD();
+    SET_TRAVERSAL_RHS_FORWARD();
 }
 
 void vMotorsTask() {
@@ -75,8 +78,8 @@ void vMotorsTask() {
     for (;;) {
         // do stuff
         taskENTER_CRITICAL();
-        setTraversalDuty_LHS(i);
-        setTraversalDuty_RHS(i);
+        setTraversalDuty_LHS(100);
+        setTraversalDuty_RHS(100);
         taskEXIT_CRITICAL();
         i++;
         if (i >= 100) i = 0;

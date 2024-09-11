@@ -15,6 +15,8 @@
 
 #include "diagnostics.h"
 #include "delivery.h"
+#include "extraction.h"
+#include "motors.h"
 
 #define VDELAY 100
 
@@ -35,7 +37,19 @@
 
 // HTTP formats
 #define LED_BODY "<html><body><h1>Hello from Pico W.</h1><p>Led is %s</p><p><a href=\"?led=%d\">Turn led %s</a></body></html>"
-#define CONTROL_BODY "<html><body><a href=\"?command=0\">Start Delivery</a><br><a href=\"?command=1\">Emergency</a></body></html>"
+#define CONTROL_BODY "\
+<html><body>\
+<a href=\"?command=0\">Start Delivery</a><br>\
+<a href=\"?command=1\">Set Left Forward</a><br>\
+<a href=\"?command=2\">Set Left Stopped</a><br>\
+<a href=\"?command=3\">Set Left Back</a><br>\
+<a href=\"?command=4\">Set Right Forward</a><br>\
+<a href=\"?command=5\">Set Right Stopped</a><br>\
+<a href=\"?command=6\">Set Right Back</a><br>\
+<a href=\"?command=7\">Set Extraction Forward</a><br>\
+<a href=\"?command=8\">Set Extraction Stopped</a><br>\
+<a href=\"?command=9\">Set Extraction Back</a><br>\
+</body></html>"
 
 
 #define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_PATH "\n\n"
@@ -341,8 +355,36 @@ static int generate_response(const char *request, const char *params, char *resu
                 switch (param) {
                     case 0:
                         vStartDelivery();
+                        break;
                     case 1:
-                }
+                        SET_TRAVERSAL_LHS_FORWARD();
+                        break;
+                    case 2:
+                        SET_TRAVERSAL_LHS_STOPPED();
+                        break;
+                    case 3:
+                        SET_TRAVERSAL_LHS_BACKWARD();
+                        break;
+                    case 4:
+                        SET_TRAVERSAL_RHS_FORWARD();
+                        break;
+                    case 5:
+                        SET_TRAVERSAL_RHS_STOPPED();
+                        break;
+                    case 6:
+                        SET_TRAVERSAL_RHS_BACKWARD();
+                        break;
+                    case 7:
+                        SET_EXTRACTION_FORWARD();
+                        break;
+                    case 8:
+                        SET_EXTRACTION_STOPPED();
+                        break;
+                    case 9:
+                        SET_EXTRACTION_BACKWARD();
+                        break;
+
+                }   
             }
         }
         len = snprintf(result, max_result_len, CONTROL_BODY);
