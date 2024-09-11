@@ -10,5 +10,6 @@
 
 void vWifiTask();
 void vWifiInit();
+int generate_response(const char*, const char*, char*, size_t);
 
 #endif
