@@ -166,7 +166,6 @@ class PIController:
         self.error_accumulated += error
         return control_output
 
-
 def get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame,
                       rvec_camera_to_target, p_target_camera_frame) -> tuple[R, np.ndarray]:
 
@@ -177,7 +176,6 @@ def get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame,
     position_delta_origin_frame = rot_camera_to_origin.inv().apply(position_delta_camera_frame.ravel())
     
     return rot_origin_to_target, position_delta_origin_frame
-
 
 def get_frame_image_coords(camera_matrix: cv.typing.MatLike,
                            dist_coeffs: cv.typing.MatLike,
@@ -304,7 +302,7 @@ def main():
 
         positions, angles = robot.predict_estimate(0)
 
-        robot_communicate()
+        # robot_communicate(0,0)
 
         labels = ["x", "y", "z", "yaw", "pitch", "roll"]
         for index, item in enumerate(np.concatenate((positions, angles))):
