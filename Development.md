@@ -152,6 +152,30 @@ Common PWM API calls are (see `motors.c` for code examples and recommended layou
 
 In general, you need to initialise the gpio pin, set its direction, set its alternate function to PWM, set the pwm clock divider, wrap and level, and then enable the pwm.
 
+#### External (GPIO) Interrupts
+
+External interrupts are useful for taking actions upon a given input (such as a switch or a pushbutton). The RP2040 has one external interrupt bus per core, and the Pico W uses an NVIC to make these interrupts available on every pin. 
+
+Because there are only two distinct interrupt handlers, all external interrupts should be captured in the `digitalio.h` file.
+
+First, any external interrupt pin needs to be configured as a GPIO. This means intialising it, setting its direction, pulling it up or down and enabling it. Then, to enable an interrupt the `gpio_set_irq_enabled()` function needs to be called (there are alternatives detailed in the API docs). This takes in three parameters: the pin number, the event mask, and true/false to enable/disable interrupts. The event mask signifies what type of interrupts to look for. The options are `GPIO_IRQ_EDGE_FALL`, `GPIO_IRQ_EDGE_RISE`, `GPIO_IRQ_LEVEL_LOW`, and `GPIO_IRQ_LEVEL_HIGH`. Bitwise OR can be used to combine multiple (i.e., `|`).
+
+The IRQ callback then needs to be registered i.e., `gpio_set_irq_callback(callback_fn)`. This is already done. Within the callback, there is a switch statement to select the pin, and then conditionals to check if the relevant interrupt has been fired (`events & EVENT_TYPE`). Take inspiration from the existing material there. Also make sure to add debouncing where relevant - also see existing code for this.
+
+For the API docs, see https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_gpio.
+
+#### Timers
+
+There are two types of high-level timers used: alarms and repeated timers. These can be used to block a certain task for the required period of time, with an example shown in `delivery.c`. The library is already included in `stdlib`, but if you want you can explicitly include `hardware/time.h`.
+
+For single events, the use of alarms is recommended. To set up an alarm, create an alarm pool to go with it. You need to call `alarm_pool_init_default()` and then `alarm_pool_create(pool_number, max_num_alarms)`. Store the result of the latter because you need to reference it later. In general, you want to allocate 1 more alarm than what you'll need at any given time.
+
+To add an alarm, there are a range of different functions, but the best will probably be `alarm_pool_add_alarm_in_ms`. This takes in parameters of the alarm pool you created beforehand, the number of ms to wait, the function to call when the alarm has been fired, any parameters into this callback, and then `false` (usually).
+
+If your alarm pool has finished, it is then advisable to destroy it using `alarm_pool_destroy`.
+
+For the API docs, see https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#alarm.
+
 #### LwIP
 
 WiFi is enabled using the `pico_cyw43_arch_lwip_threadsafe_background` library. This is black magic to me so good luck trying to figure it out.
