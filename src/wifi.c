@@ -17,6 +17,7 @@
 #include "delivery.h"
 #include "extraction.h"
 #include "motors.h"
+#include "rgb.h"
 
 #define VDELAY 100
 
@@ -355,33 +356,43 @@ static int generate_response(const char *request, const char *params, char *resu
                 switch (param) {
                     case 0:
                         vStartDelivery();
+                        setRGB_COLOUR_RED();
                         break;
                     case 1:
                         SET_TRAVERSAL_LHS_FORWARD();
+                        setRGB_COLOUR_GREEN();
                         break;
                     case 2:
                         SET_TRAVERSAL_LHS_STOPPED();
+                        setRGB_COLOUR_BLUE();
                         break;
                     case 3:
                         SET_TRAVERSAL_LHS_BACKWARD();
+                        setRGB_COLOUR_PURPLE();
                         break;
                     case 4:
                         SET_TRAVERSAL_RHS_FORWARD();
+                        setRGB_COLOUR_CYAN();
                         break;
                     case 5:
                         SET_TRAVERSAL_RHS_STOPPED();
+                        setRGB_COLOUR_YELLOW();
                         break;
                     case 6:
                         SET_TRAVERSAL_RHS_BACKWARD();
+                        setRGB_COLOUR_WHITE();
                         break;
                     case 7:
                         SET_EXTRACTION_FORWARD();
+                        setRGB_COLOUR_DARK_RED();
                         break;
                     case 8:
                         SET_EXTRACTION_STOPPED();
+                        setRGB_COLOUR_DARK_GREEN();
                         break;
                     case 9:
                         SET_EXTRACTION_BACKWARD();
+                        setRGB_COLOUR_DARK_BLUE();
                         break;
 
                 }   

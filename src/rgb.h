@@ -17,6 +17,18 @@ void setRGB_COLOUR_RED();
 void setRGB_COLOUR_GREEN();
 void setRGB_COLOUR_BLUE();
 
+void setRGB_COLOUR_DARK_RED();
+void setRGB_COLOUR_DARK_GREEN();
+void setRGB_COLOUR_DARK_BLUE();
+
+void setRGB_COLOUR_PURPLE();
+void setRGB_COLOUR_CYAN();
+void setRGB_COLOUR_YELLOW();
+
+void setRGB_COLOUR_WHITE();
+void setRGB_COLOUR_GRAY();
+void setRGB_COLOUR_BLACK();
+
 void vRGBTask();
 void vRGBInit();
 
