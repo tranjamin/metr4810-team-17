@@ -3,6 +3,7 @@ import cv2 as cv
 from scipy.spatial.transform import Rotation as R
 from estimators import RigidBodyTracker
 import time
+import requests
 
 MARKER_SIZE = 100 #97 # mm
 ORIGIN_X_DELTA = -59
@@ -18,6 +19,7 @@ EULER_ORDER = 'ZYX' # determines conversion from angles to rotations
 # 2. uses intrinsic rotations (subsequent rotations are done about the axes that
 #    have already been rotated)
 
+ROBOT_PWM_ADDRESS = "192.168.4.1/localisation?lhs={}&rhs={}"
 
 class MarkerCollection:
     """
@@ -146,6 +148,24 @@ class MarkerCollection:
                 pts = np.array(corners[0], dtype=np.int32)
                 cv.polylines(img, [pts], True, color, thickness)
 
+class PIController:
+    def __init__(self, Kp, Ki, control_saturation):
+        self.Kp = Kp
+        self.Ki = Ki
+        self.control_saturation = control_saturation
+        self.error_accumulated = 0
+    
+    def output(self, error: float) -> int:
+
+        control_output = self.Kp * error + self.Ki * (self.error_accumulated + error)
+        
+        if control_output > self.control_saturation:
+            return self.control_saturation
+        
+        # not saturated, therefore accumulate integral
+        self.error_accumulated += error
+        return control_output
+
 
 def get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame,
                       rvec_camera_to_target, p_target_camera_frame) -> tuple[R, np.ndarray]:
@@ -224,6 +244,13 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     #             logger[int(id[0])][i].append(position_delta_origin_frame[i][0])
     return True, rot_relative, tvec_relative
 
+# Hack from: https://stackoverflow.com/questions/27021440/python-requests-dont-wait-for-request-to-finish
+def robot_communicate(lhs: int, rhs: int):
+    try:
+        requests.get(ROBOT_PWM_ADDRESS.format(lhs, rhs),timeout=(None, 0.0000000001))
+    except requests.exceptions.ReadTimeout: 
+        pass
+
 
 def main():
     cap = cv.VideoCapture(3, cv.CAP_DSHOW) # set to 2 to select external webcam
@@ -267,6 +294,7 @@ def main():
         dt = 0
         if last_measurement_time:
             dt = measurement_time - last_measurement_time
+            print(dt)
         # always run predict step
         robot.predict_estimate(dt)
         if valid:
@@ -275,6 +303,9 @@ def main():
         last_measurement_time = measurement_time
 
         positions, angles = robot.predict_estimate(0)
+
+        robot_communicate()
+
         labels = ["x", "y", "z", "yaw", "pitch", "roll"]
         for index, item in enumerate(np.concatenate((positions, angles))):
             if item is None:
@@ -290,14 +321,14 @@ def main():
 
     # print out the statistics for each marker we saw
     # only valid for stationary markers
-    for id in logger.keys():
-        print(f"STATS FOR MARKER {id}")
-        for i, letter in enumerate(["x", "y", "z"]):
-            print(letter)
-            print(f"Standard Deviation {np.std(logger[id][i])}")
-            print(f"Mean {np.mean(logger[id][i])}")
-            print(f"Max {np.max(logger[id][i])}")
-            print(f"Min {np.min(logger[id][i])}")
+    # for id in logger.keys():
+    #     print(f"STATS FOR MARKER {id}")
+    #     for i, letter in enumerate(["x", "y", "z"]):
+    #         print(letter)
+    #         print(f"Standard Deviation {np.std(logger[id][i])}")
+    #         print(f"Mean {np.mean(logger[id][i])}")
+    #         print(f"Max {np.max(logger[id][i])}")
+    #         print(f"Min {np.min(logger[id][i])}")
     cap.release()
     cv.destroyAllWindows()
 
