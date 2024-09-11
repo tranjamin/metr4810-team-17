@@ -164,6 +164,14 @@ For certain peripherals and features, including I2C, PIO, DMA, PWM, IRQ, and ADC
 
 It's usually easier to just reference the examples repo at https://github.com/raspberrypi/pico-examples/tree/master to see how to implement certain features. Make sure you check their CMakeFile to see if any extra libraries need to be linked. If you figure out how to use a library, add it to the above section for reference.
 
+#### Debugging
+
+The UART is registered through the diagnostics task and outputs both through the USB and wirelessly to the `/log` endpoint. As long as you've included `diagnostics.h` in the file, you can make calls to this log using `vDebugLog` in the same way that you can use `printf` (it has fancy varargs).
+
+The onboard LED can be accessed using `cyw43_arch_gpio_put` as seen in `blink.c`. However, try to avoid changing this, as you can identify code crashes by checking when this LED stops flashing.
+
+Instead, another way to debug is using the RGB LED. If you import `rgb.h`, you can call `setRGB_XXX` for red, blue and green to set the colours of the RGB.
+
 ### General Development
 
 1. Have good version control and documentation pls pls pls.
