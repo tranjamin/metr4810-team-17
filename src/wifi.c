@@ -30,10 +30,14 @@
 #define DIAGNOSTICS_PATH "/diagnostics"
 #define LOG_PATH "/log"
 #define CONTROL_PATH "/control"
+#define LOCALISATION_PATH "/localisation"
 
 // params
 #define LED_PARAM "led=%d"
 #define CONTROL_PARAM "command=%d"
+#define LOCALISATION_LHS "lhs=%d"
+#define LOCALISATION_RHS "rhs=%d"
+#define LOCALISATION_PARAM "lhs=%d&rhs=%d"
 #define LED_GPIO 0
 
 // HTTP formats
@@ -400,6 +404,41 @@ static int generate_response(const char *request, const char *params, char *resu
         }
         len = snprintf(result, max_result_len, CONTROL_BODY);
     }
+
+    // LOCALISATION PAGE
+    else if (strncmp(request, LOCALISATION_PATH, sizeof(LOCALISATION_PATH) - 1) == 0) {
+        int lhs_param, rhs_param;
+        if (params) {
+            sscanf(params, LOCALISATION_PARAM, &lhs_param, &rhs_param);
+            len = snprintf(result, max_result_len, "Params 1: %d Params 2: %d", lhs_param, rhs_param);
+
+            if (lhs_param) {
+                if (lhs_param > 0) {
+                    SET_TRAVERSAL_LHS_FORWARD();
+                    setTraversalDuty_LHS(lhs_param);
+                } else if (lhs_param < 0) {
+                    SET_TRAVERSAL_LHS_BACKWARD();
+                    setTraversalDuty_LHS(-lhs_param);
+                } else {
+                    SET_TRAVERSAL_LHS_STOPPED();
+                    setTraversalDuty_LHS(0);
+                }
+            }
+            if (rhs_param) {
+                if (rhs_param > 0) {
+                    SET_TRAVERSAL_RHS_FORWARD();
+                    setTraversalDuty_RHS(rhs_param);
+                } else if (rhs_param < 0) {
+                    SET_TRAVERSAL_RHS_BACKWARD();
+                    setTraversalDuty_RHS(-rhs_param);
+                } else {
+                    SET_TRAVERSAL_RHS_STOPPED();
+                    setTraversalDuty_RHS(0);
+                }
+            }
+        }
+    }
+
 
     return len;
 }
