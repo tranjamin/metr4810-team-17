@@ -3,7 +3,6 @@ import cv2 as cv
 from scipy.spatial.transform import Rotation as R
 from estimators import RigidBodyTracker
 import time
-import requests
 
 MARKER_SIZE = 100 #97 # mm
 ORIGIN_X_DELTA = -59
@@ -12,6 +11,7 @@ RVECS = 0
 TVECS = 1
 CORNERS = 2
 
+LAST_ROBOT_COMMUNICATE = 0
 EULER_ORDER = 'ZYX' # determines conversion from angles to rotations
 
 # I believe the above is correctas it
@@ -19,7 +19,6 @@ EULER_ORDER = 'ZYX' # determines conversion from angles to rotations
 # 2. uses intrinsic rotations (subsequent rotations are done about the axes that
 #    have already been rotated)
 
-ROBOT_PWM_ADDRESS = "192.168.4.1/localisation?lhs={}&rhs={}"
 
 class MarkerCollection:
     """
@@ -242,12 +241,7 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     #             logger[int(id[0])][i].append(position_delta_origin_frame[i][0])
     return True, rot_relative, tvec_relative
 
-# Hack from: https://stackoverflow.com/questions/27021440/python-requests-dont-wait-for-request-to-finish
-def robot_communicate(lhs: int, rhs: int):
-    try:
-        requests.get(ROBOT_PWM_ADDRESS.format(lhs, rhs),timeout=(None, 0.0000000001))
-    except requests.exceptions.ReadTimeout: 
-        pass
+
 
 
 def main():
@@ -279,8 +273,10 @@ def main():
     Q_angle = np.array([[1, 0], [0, 1]])
 
     robot = RigidBodyTracker(Q_dist, R_dist, Q_angle, R_angle)
-
+    last_robot_communicate = 0
     last_measurement_time = None
+    robot_comm_dt = 0
+    command = True
     while True:
         ret, img = cap.read()
         if not ret:
@@ -302,7 +298,13 @@ def main():
 
         positions, angles = robot.predict_estimate(0)
 
-        # robot_communicate(0,0)
+        if time.time() - last_robot_communicate > robot_comm_dt:
+            if command:
+                robot_communicate(1)
+            else:
+                robot_communicate(2)
+            command = not command
+            last_robot_communicate = time.time()
 
         labels = ["x", "y", "z", "yaw", "pitch", "roll"]
         for index, item in enumerate(np.concatenate((positions, angles))):

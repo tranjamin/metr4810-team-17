@@ -82,7 +82,6 @@ class RigidBodyTracker():
             KalmanEstimator(Q_angle, R_angle, H, f_function),
             KalmanEstimator(Q_angle, R_angle, H, f_function, math.pi)
         ]
-        pass
 
     def predict_estimate(self, dt = 0.0):
         # update current position given time from last call to this function
