@@ -3,6 +3,8 @@ import cv2 as cv
 from scipy.spatial.transform import Rotation as R
 from estimators import RigidBodyTracker
 import time
+from math import pi
+from robot import Robot, LineFollowerController, FowardController, SpinController
 
 MARKER_SIZE = 100 #97 # mm
 ORIGIN_X_DELTA = -59
@@ -242,10 +244,8 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     return True, rot_relative, tvec_relative
 
 
-
-
 def main():
-    cap = cv.VideoCapture(3, cv.CAP_DSHOW) # set to 2 to select external webcam
+    cap = cv.VideoCapture(2, cv.CAP_DSHOW) # set to 2 to select external webcam
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
     cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280)) # seems locked to 720p
 
@@ -277,18 +277,47 @@ def main():
     last_measurement_time = None
     robot_comm_dt = 0
     command = True
+
+    path_segments = [
+        [(0.3, 0.3), (0.6, 0.3), -pi/2],
+        [(0.6, 0.3), (0.6, 0.6), pi],
+        [(0.6, 0.6), (0.3, 0.6), -pi/2],
+        [(0.3, 0.6), (0.3, 0.3), 0],
+        ]
+    
+    current_segment = 0
+
+    ### Set up controllers
+    forward_controller = FowardController(k_angle=5,
+                                       k_v=0.2,
+                                       w=0.5,
+                                       goal_tolerance=0.01,
+                                       reversing_allowed=True)
+
+    # warning when tuning
+    spin_controller = SpinController(k_angle=5,
+                                     k_v=0.2,
+                                     angle_tolerance=0.05
+                                     )
+    controller = LineFollowerController(forward_controller, spin_controller)
+    p0, p1, theta_target = path_segments[current_segment]
+    controller.set_path(p0, p1, theta_target)
+    print(f"Currently moving along segment {current_segment}\n From {p0} to {p1} \nFinal orientation desired: {theta_target}")
+
+    # Main loop
     while True:
         ret, img = cap.read()
         if not ret:
             break
 
+        ### UPDATE LOCALISATION
         valid, rot_relative, tvec_relative = process_image(img, camera_matrix, dist_coeffs, origin, target, logger)
         measurement_time = time.time()
 
         dt = 0
         if last_measurement_time:
             dt = measurement_time - last_measurement_time
-            print(dt)
+            # print(dt)
         # always run predict step
         robot.predict_estimate(dt)
         if valid:
@@ -297,14 +326,47 @@ def main():
         last_measurement_time = measurement_time
 
         positions, angles = robot.predict_estimate(0)
+        
 
-        if time.time() - last_robot_communicate > robot_comm_dt:
-            if command:
-                robot_communicate(1)
-            else:
-                robot_communicate(2)
-            command = not command
-            last_robot_communicate = time.time()
+        ### LOCALISATION FINISHED
+
+        ### PATH PLANNING
+
+        # check if goal was reached
+
+        v, omega = 0, 0
+        not_none = lambda x: x is not None
+        if all([not_none(e) for e in positions]):
+            x, _, y, _, _, _ = np.ravel(positions).tolist()
+            theta, _, _, _, _, _ = np.ravel(angles).tolist()
+            x = x /1000
+            y = y/1000
+            if controller.has_reached_goal():
+                current_segment += 1
+                current_segment %= len(path_segments)
+                p0, p1, theta_target = path_segments[current_segment]
+                controller.set_path(p0, p1, theta_target)
+                print(f"Currently moving along segment {current_segment}\n From {p0} to {p1} \nFinal orientation desired: {theta_target}")
+            
+            v, omega = controller.get_control_action(x, y, theta)
+
+        # draw control info on screen
+        labels = ["v", "omega"]
+        for index, val in enumerate([v, omega]):
+            cv.putText(img, '{}: {:.3f}'.format(labels[index], val),
+                        (1000, 50 + 50*index),
+                        cv.FONT_HERSHEY_PLAIN,
+                        2,
+                        (0, 0, 255),
+                        4)
+
+        # if time.time() - last_robot_communicate > robot_comm_dt:
+        #     if command:
+        #         robot_communicate(1)
+        #     else:
+        #         robot_communicate(2)
+        #     command = not command
+        #     last_robot_communicate = time.time()
 
         labels = ["x", "y", "z", "yaw", "pitch", "roll"]
         for index, item in enumerate(np.concatenate((positions, angles))):
@@ -312,8 +374,12 @@ def main():
                 continue
             x, _ = item.ravel().tolist()
 
-            cv.putText(img, '{}: {:.3f}'.format(labels[index], x), (50, 50 + 50*index), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-
+            cv.putText(img, '{}: {:.3f}'.format(labels[index], x),
+                       (50, 50 + 50*index),
+                       cv.FONT_HERSHEY_PLAIN,
+                       2,
+                       (0, 255, 0),
+                       4)
 
         cv.imshow('frame', img)
         if cv.waitKey(1) == ord('q'):

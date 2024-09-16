@@ -130,7 +130,7 @@ class FowardController(Controller):
         w = self.w
         r = np.array([x, y]) # robot position vector
         d = p1 - p0
-        k = 1/np.linalg.norm(d) * np.dot(d, r - p0)
+        k = 1/np.linalg.norm(d)**2 * np.dot(d, r - p0)
         
         # location of closest point on path to the robot
         s = k*d + p0
@@ -165,6 +165,9 @@ class FowardController(Controller):
 
         # ensure we move in the correct direction
         v = self.k_v * np.dot(wr_hat, heading)
+        if not self.reversing_allowed:
+            # wait until we're facing in the correct direction before moving
+            v = max(v, 0)
 
         # check if goal has been reached
         if np.linalg.norm(r - p1) < self.goal_tolerance or self.reached_goal:
@@ -185,16 +188,23 @@ class LineFollowerController(Controller):
         self.forward_controller = forward_controller
         self.spin_controller = spin_controller
         super().__init__()
+        self.phase_2 = False
 
     def set_path(self, p0: tuple[float, float], p1: tuple[float, float], theta_target: float):
         self.forward_controller.set_path(p0, p1, theta_target)
         self.spin_controller.set_path(p0, p1, theta_target)
+        self.phase_2 = False
         super().set_path(p0, p1, theta_target)
 
     def get_control_action(self, x: float, y: float, theta: float):
-        if not self.forward_controller.has_reached_goal():
+        if not self.phase_2 and not self.forward_controller.has_reached_goal():
             # keep progressing along the foward path
             return self.forward_controller.get_control_action(x, y, theta)
+        if self.spin_controller.has_reached_goal():
+            self.reached_goal = True
+        if not self.phase_2:
+            print("SWITCHING TO SPIN CONTROLLER")
+            self.phase_2 = True
         return self.spin_controller.get_control_action(x, y, theta)
 
 def wrapToPi(angle):
