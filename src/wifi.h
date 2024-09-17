@@ -6,7 +6,7 @@
 #define WIFI_TASK_NAME "WiFi Task"
 #define WIFI_TASK_PRIORITY (tskIDLE_PRIORITY + 2)
 #define WIFI_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE * 12)
-#define WIFI_TASK_COREMASK 0x01
+#define WIFI_TASK_COREMASK 0x02
 
 void vWifiTask();
 void vWifiInit();

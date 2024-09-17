@@ -478,7 +478,7 @@ void vWifiTask() {
         state->complete = false;
         while(!state->complete) {
             // cyw43_arch_poll();
-            // vTaskDelay(pdMS_TO_TICKS(VDELAY));
+            vTaskDelay(VDELAY);
         }
 
         // If an error occurs, close server
