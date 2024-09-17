@@ -1,15 +1,16 @@
 import numpy as np
 import cv2 as cv
 
-IMAGE_FOLDER = "tom_iphone_calibration"
+IMAGE_FOLDER = "c270_calibration_3"
 
 image_counter = 0
 # Below code taken from Miguel's OpenCV UQ Mars talk in 2023
 # https://github.com/uqmars/workshop-resources/blob/master/CV/2023/4_camera_calibration.py
 
-cap = cv.VideoCapture(2) # set to 2 to select external webcam
-# cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
-# cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280))
+# cap = cv.VideoCapture(2) # set to 2 to select external webcam
+cap = cv.VideoCapture(2, cv.CAP_DSHOW) # set to 2 to select external webcam
+cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
+cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280))
 print(f"{cap.get(cv.CAP_PROP_FRAME_WIDTH)}, {cap.get(cv.CAP_PROP_FRAME_HEIGHT)}")
 cap.set(cv.CAP_PROP_AUTOFOCUS, 0)
 # focus = 255  # min: 0, max: 255, increment:5

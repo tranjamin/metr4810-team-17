@@ -8,7 +8,7 @@ SQUARES_HORIZONTALLY = 5
 SQUARE_LENGTH = 0.03
 MARKER_LENGTH = 0.015
 # ...
-PATH_TO_YOUR_IMAGES = 'old_cam_2_calibration/'
+# PATH_TO_YOUR_IMAGES = 'c270_calibration_2/'
 # ------------------------------
 
 def calibrate_and_save_parameters():
@@ -20,13 +20,13 @@ def calibrate_and_save_parameters():
     # Load PNG images from folder
     # image_files = [os.path.join(PATH_TO_YOUR_IMAGES, f) for f in os.listdir(PATH_TO_YOUR_IMAGES) if f.endswith(".png")]
     # image_files.sort()  # Ensure files are in order
-    image_files = glob.glob('c270_calibration/*.jpg')
+    image_files = glob.glob('c270_calibration_3/*.jpg')
 
     all_charuco_corners = []
     all_charuco_ids = []
 
     for image_file in image_files:
-        print("In the loop")
+        print(image_file)
         image = cv2.imread(image_file)
         image_copy = image.copy()
         marker_corners, marker_ids, _ = cv2.aruco.detectMarkers(image, dictionary, parameters=params)

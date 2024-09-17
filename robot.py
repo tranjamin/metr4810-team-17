@@ -18,6 +18,20 @@ class Robot:
         control_vector = np.linalg.inv(mapping_matrix) * np.array([[v],[omega]])
         ul, ur = np.ravel(control_vector).tolist()
         self.set_pwm(ul, ur)
+        # ul, ur = 0, 0
+        # if v > 0 and omega > 0:
+        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(4))
+        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(2))
+        # elif v < 0 and omega > 0:
+        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(3))
+        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(5))
+        # elif v > 0 and omega < 0:
+        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(1))
+        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(5))
+        # else: # v < 0 and omega < 0
+        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(6))
+        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(2))
+
 
     def set_pwm(self, left: int, right: int):
         self.pwm_left = left
@@ -31,7 +45,7 @@ class Robot:
         try:
             print("sending robot command")
             url = f"http://{self.ip}/{command}"
-            requests.get(url, timeout=(0.1, 0.0000000001))
+            requests.get(url, timeout=(0.2, 0.0000000001))
             # Hack from: https://stackoverflow.com/questions/27021440/python-requests-dont-wait-for-request-to-finish
             # timeout means we ignore any response from the pico
         except requests.exceptions.ReadTimeout: 

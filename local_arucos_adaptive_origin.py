@@ -66,19 +66,21 @@ class MarkerCollection:
         # Note if changing this, I think the base points must be defined in
         # clockwise order starting from the top left (to match with
         # Aruco.detectMarkers())
-
+        return_val = tvec, rotation
         actual_points = rotation.apply(base_points)
         actual_points = np.add(actual_points, tvec)
 
         if reference_rotation is not None and reference_tvec is not None:
             actual_points = reference_rotation.apply(actual_points)
             actual_points = np.add(actual_points, reference_tvec)
+            return_val = np.add(reference_tvec, tvec), reference_rotation * rotation
         
         if (reference_rotation is not None) ^ (reference_tvec is not None):
             # one provided but not the other
             raise Exception("One reference provided but not the other")
         
         self._points[id] = actual_points
+        return return_val
 
     def estimate_pose(self, corners_list: np.ndarray, ids: np.ndarray,
                       camera_matrix: cv.UMat, dist_coeffs: cv.UMat) -> tuple[bool, np.ndarray, np.ndarray]:
@@ -259,13 +261,56 @@ def main():
 
     # define objects to be tracked
     origin = MarkerCollection()
+    target = MarkerCollection()
+
+    # PAGE AS ORIGIN
     origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
     origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[0,0,0])
 
-    target = MarkerCollection()
-    target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-    # demonstrate specifying second relative to first
-    target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
+    # CHANGE HERE FOR MEASURING BETWEEN TWO MARKERS
+    # origin.register_marker(4, 90.5, [0, 0, 0], R.identity())
+    # target.register_marker(5, 90.5, [0, 0, 0], R.identity())
+
+
+    # Data for page
+    # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+    # # demonstrate specifying second relative to first
+    # target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
+
+
+    # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+    # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+
+    # Below two for having in middle of page
+
+    # target.register_marker(4, 90.5, [0,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
+    # # demonstrate specifying second relative to first
+    # target.register_marker(5, 90.5, [-53.5, 132.5, 0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True)) #, reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
+
+    # Data for robot
+
+    # BACK SIDE MARKERS
+    # target.register_marker(6, 80, [-150/2, -76, 0], R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
+    # target.register_marker(7, 80, [-175-80, 80, 0], R.from_euler(EULER_ORDER, [-90, 0, 0], degrees=True),
+    #                        reference_tvec=[-150/2, -76, 0],
+    #                        reference_rotation=R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
+
+    # # FRONT SIDE MARKERS
+    # target.register_marker(8, 80, [150/2, -76-80, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)) # [150/2, -76 + 80, -8], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
+    # target.register_marker(9, 80, [175, 0 , 0], R.identity(), reference_tvec=[150/2, -76, -8], reference_rotation=R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
+
+    # Marker 9 relative to marker 8:
+    # t_8_9 = [347.4877680881446, 17.866119412373934, 21.19106322139052]
+    # r_8_9 = R.from_euler(EULER_ORDER, [1.9167375020493784, -0.2526571446309594, -0.08742266537942293])
+
+    # this method basically works, but probably better to just measure by hand rather than
+    # chain a bunch of uncertianties
+    t_4_5 = [-52.286, -132.22, -1.833]
+    r_4_5 = R.from_euler(EULER_ORDER, [0, 0, 0])
+    t_o_4 = [0,0,0]
+    r_o_4 = R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True)
+    t_o_4, r_o_4 = target.register_marker(4, 90.5, t_o_4, r_o_4)
+    t_o_9, r_o_9 = target.register_marker(5, 90.5, t_4_5, r_4_5, t_o_4, r_o_4)
 
     R_dist = 0.01
     Q_dist = np.array([[1, 0], [0, 1]])
@@ -304,6 +349,7 @@ def main():
     controller.set_path(p0, p1, theta_target)
     print(f"Currently moving along segment {current_segment}\n From {p0} to {p1} \nFinal orientation desired: {theta_target}")
 
+    stats = {"x": [], "y": [], "z": [], "yaw": [], "pitch": [], "roll": []}
     # Main loop
     while True:
         ret, img = cap.read()
@@ -373,6 +419,7 @@ def main():
             if item is None:
                 continue
             x, _ = item.ravel().tolist()
+            stats[labels[index]].append(x)
 
             cv.putText(img, '{}: {:.3f}'.format(labels[index], x),
                        (50, 50 + 50*index),
@@ -388,13 +435,16 @@ def main():
     # print out the statistics for each marker we saw
     # only valid for stationary markers
     # for id in logger.keys():
-    #     print(f"STATS FOR MARKER {id}")
-    #     for i, letter in enumerate(["x", "y", "z"]):
-    #         print(letter)
-    #         print(f"Standard Deviation {np.std(logger[id][i])}")
-    #         print(f"Mean {np.mean(logger[id][i])}")
-    #         print(f"Max {np.max(logger[id][i])}")
-    #         print(f"Min {np.min(logger[id][i])}")
+    # print(f"STATS FOR MARKER {id}")
+    # for i, letter in enumerate(["x", "y", "z"]):
+    #     print(letter)
+    #     print(f"Standard Deviation {np.std(logger[id][i])}")
+    #     print(f"Mean {np.mean(logger[id][i])}")
+    #     print(f"Max {np.max(logger[id][i])}")
+    #     print(f"Min {np.min(logger[id][i])}")
+    for name in stats.keys():
+        array = stats[name]
+        print(f"{name}: {np.mean(array)} (std: {np.std(array)})")
     cap.release()
     cv.destroyAllWindows()
 
