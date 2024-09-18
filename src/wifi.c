@@ -407,12 +407,12 @@ static int generate_response(const char *request, const char *params, char *resu
 
     // LOCALISATION PAGE
     else if (strncmp(request, LOCALISATION_PATH, sizeof(LOCALISATION_PATH) - 1) == 0) {
-        int lhs_param, rhs_param;
+        int lhs_param, rhs_param = 101;
         if (params) {
             sscanf(params, LOCALISATION_PARAM, &lhs_param, &rhs_param);
             len = snprintf(result, max_result_len, "Params 1: %d Params 2: %d", lhs_param, rhs_param);
 
-            if (lhs_param) {
+            if (lhs_param != 101) {
                 if (lhs_param > 0) {
                     SET_TRAVERSAL_LHS_FORWARD();
                     setTraversalDuty_LHS(lhs_param);
@@ -424,7 +424,7 @@ static int generate_response(const char *request, const char *params, char *resu
                     setTraversalDuty_LHS(0);
                 }
             }
-            if (rhs_param) {
+            if (rhs_param != 101) {
                 if (rhs_param > 0) {
                     SET_TRAVERSAL_RHS_FORWARD();
                     setTraversalDuty_RHS(rhs_param);

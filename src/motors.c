@@ -68,21 +68,18 @@ void vMotorsInit() {
     // set motors to be intially off
     SET_TRAVERSAL_LHS_STOPPED();
     SET_TRAVERSAL_RHS_STOPPED();
-
-    SET_TRAVERSAL_LHS_FORWARD();
-    SET_TRAVERSAL_RHS_FORWARD();
 }
 
 void vMotorsTask() {
     float i = 0;
     for (;;) {
         // do stuff
-        taskENTER_CRITICAL();
-        setTraversalDuty_LHS(100);
-        setTraversalDuty_RHS(100);
-        taskEXIT_CRITICAL();
-        i++;
-        if (i >= 100) i = 0;
+        // taskENTER_CRITICAL();
+        // setTraversalDuty_LHS(100);
+        // setTraversalDuty_RHS(100);
+        // taskEXIT_CRITICAL();
+        // i++;
+        // if (i >= 100) i = 0;
 
     //     // block for some time
         vTaskDelay(VDELAY);
