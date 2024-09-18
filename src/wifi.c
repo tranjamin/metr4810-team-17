@@ -8,7 +8,6 @@
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
 #include "dhcpserver.h"
-#include "dnsserver.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -152,7 +151,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
                     return tcp_close_client_connection(con_state, pcb, ERR_CLSD);
                 }
             } else {
-                
+
             }
 
             // Send the headers to the client
@@ -438,8 +437,8 @@ void vWifiTask() {
         dhcp_server_init(&dhcp_server, &state->gw, &mask);
 
         // Start the dns server
-        dns_server_t dns_server;
-        dns_server_init(&dns_server, &state->gw);
+        // dns_server_t dns_server;
+        // dns_server_init(&dns_server, &state->gw);
 
         // Open server
         if (!tcp_server_open(state, ap_name)) {
@@ -458,7 +457,7 @@ void vWifiTask() {
         setRGB_COLOUR_PURPLE();
         // If an error occurs, close server
         tcp_server_close(state);
-        dns_server_deinit(&dns_server);
+        // dns_server_deinit(&dns_server);
         dhcp_server_deinit(&dhcp_server);
         // cyw43_arch_deinit();
     }

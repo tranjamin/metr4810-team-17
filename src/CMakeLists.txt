@@ -30,7 +30,6 @@ add_executable( main
     watchdog.c
 
     dhcpserver/dhcpserver.c
-    dnsserver/dnsserver.c
     ../FreeRTOS-Kernel/portable/MemMang/heap_4.c
     )
 
@@ -39,7 +38,6 @@ target_include_directories(
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/..
     ${CMAKE_CURRENT_LIST_DIR}/dhcpserver
-    ${CMAKE_CURRENT_LIST_DIR}/dnsserver
 )
  
 #for Pico W
