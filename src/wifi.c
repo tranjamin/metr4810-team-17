@@ -93,16 +93,16 @@ typedef struct TCP_CONNECT_STATE_T_ {
 
 // Esoteric TCP handlers
 err_t tcp_server_recv(void*, struct tcp_pcb*, struct pbuf*, err_t);
-static err_t tcp_server_poll(void*, struct tcp_pcb*);
-static void tcp_server_err(void*, err_t);
-static err_t tcp_server_accept(void*, struct tcp_pcb*, err_t);
-static bool tcp_server_open(void*, const char*);
-static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T*, struct tcp_pcb*, err_t);
-static void tcp_server_close(TCP_SERVER_T*);
-static err_t tcp_server_sent(void*, struct tcp_pcb*, u16_t);
+err_t tcp_server_poll(void*, struct tcp_pcb*);
+void tcp_server_err(void*, err_t);
+err_t tcp_server_accept(void*, struct tcp_pcb*, err_t);
+bool tcp_server_open(void*, const char*);
+err_t tcp_close_client_connection(TCP_CONNECT_STATE_T*, struct tcp_pcb*, err_t);
+void tcp_server_close(TCP_SERVER_T*);
+err_t tcp_server_sent(void*, struct tcp_pcb*, u16_t);
 
 // Handles response
-static int generate_response(const char*, const char*, char*, size_t);
+int generate_response(const char*, const char*, char*, size_t);
 
 // Function prototypes
 void vWifiInit();
@@ -188,14 +188,14 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 }
 
 // Poll server for client connections
-static err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb) {
+err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
     // vDebugLog("tcp_server_poll_fn\n");
     return tcp_close_client_connection(con_state, pcb, ERR_OK); // Just disconnect clent?
 }
 
 // Check client errors
-static void tcp_server_err(void *arg, err_t err) {
+void tcp_server_err(void *arg, err_t err) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
     if (err != ERR_ABRT) {
         // vDebugLog("tcp_client_err_fn %d\n", err);
@@ -204,7 +204,7 @@ static void tcp_server_err(void *arg, err_t err) {
 }
 
 // Accept client connection
-static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err) {
+err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     if (err != ERR_OK || client_pcb == NULL) {
         // vDebugLog("failure in accept\n");
@@ -232,7 +232,7 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
 }
 
 // Open server
-static bool tcp_server_open(void *arg, const char *ap_name) {
+bool tcp_server_open(void *arg, const char *ap_name) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     // vDebugLog("starting server on port %d\n", TCP_PORT);
 
@@ -265,7 +265,7 @@ static bool tcp_server_open(void *arg, const char *ap_name) {
 }
 
 // Close a connection to client
-static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, struct tcp_pcb *client_pcb, err_t close_err) {
+err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, struct tcp_pcb *client_pcb, err_t close_err) {
     if (client_pcb) {
         assert(con_state && con_state->pcb == client_pcb);
         tcp_arg(client_pcb, NULL);
@@ -287,7 +287,7 @@ static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, struct 
 }
 
 // Close the server
-static void tcp_server_close(TCP_SERVER_T *state) {
+void tcp_server_close(TCP_SERVER_T *state) {
     if (state->server_pcb) {
         tcp_arg(state->server_pcb, NULL);
         tcp_close(state->server_pcb);
@@ -296,7 +296,7 @@ static void tcp_server_close(TCP_SERVER_T *state) {
 }
 
 // Send data packet
-static err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
+err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
     // vDebugLog("tcp_server_sent %u\n", len);
     con_state->sent_len += len;
@@ -308,7 +308,7 @@ static err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
 }
 
 // Send content as a response to a request
-static int generate_response(const char *request, const char *params, char *result, size_t max_result_len) {
+int generate_response(const char *request, const char *params, char *result, size_t max_result_len) {
     int len = 0; // size of the response
 
     // LED PAGE
