@@ -26,22 +26,18 @@
 #define HTTP_GET "GET" // GET Request
 
 // webpage paths
-#define LED_PATH "/ledtest"
 #define DIAGNOSTICS_PATH "/diagnostics"
 #define LOG_PATH "/log"
 #define CONTROL_PATH "/control"
 #define LOCALISATION_PATH "/localisation"
 
 // params
-#define LED_PARAM "led=%d"
 #define CONTROL_PARAM "command=%d"
 #define LOCALISATION_LHS "lhs=%d"
 #define LOCALISATION_RHS "rhs=%d"
 #define LOCALISATION_PARAM "lhs=%d&rhs=%d"
-#define LED_GPIO 0
 
 // HTTP formats
-#define LED_BODY "<html><body><h1>Hello from Pico W.</h1><p>Led is %s</p><p><a href=\"?led=%d\">Turn led %s</a></body></html>"
 #define CONTROL_BODY "\
 <html><body>\
 <a href=\"?command=0\">Start Delivery</a><br>\
@@ -56,8 +52,6 @@
 <a href=\"?command=9\">Set Extraction Back</a><br>\
 </body></html>"
 
-
-#define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_PATH "\n\n"
 #define HTTP_RESPONSE_HEADERS "HTTP/1.1 %d OK\nContent-Length: %d\nContent-Type: text/html; charset=utf-8\nConnection: close\n\n"
 
 #define MAX_RESULT_SIZE 1200 // maximum size of a response 
@@ -158,10 +152,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
                     return tcp_close_client_connection(con_state, pcb, ERR_CLSD);
                 }
             } else {
-                // Send redirect
-                con_state->header_len = snprintf(con_state->headers, sizeof(con_state->headers), HTTP_RESPONSE_REDIRECT,
-                    ipaddr_ntoa(con_state->gw));
-                // vDebugLog("Sending redirect %s", con_state->headers);
+                
             }
 
             // Send the headers to the client
@@ -311,26 +302,8 @@ err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
 int generate_response(const char *request, const char *params, char *result, size_t max_result_len) {
     int len = 0; // size of the response
 
-    // LED PAGE
-    if (strncmp(request, LED_PATH, sizeof(LED_PATH) - 1) == 0) {
-        bool value;
-        cyw43_gpio_get(&cyw43_state, LED_GPIO, &value);
-        int led_state = value;
-
-        // Update led if necessary
-        if (params) {
-            int led_param = sscanf(params, LED_PARAM, &led_state);
-            if (led_param == 1) {
-                cyw43_gpio_set(&cyw43_state, LED_GPIO, led_state ? true : false);
-            }
-        }
-
-        // Generate result
-        len = snprintf(result, max_result_len, LED_BODY, led_state ? "ON" : "OFF", led_state ? 0 : 1, led_state ? "OFF" : "ON");
-    } 
-    
     // DIAGNOSTICS PAGE
-    else if (strncmp(request, DIAGNOSTICS_PATH, sizeof(DIAGNOSTICS_PATH) - 1) == 0) {
+    if (strncmp(request, DIAGNOSTICS_PATH, sizeof(DIAGNOSTICS_PATH) - 1) == 0) {
         DiagnosticMessage msg;
         if (xGetDiagnosticMessage(&msg) == pdTRUE) {
 
