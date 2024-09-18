@@ -27,6 +27,7 @@ add_executable( main
     wifi.c
     rgb.c
     digitalio.c
+    watchdog.c
 
     dhcpserver/dhcpserver.c
     dnsserver/dnsserver.c
@@ -48,6 +49,7 @@ target_link_libraries(
     pico_stdlib
     pico_time
     hardware_pwm
+    hardware_watchdog
     FreeRTOS-Kernel 
     FreeRTOS-Kernel-Heap4
     # pico_cyw43_arch_lwip_poll
