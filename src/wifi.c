@@ -481,11 +481,13 @@ void vWifiTask() {
             vTaskDelay(VDELAY);
         }
 
+
+        setRGB_COLOUR_PURPLE();
         // If an error occurs, close server
         tcp_server_close(state);
         dns_server_deinit(&dns_server);
         dhcp_server_deinit(&dhcp_server);
-        cyw43_arch_deinit();
+        // cyw43_arch_deinit();
     }
     return;
 }
