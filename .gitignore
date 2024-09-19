@@ -2,3 +2,4 @@
 *.npy
 images
 *calibration
+__pycache__
