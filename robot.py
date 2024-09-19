@@ -7,6 +7,8 @@ ROBOT_PWM_ADDRESS = "localisation?lhs={}&rhs={}"
 ROBOT_LED_ADDRESS = "ledtest?led={}"
 ROBOT_CONTROL_ADDRESS = "control?command={}"
 
+PWM_MAX = 100 # can be float when sent
+
 class Robot:
     def __init__(self, ip: str):
         self.ip = ip
@@ -32,11 +34,13 @@ class Robot:
         #     self.send_command(ROBOT_CONTROL_ADDRESS.format(6))
         #     self.send_command(ROBOT_CONTROL_ADDRESS.format(2))
 
-
+    
     def set_pwm(self, left: int, right: int):
-        self.pwm_left = left
-        self.pwm_right = right
-        self.send_command(ROBOT_PWM_ADDRESS.format(left, right))
+        self.pwm_left = max(min(left, 100.0), -100.0)
+        self.pwm_right = max(min(right, 100.0), -100.0)
+        # fill with zeros to match code on the pico
+        print(ROBOT_PWM_ADDRESS.format(str(left).zfill(7), str(right).zfill(7)))
+        self.send_command(ROBOT_PWM_ADDRESS.format(str(left).zfill(7), str(right).zfill(7)))
     
     def control_function(self, command):
         self.send_command(ROBOT_CONTROL_ADDRESS.format(command))
@@ -45,10 +49,12 @@ class Robot:
         try:
             print("sending robot command")
             url = f"http://{self.ip}/{command}"
-            requests.get(url, timeout=(0.2, 0.0000000001))
+            requests.get(url, timeout=(0.5, 0.001))
             # Hack from: https://stackoverflow.com/questions/27021440/python-requests-dont-wait-for-request-to-finish
             # timeout means we ignore any response from the pico
         except requests.exceptions.ReadTimeout: 
+            pass
+        except requests.exceptions.Timeout:
             pass
 
 class Controller:
