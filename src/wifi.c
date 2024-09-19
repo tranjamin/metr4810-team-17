@@ -21,7 +21,7 @@
 #define VDELAY 100
 
 #define TCP_PORT 80 // the port to host the wifi on
-#define POLL_TIME_S 5 // the polling time of the wifi server
+#define POLL_TIME_S 0.1 // the polling time of the wifi server
 #define HTTP_GET "GET" // GET Request
 
 // webpage paths
@@ -108,7 +108,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
         // vDebugLog("connection closed\n");
         return tcp_close_client_connection(con_state, pcb, ERR_OK);
     }
-    assert(con_state && con_state->pcb == pcb);
+    // assert(con_state && con_state->pcb == pcb);
     if (p->tot_len > 0) {
         // vDebugLog("tcp_server_recv %d err %d\n", p->tot_len, err);
 
@@ -133,43 +133,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 
             // Generate content
             con_state->result_len = generate_response(request, params, con_state->result, sizeof(con_state->result));
-            // // vDebugLog("Request: %s?%s\n", request, params);
-            // // vDebugLog("Result: %d\n", con_state->result_len);
-
-            // Check we had enough buffer space
-            if (con_state->result_len > sizeof(con_state->result) - 1) {
-                // vDebugLog("Too much result data %d\n", con_state->result_len);
-                return tcp_close_client_connection(con_state, pcb, ERR_CLSD);
-            }
-
-            // Generate web page
-            if (con_state->result_len > 0) {
-                con_state->header_len = snprintf(con_state->headers, sizeof(con_state->headers), HTTP_RESPONSE_HEADERS,
-                    200, con_state->result_len);
-                if (con_state->header_len > sizeof(con_state->headers) - 1) {
-                    // vDebugLog("Too much header data %d\n", con_state->header_len);
-                    return tcp_close_client_connection(con_state, pcb, ERR_CLSD);
-                }
-            } else {
-
-            }
-
-            // Send the headers to the client
-            con_state->sent_len = 0;
-            err_t err = tcp_write(pcb, con_state->headers, con_state->header_len, 0);
-            if (err != ERR_OK) {
-                // vDebugLog("failed to write header data %d\n", err);
-                return tcp_close_client_connection(con_state, pcb, err);
-            }
-
-            // Send the body to the client
-            if (con_state->result_len) {
-                err = tcp_write(pcb, con_state->result, con_state->result_len, 0);
-                if (err != ERR_OK) {
-                    // vDebugLog("failed to write result data %d\n", err);
-                    return tcp_close_client_connection(con_state, pcb, err);
-                }
-            }
+           
         }
         tcp_recved(pcb, p->tot_len);
     }
@@ -181,7 +145,8 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
     // vDebugLog("tcp_server_poll_fn\n");
-    return tcp_close_client_connection(con_state, pcb, ERR_OK); // Just disconnect clent?
+    // return tcp_close_client_connection(con_state, pcb, ERR_OK); // Just disconnect clent?
+    return ERR_OK;
 }
 
 // Check client errors
@@ -215,7 +180,7 @@ err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err) {
     tcp_arg(client_pcb, con_state);
     tcp_sent(client_pcb, tcp_server_sent);
     tcp_recv(client_pcb, tcp_server_recv);
-    tcp_poll(client_pcb, tcp_server_poll, POLL_TIME_S * 2);
+    // tcp_poll(client_pcb, tcp_server_poll, POLL_TIME_S * 2);
     tcp_err(client_pcb, tcp_server_err);
 
     return ERR_OK;
@@ -257,7 +222,7 @@ bool tcp_server_open(void *arg, const char *ap_name) {
 // Close a connection to client
 err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, struct tcp_pcb *client_pcb, err_t close_err) {
     if (client_pcb) {
-        assert(con_state && con_state->pcb == client_pcb);
+        // assert(con_state && con_state->pcb == client_pcb);
         tcp_arg(client_pcb, NULL);
         tcp_poll(client_pcb, NULL, 0);
         tcp_sent(client_pcb, NULL);
@@ -379,10 +344,16 @@ int generate_response(const char *request, const char *params, char *result, siz
 
     // LOCALISATION PAGE
     else if (strncmp(request, LOCALISATION_PATH, sizeof(LOCALISATION_PATH) - 1) == 0) {
-        int lhs_param, rhs_param = 101;
+        float lhs_param = 50;
+        float rhs_param = 50;
         if (params) {
-            sscanf(params, LOCALISATION_PARAM, &lhs_param, &rhs_param);
-            len = snprintf(result, max_result_len, "Params 1: %d Params 2: %d", lhs_param, rhs_param);
+            // sscanf("lhs=000.000&rhs=000.000", LOCALISATION_PARAM, &lhs_param, &rhs_param);
+            char params_copy[23];
+            strncpy(params_copy, params, 23);
+            params_copy[11] = '\0';
+            lhs_param = strtof(params_copy + 4, NULL);
+            rhs_param = strtof(params_copy + 16, NULL);
+            len = snprintf(result, max_result_len, "Params 1: %f Params 2: %f", lhs_param, rhs_param);
 
             if (lhs_param != 101) {
                 if (lhs_param > 0) {
@@ -423,6 +394,7 @@ void vWifiTask() {
     for (;;) {
         // Enable server
         TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
+        
         const char *ap_name = "METR4810 Team 17";
         const char *password = "password";
         cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
