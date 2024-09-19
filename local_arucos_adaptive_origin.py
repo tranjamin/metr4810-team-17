@@ -5,6 +5,7 @@ from estimators import RigidBodyTracker
 import time
 from math import pi
 from robot import Robot, LineFollowerController, FowardController, SpinController
+from planning import *
 
 MARKER_SIZE = 100 #97 # mm
 ORIGIN_X_DELTA = -59
@@ -350,6 +351,16 @@ def main():
     print(f"Currently moving along segment {current_segment}\n From {p0} to {p1} \nFinal orientation desired: {theta_target}")
 
     stats = {"x": [], "y": [], "z": [], "yaw": [], "pitch": [], "roll": []}
+
+    ### BEN ###
+
+    plan = Pathplanner()
+    plan.set_controller(controller)
+    plan.set_waypoints(SnakeWaypointSequence())
+
+    ### BEN ###
+
+
     # Main loop
     while True:
         ret, img = cap.read()
@@ -379,22 +390,15 @@ def main():
         ### PATH PLANNING
 
         # check if goal was reached
-
-        v, omega = 0, 0
-        not_none = lambda x: x is not None
-        if all([not_none(e) for e in positions]):
+        if all([e is not None for e in positions]):
             x, _, y, _, _, _ = np.ravel(positions).tolist()
             theta, _, _, _, _, _ = np.ravel(angles).tolist()
-            x = x /1000
-            y = y/1000
-            if controller.has_reached_goal():
-                current_segment += 1
-                current_segment %= len(path_segments)
-                p0, p1, theta_target = path_segments[current_segment]
-                controller.set_path(p0, p1, theta_target)
-                print(f"Currently moving along segment {current_segment}\n From {p0} to {p1} \nFinal orientation desired: {theta_target}")
+
+            plan.update_robot_position(x, y, theta)
+            plan.controller_step()
             
-            v, omega = controller.get_control_action(x, y, theta)
+        v = plan.desired_velocity
+        omega = plan.desired_angular
 
         # draw control info on screen
         labels = ["v", "omega"]

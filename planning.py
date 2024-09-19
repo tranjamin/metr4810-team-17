@@ -1,6 +1,45 @@
+from __future__ import annotations
 import numpy as np
 import math
 from typing import *
+from robot import Controller
+
+class Pathplanner():
+    def __init__(self):
+        self.waypoints: WaypointSequence
+        self.controller: Controller
+
+        self.desired_velocity: float = 0
+        self.desired_angular: float = 0
+
+        self.current_x: float = 0
+        self.current_y: float = 0
+        self.current_theta: float = 0
+
+        self.current_waypoint: Waypoint = None
+
+    def set_waypoints(self, waypoints: WaypointSequence):
+        self.waypoints = waypoints
+        self.current_waypoint = self.waypoints.get_current_waypoint()
+    
+    def set_controller(self, controller: Controller):
+        self.controller = controller
+    
+    def update_robot_position(self, current_x, current_y, current_theta):
+        self.current_x = current_x
+        self.current_y = current_y
+        self.current_theta = current_theta
+
+        if self.current_waypoint.is_reached(self.current_x, self.current_y, self.current_theta):
+            self.current_waypoint = self.waypoints.move_to_next_waypoint()
+    
+    def controller_step(self):
+        if self.current_waypoint is None:
+            self.desired_velocity = 0
+            self.desired_angular = 0
+        else:
+            self.controller.set_path(None, self.current_waypoint.coords, self.current_waypoint.heading)
+            self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta)
 
 class RobotGeometry():
     WIDTH: float = 400
@@ -11,6 +50,9 @@ class RobotGeometry():
     DIGGER_RADIUS: float = math.sqrt(DIGGER_WIDTH**2 + LENGTH**2)/2
 
 class Waypoint():
+    LINEAR_EPS = 0.01
+    ANGULAR_EPS = 0.1
+
     '''
     A coordinate and heading which the robot will move through. Coordinates are measured through the geometric centre of the robot.
     '''
@@ -31,6 +73,7 @@ class Waypoint():
         """
         self.x = x
         self.y = y
+        self.coords = (x, y)
         self.heading = heading
         self.vel = vel
         self.suspendFlag = suspendExtraction
@@ -39,6 +82,19 @@ class Waypoint():
         assert self.x < 2000 and self.x > 0
         assert self.y < 2000 and self.y > 0
         assert self.heading is None or (self.heading > -180 and self.heading < 180)
+    
+    def is_reached(self, current_x: float, current_y: float, current_heading: float) -> bool:
+        delta_x = abs(current_x - self.x)
+        delta_y = abs(current_y - self.y)
+
+        if math.sqrt(delta_x**2 + delta_y**2) > Waypoint.LINEAR_EPS:
+            return False
+        if self.heading is None:
+            return True
+        else:  
+            delta_theta = abs(current_heading - self.heading) # ??
+            return delta_theta < Waypoint.ANGULAR_EPS
+
 
 class DepositWaypoint(Waypoint):
     '''
@@ -97,6 +153,15 @@ class WaypointSequence():
         self.waypoints.insert(0, Waypoint(current_x, current_y))
         self.waypoints.insert(0, DepositWaypoint())
         self.waypoints.insert(0, DepositHelperWaypoint())
+    
+    def get_current_waypoint(self) -> Waypoint | None:
+        return self.waypoints[0] if len(self.waypoints) else None
+    
+    def move_to_next_waypoint(self) -> Waypoint | None:
+        if len(self.waypoints) == 0:
+            return None
+        self.waypoints.pop(0)
+        return self.get_current_waypoint()
 
 class SnakeWaypointSequence(WaypointSequence):
     '''
