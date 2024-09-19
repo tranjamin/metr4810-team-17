@@ -15,6 +15,7 @@
 #include "wifi.h"
 #include "rgb.h"
 #include "digitalio.h"
+#include "watchdog.h"
 #include "adc.h"
 
 void main() {
@@ -31,6 +32,7 @@ void main() {
     vWifiInit();
     vRGBInit();
     vDigitalIOInit();
+    vWatchdogInit();
     vADCInit();
 
     // store references to each task for diagnostics
@@ -46,21 +48,23 @@ void main() {
     TaskHandle_t xWifiHandle;
     TaskHandle_t xRGBHandle;
     TaskHandle_t xDigitalIOHandle;
+    TaskHandle_t xWatchdogHandle;
     TaskHandle_t xADCHandle;
 
     // create all tasks
-    xTaskCreate(vControllerTask, CONTROLLER_TASK_NAME, CONTROLLER_TASK_STACK_SIZE, NULL, CONTROLLER_TASK_PRIORITY, &xControllerHandle);
+    // xTaskCreate(vControllerTask, CONTROLLER_TASK_NAME, CONTROLLER_TASK_STACK_SIZE, NULL, CONTROLLER_TASK_PRIORITY, &xControllerHandle);
     xTaskCreate(vDeliveryTask, DELIVERY_TASK_NAME, DELIVERY_TASK_STACK_SIZE, NULL, DELIVERY_TASK_PRIORITY, &xDeliveryHandle);
-    xTaskCreate(vDetectionTask, DETECTION_TASK_NAME, DETECTION_TASK_STACK_SIZE, NULL, DETECTION_TASK_PRIORITY, &xDetectionHandle);
+    // xTaskCreate(vDetectionTask, DETECTION_TASK_NAME, DETECTION_TASK_STACK_SIZE, NULL, DETECTION_TASK_PRIORITY, &xDetectionHandle);
     xTaskCreate(vDiagnosticsTask, DIAGNOSTICS_TASK_NAME, DIAGNOSTICS_TASK_STACK_SIZE, NULL, DIAGNOSTICS_TASK_PRIORITY, &xDiagnosticsHandle);
     xTaskCreate(vExtractionTask, EXTRACTION_TASK_NAME, EXTRACTION_TASK_STACK_SIZE, NULL, EXTRACTION_TASK_PRIORITY, &xExtractionHandle);
     xTaskCreate(vBlinkTask, BLINK_TASK_NAME, BLINK_TASK_STACK_SIZE, NULL, BLINK_TASK_PRIORITY, &xBlinkHandle);
-    xTaskCreate(vLocalisationTask, LOCALISATION_TASK_NAME, LOCALISATION_TASK_STACK_SIZE, NULL, LOCALISATION_TASK_PRIORITY, &xLocalisationHandle);
+    // xTaskCreate(vLocalisationTask, LOCALISATION_TASK_NAME, LOCALISATION_TASK_STACK_SIZE, NULL, LOCALISATION_TASK_PRIORITY, &xLocalisationHandle);
     xTaskCreate(vMotorsTask, MOTORS_TASK_NAME, MOTORS_TASK_STACK_SIZE, NULL, MOTORS_TASK_PRIORITY, &xMotorsHandle);
-    xTaskCreate(vPathplanningTask, PATHPLANNING_TASK_NAME, PATHPLANNING_TASK_STACK_SIZE, NULL, PATHPLANNING_TASK_PRIORITY, &xPathplanningHandle);
+    // xTaskCreate(vPathplanningTask, PATHPLANNING_TASK_NAME, PATHPLANNING_TASK_STACK_SIZE, NULL, PATHPLANNING_TASK_PRIORITY, &xPathplanningHandle);
     xTaskCreate(vWifiTask, WIFI_TASK_NAME, WIFI_TASK_STACK_SIZE, NULL, WIFI_TASK_PRIORITY, &xWifiHandle);
     xTaskCreate(vRGBTask, RGB_TASK_NAME, RGB_TASK_STACK_SIZE, NULL, RGB_TASK_PRIORITY, &xRGBHandle);
     // xTaskCreate(vDigitalIOTask, DIGITALIO_TASK_NAME, DIGITALIO_TASK_STACK_SIZE, NULL, DIGITALIO_TASK_PRIORITY, &xDigitalIOHandle);
+    xTaskCreate(vWatchdogTask, WATCHDOG_TASK_NAME, WATCHDOG_TASK_STACK_SIZE, NULL, WATCHDOG_TASK_PRIORITY, &xWatchdogHandle);
     xTaskCreate(vADCInit, ADC_TASK_NAME, ADC_TASK_STACK_SIZE, NULL, ADC_TASK_PRIORITY, &xADCHandle);
 
     // set core affinities
@@ -76,6 +80,7 @@ void main() {
     vTaskCoreAffinitySet(xWifiHandle, (UBaseType_t) WIFI_TASK_COREMASK);
     vTaskCoreAffinitySet(xRGBHandle, (UBaseType_t) RGB_TASK_COREMASK);
     // vTaskCoreAffinitySet(xDigitalIOHandle, (UBaseType_t) DIGITALIO_TASK_COREMASK);
+    vTaskCoreAffinitySet(xWatchdogHandle, (UBaseType_t) WATCHDOG_TASK_COREMASK);
     vTaskCoreAffinitySet(xADCHandle, (UBaseType_t) ADC_TASK_COREMASK);
 
     // start the scheduling of tasks

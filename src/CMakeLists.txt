@@ -27,10 +27,10 @@ add_executable( main
     wifi.c
     rgb.c
     digitalio.c
+    watchdog.c
     adc.c
 
     dhcpserver/dhcpserver.c
-    dnsserver/dnsserver.c
     ../FreeRTOS-Kernel/portable/MemMang/heap_4.c
     )
 
@@ -39,7 +39,6 @@ target_include_directories(
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/..
     ${CMAKE_CURRENT_LIST_DIR}/dhcpserver
-    ${CMAKE_CURRENT_LIST_DIR}/dnsserver
 )
  
 #for Pico W
@@ -49,6 +48,7 @@ target_link_libraries(
     pico_stdlib
     pico_time
     hardware_pwm
+    hardware_watchdog
     hardware_adc
     FreeRTOS-Kernel 
     FreeRTOS-Kernel-Heap4
