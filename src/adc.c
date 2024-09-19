@@ -4,11 +4,13 @@
 
 #include "hardware/adc.h"
 
+#include "diagnostics.h"
+
 #define CSENSE_LHS 26
 #define CSENSE_RHS 27
 #define CSENSE_EXTRACTION 28
 
-#define VDELAY 10
+#define VDELAY 1000
 
 // function prototypes
 void vADCTask();
@@ -40,11 +42,13 @@ void vADCTask() {
         uint16_t analog_value = adc_read();
 
         switch(adc_get_selected_input()) {
-            case CSENSE_LHS:
+            case CSENSE_LHS - 26:
+                vDebugLog("Current Sense on LHS %d", analog_value);
+            case CSENSE_RHS - 26:
+                vDebugLog("Current Sense on RHS %d", analog_value);
                 break;
-            case CSENSE_RHS:
-                break;
-            case CSENSE_EXTRACTION:
+            case CSENSE_EXTRACTION - 26:
+                vDebugLog("Current Sense on EX %d", analog_value);
                 break;
         }
 

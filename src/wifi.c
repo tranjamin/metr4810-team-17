@@ -28,6 +28,7 @@
 #define LOG_PATH "/log"
 #define CONTROL_PATH "/control"
 #define LOCALISATION_PATH "/localisation"
+#define CSENSE_PATH "/csense"
 
 // params
 #define CONTROL_PARAM "command=%d"
@@ -426,6 +427,11 @@ int generate_response(const char *request, const char *params, char *result, siz
                 }
             }
         }
+    }
+
+    // CURRENT SENSE PAGE
+    else if (STR_MATCH(request, CSENSE_PATH)) {
+        
     }
 
     return len;
