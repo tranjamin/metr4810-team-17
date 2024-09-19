@@ -64,6 +64,9 @@
     #endif
 #endif
 
+
+#define STR_MATCH(str, CONST) (strncmp(str, CONST, sizeof(CONST) - 1) == 0)
+
 // Structure to represent the server
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
@@ -302,7 +305,7 @@ int generate_response(const char *request, const char *params, char *result, siz
     int len = 0; // size of the response
 
     // DIAGNOSTICS PAGE
-    if (strncmp(request, DIAGNOSTICS_PATH, sizeof(DIAGNOSTICS_PATH) - 1) == 0) {
+    if (STR_MATCH(request, DIAGNOSTICS_PATH)) {
         DiagnosticMessage msg;
         if (xGetDiagnosticMessage(&msg) == pdTRUE) {
 
@@ -313,7 +316,7 @@ int generate_response(const char *request, const char *params, char *result, siz
     } 
     
     // DEBUG LOG PAGE
-    else if (strncmp(request, LOG_PATH, sizeof(LOG_PATH) - 1) == 0) {
+    else if (STR_MATCH(request, LOG_PATH)) {
         char msg[LOG_MAX_LENGTH];
         if (xGetDebugLog(msg) == pdTRUE) {
 
@@ -324,74 +327,80 @@ int generate_response(const char *request, const char *params, char *result, siz
     }
 
     // CONTROL PAGE
-    else if (strncmp(request, CONTROL_PATH, sizeof(CONTROL_PATH) - 1) == 0) {
+    else if (STR_MATCH(request, CONTROL_PATH)) {
         int param;
         if (params) {
-            // int control_param = sscanf("command=0", CONTROL_PARAM, &param);
+            // get command number
             int control_param = atoi(params + 8);
-            if (true) {
-                switch (control_param) {
-                    case 0:
-                        vStartDelivery();
-                        setRGB_COLOUR_RED();
-                        break;
-                    case 1:
-                        SET_TRAVERSAL_LHS_FORWARD();
-                        setRGB_COLOUR_GREEN();
-                        break;
-                    case 2:
-                        SET_TRAVERSAL_LHS_STOPPED();
-                        setRGB_COLOUR_BLUE();
-                        break;
-                    case 3:
-                        SET_TRAVERSAL_LHS_BACKWARD();
-                        setRGB_COLOUR_PURPLE();
-                        break;
-                    case 4:
-                        SET_TRAVERSAL_RHS_FORWARD();
-                        setRGB_COLOUR_CYAN();
-                        break;
-                    case 5:
-                        SET_TRAVERSAL_RHS_STOPPED();
-                        setRGB_COLOUR_YELLOW();
-                        break;
-                    case 6:
-                        SET_TRAVERSAL_RHS_BACKWARD();
-                        setRGB_COLOUR_WHITE();
-                        break;
-                    case 7:
-                        SET_EXTRACTION_FORWARD();
-                        setRGB_COLOUR_DARK_RED();
-                        break;
-                    case 8:
-                        SET_EXTRACTION_STOPPED();
-                        setRGB_COLOUR_DARK_GREEN();
-                        break;
-                    case 9:
-                        SET_EXTRACTION_BACKWARD();
-                        setRGB_COLOUR_DARK_BLUE();
-                        break;
 
-                }   
-            }
+            // execute commands
+            switch (control_param) {
+                case 0:
+                    vStartDelivery();
+                    setRGB_COLOUR_RED();
+                    break;
+                case 1:
+                    SET_TRAVERSAL_LHS_FORWARD();
+                    setRGB_COLOUR_GREEN();
+                    break;
+                case 2:
+                    SET_TRAVERSAL_LHS_STOPPED();
+                    setRGB_COLOUR_BLUE();
+                    break;
+                case 3:
+                    SET_TRAVERSAL_LHS_BACKWARD();
+                    setRGB_COLOUR_PURPLE();
+                    break;
+                case 4:
+                    SET_TRAVERSAL_RHS_FORWARD();
+                    setRGB_COLOUR_CYAN();
+                    break;
+                case 5:
+                    SET_TRAVERSAL_RHS_STOPPED();
+                    setRGB_COLOUR_YELLOW();
+                    break;
+                case 6:
+                    SET_TRAVERSAL_RHS_BACKWARD();
+                    setRGB_COLOUR_WHITE();
+                    break;
+                case 7:
+                    SET_EXTRACTION_FORWARD();
+                    setRGB_COLOUR_DARK_RED();
+                    break;
+                case 8:
+                    SET_EXTRACTION_STOPPED();
+                    setRGB_COLOUR_DARK_GREEN();
+                    break;
+                case 9:
+                    SET_EXTRACTION_BACKWARD();
+                    setRGB_COLOUR_DARK_BLUE();
+                    break;
+
+            }   
         }
         len = snprintf(result, max_result_len, CONTROL_BODY);
     }
 
     // LOCALISATION PAGE
-    else if (strncmp(request, LOCALISATION_PATH, sizeof(LOCALISATION_PATH) - 1) == 0) {
-        float lhs_param = 50;
-        float rhs_param = 50;
+    else if (STR_MATCH(request, LOCALISATION_PATH)) {
+        float lhs_param, rhs_param = 101;
         if (params) {
-            // sscanf("lhs=000.000&rhs=000.000", LOCALISATION_PARAM, &lhs_param, &rhs_param);
+            // copy params from ROM
             char params_copy[23];
             strncpy(params_copy, params, 23);
+            
+            // split params and convert to floats
             params_copy[11] = '\0';
             lhs_param = strtof(params_copy + 4, NULL);
             rhs_param = strtof(params_copy + 16, NULL);
+
+            // format repsonse string
             len = snprintf(result, max_result_len, "Params 1: %.3f Params 2: %.3f", lhs_param, rhs_param);
+            
+            // suppress any response
             len = 0;
 
+            // send motor controls
             if (lhs_param != 101) {
                 if (lhs_param > 0) {
                     SET_TRAVERSAL_LHS_FORWARD();
@@ -418,7 +427,6 @@ int generate_response(const char *request, const char *params, char *result, siz
             }
         }
     }
-
 
     return len;
 }
