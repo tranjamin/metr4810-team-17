@@ -65,7 +65,7 @@ void main() {
     xTaskCreate(vRGBTask, RGB_TASK_NAME, RGB_TASK_STACK_SIZE, NULL, RGB_TASK_PRIORITY, &xRGBHandle);
     // xTaskCreate(vDigitalIOTask, DIGITALIO_TASK_NAME, DIGITALIO_TASK_STACK_SIZE, NULL, DIGITALIO_TASK_PRIORITY, &xDigitalIOHandle);
     xTaskCreate(vWatchdogTask, WATCHDOG_TASK_NAME, WATCHDOG_TASK_STACK_SIZE, NULL, WATCHDOG_TASK_PRIORITY, &xWatchdogHandle);
-    xTaskCreate(vADCInit, ADC_TASK_NAME, ADC_TASK_STACK_SIZE, NULL, ADC_TASK_PRIORITY, &xADCHandle);
+    xTaskCreate(vADCTask, ADC_TASK_NAME, ADC_TASK_STACK_SIZE, NULL, ADC_TASK_PRIORITY, &xADCHandle);
 
     // set core affinities
     vTaskCoreAffinitySet(xControllerHandle, (UBaseType_t) CONTROLLER_TASK_COREMASK);
