@@ -29,6 +29,7 @@ add_executable( main
     digitalio.c
     watchdog.c
 
+    wifi_helpers.c
     dhcpserver/dhcpserver.c
     ../FreeRTOS-Kernel/portable/MemMang/heap_4.c
     )
