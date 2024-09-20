@@ -16,9 +16,11 @@ class Robot:
         self.pwm_right = 0
 
     def send_control_action(self, v: float, omega: float):
-        mapping_matrix = np.matrix([1, 1], [-1, 1])
+        mapping_matrix = np.matrix([[1, 1], [-1, 1]])
         control_vector = np.linalg.inv(mapping_matrix) * np.array([[v],[omega]])
         ul, ur = np.ravel(control_vector).tolist()
+        ul *= 20
+        ur *= 20
         self.set_pwm(ul, ur)
         # ul, ur = 0, 0
         # if v > 0 and omega > 0:
@@ -36,11 +38,11 @@ class Robot:
 
     
     def set_pwm(self, left: int, right: int):
-        self.pwm_left = max(min(left, 100.0), -100.0)
-        self.pwm_right = max(min(right, 100.0), -100.0)
+        self.pwm_left = round(max(min(left, 100.0), -100.0), 3)
+        self.pwm_right = round(max(min(right, 100.0), -100.0), 3)
         # fill with zeros to match code on the pico
-        print(ROBOT_PWM_ADDRESS.format(str(left).zfill(7), str(right).zfill(7)))
-        self.send_command(ROBOT_PWM_ADDRESS.format(str(left).zfill(7), str(right).zfill(7)))
+        print(ROBOT_PWM_ADDRESS.format(str(self.pwm_left).zfill(7), str(self.pwm_right).zfill(7)))
+        self.send_command(ROBOT_PWM_ADDRESS.format(str(self.pwm_left).zfill(7), str(self.pwm_right).zfill(7)))
     
     def control_function(self, command):
         self.send_command(ROBOT_CONTROL_ADDRESS.format(command))
