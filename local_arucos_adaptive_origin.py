@@ -130,6 +130,12 @@ class MarkerCollection:
                                       dist_coeffs,
                                       False,
                                       cv.SOLVEPNP_SQPNP)
+        rvecs, tvecs = cv.solvePnPRefineLM(relevant_object_points,
+                                           relevant_corners,
+                                           camera_matrix,
+                                           dist_coeffs,
+                                           rvecs,
+                                           tvecs)
         return True, rvecs, tvecs
 
     def annotate(self, corners_list: np.ndarray, ids: np.ndarray,
