@@ -5,43 +5,69 @@ from typing import *
 from robot import Controller
 
 class Pathplanner():
+    '''
+    A class to hold the pathplanning algorithm. 
+    '''
     def __init__(self):
         self.waypoints: WaypointSequence
         self.controller: Controller
 
+        # desired signals derived from the controller
         self.desired_velocity: float = 0
         self.desired_angular: float = 0
 
+        # the current positions of the robot
         self.current_x: float = 0
         self.current_y: float = 0
         self.current_theta: float = 0
 
+        # the current waypoint we are tracking
         self.current_waypoint: Waypoint = None
 
     def set_waypoints(self, waypoints: WaypointSequence):
+        '''
+        Set the waypoint sequence the planner will be following
+        '''
         self.waypoints = waypoints
         self.current_waypoint = self.waypoints.get_current_waypoint()
     
     def set_controller(self, controller: Controller):
+        '''
+        Sets the controller used for the planning
+        '''
         self.controller = controller
     
     def update_robot_position(self, current_x, current_y, current_theta):
+        '''
+        Update the planner's knowledge of the robot. Moves to the next waypoint if necessary
+        '''
         self.current_x = current_x
         self.current_y = current_y
         self.current_theta = current_theta
 
+        # if we have reached the current waypoint, move to the next one
+        if self.current_waypoint is None:
+            return
         if self.current_waypoint.is_reached(self.current_x, self.current_y, self.current_theta):
             self.current_waypoint = self.waypoints.move_to_next_waypoint()
     
     def controller_step(self):
+        '''
+        Use the controller to calcualte the desired movements
+        '''
+        # stop the robot if there are no more waypoints
         if self.current_waypoint is None:
             self.desired_velocity = 0
             self.desired_angular = 0
+        # else, get the control actions
         else:
             self.controller.set_path((self.current_x, self.current_y), self.current_waypoint.coords, self.current_waypoint.heading)
             self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta)
 
 class RobotGeometry():
+    '''
+    A class to represent the physical bounds of the robot
+    '''
     WIDTH: float = 400
     LENGTH: float = 200
     RADIUS: float = math.sqrt(WIDTH**2 + LENGTH**2)/2
@@ -50,12 +76,14 @@ class RobotGeometry():
     DIGGER_RADIUS: float = math.sqrt(DIGGER_WIDTH**2 + LENGTH**2)/2
 
 class Waypoint():
-    LINEAR_EPS = 0.01
-    ANGULAR_EPS = 0.1
-
     '''
     A coordinate and heading which the robot will move through. Coordinates are measured through the geometric centre of the robot.
     '''
+
+    # tolerances for how close we need to get to the waypoints
+    LINEAR_EPS = 0.01 # units are in #TODO??
+    ANGULAR_EPS = 0.1 # units are in #TODO??
+
     def __init__(self, 
                  x: float, 
                  y: float, 
@@ -70,6 +98,8 @@ class Waypoint():
             y: the y-coordinate of the waypoint in millimetres
             heading: the angle the robot should reach the waypoint at, in degrees CW of positive y [-180 to 180] or None if the heading is unimportant
             vel: the target velocity the robot should reach the waypoint at, in metres per second, or None if unimportant
+            suspendExtraction: stops extraction when reaching this waypoint
+            resumeExtraction: starts extraction when reaching this waypoint
         """
         self.x = x
         self.y = y
@@ -79,11 +109,15 @@ class Waypoint():
         self.suspendFlag = suspendExtraction
         self.resumeFlag = resumeExtraction
 
+        # TODO: make sure the units line up
         assert self.x < 2000 and self.x > 0
         assert self.y < 2000 and self.y > 0
         assert self.heading is None or (self.heading > -180 and self.heading < 180)
     
     def is_reached(self, current_x: float, current_y: float, current_heading: float) -> bool:
+        '''
+        determines whether the waypoint has been reached wrt the current position
+        '''
         delta_x = abs(current_x - self.x)
         delta_y = abs(current_y - self.y)
 

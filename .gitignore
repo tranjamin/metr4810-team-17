@@ -1,5 +1,4 @@
 .venv
-*.npy
 images
 *calibration
 __pycache__

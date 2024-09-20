@@ -187,50 +187,9 @@ class Localisation():
         origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
         origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[0,0,0])
 
-        # CHANGE HERE FOR MEASURING BETWEEN TWO MARKERS
-        # origin.register_marker(4, 90.5, [0, 0, 0], R.identity())
-        # target.register_marker(5, 90.5, [0, 0, 0], R.identity())
-
-
-        # Data for page
-        # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-        # # demonstrate specifying second relative to first
-        # target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
-
-
-        # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-        # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-
-        # Below two for having in middle of page
-
-        # target.register_marker(4, 90.5, [0,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
-        # # demonstrate specifying second relative to first
-        # target.register_marker(5, 90.5, [-53.5, 132.5, 0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True)) #, reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
-
-        # Data for robot
-
-        # BACK SIDE MARKERS
-        # target.register_marker(6, 80, [-150/2, -76, 0], R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
-        # target.register_marker(7, 80, [-175-80, 80, 0], R.from_euler(EULER_ORDER, [-90, 0, 0], degrees=True),
-        #                        reference_tvec=[-150/2, -76, 0],
-        #                        reference_rotation=R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
-
-        # # FRONT SIDE MARKERS
-        # target.register_marker(8, 80, [150/2, -76-80, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)) # [150/2, -76 + 80, -8], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
-        # target.register_marker(9, 80, [175, 0 , 0], R.identity(), reference_tvec=[150/2, -76, -8], reference_rotation=R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
-
-        # Marker 9 relative to marker 8:
-        # t_8_9 = [347.4877680881446, 17.866119412373934, 21.19106322139052]
-        # r_8_9 = R.from_euler(EULER_ORDER, [1.9167375020493784, -0.2526571446309594, -0.08742266537942293])
-
-        # this method basically works, but probably better to just measure by hand rather than
-        # chain a bunch of uncertianties
-        t_4_5 = [-52.286, -132.22, -1.833]
-        r_4_5 = R.from_euler(EULER_ORDER, [0, 0, 0])
-        t_o_4 = [0,0,0]
-        r_o_4 = R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True)
-        t_o_4, r_o_4 = target.register_marker(4, 90.5, t_o_4, r_o_4)
-        t_o_9, r_o_9 = target.register_marker(5, 90.5, t_4_5, r_4_5, t_o_4, r_o_4)
+        target.register_marker(7, 80, [150/2, -174/2-8, 0], R.from_euler(EULER_ORDER, [-180, 90, 0], degrees=True))
+        target.register_marker(9, 80, [150/2, 174/2-8, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
+        target.register_marker(11, 80, [-150/2, 174/2+10, 0], R.from_euler(EULER_ORDER, [0, 90, 0], degrees=True))
 
         R_dist = 0.01
         Q_dist = np.array([[1, 0], [0, 1]])
@@ -352,7 +311,7 @@ class MockLocalisation(Localisation):
         return (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0)
 
 def main():
-    cap = cv.VideoCapture(0, cv.CAP_DSHOW) # set to 2 to select external webcam
+    cap = cv.VideoCapture(1, cv.CAP_DSHOW) # set to 2 to select external webcam
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
     cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280)) # seems locked to 720p
 
@@ -360,7 +319,7 @@ def main():
         print("Cannot open camera")
         exit()
 
-    localiser = MockLocalisation()
+    localiser = Localisation()
     localiser.setup()
 
     robot = Robot("192.168.4.1")
@@ -377,7 +336,7 @@ def main():
 
     plan = Pathplanner()
     plan.set_controller(controller)
-    plan.set_waypoints(MockLocalisationWaypointSequence())
+    plan.set_waypoints(SnakeWaypointSequence())
 
     # Main loop
     while True:
@@ -400,9 +359,9 @@ def main():
         omega = plan.desired_angular
 
         ### OUTPUT TO ROBOT
-        if time.time() - last_robot_communicate > robot_comm_dt:
-            robot.send_control_action(v, omega)
-            last_robot_communicate = time.time()
+        # if time.time() - last_robot_communicate > robot_comm_dt:
+        #     robot.send_control_action(v, omega)
+        #     last_robot_communicate = time.time()
 
         # draw control info on screen
         labels = ["v", "omega"]
