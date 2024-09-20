@@ -209,23 +209,28 @@ class LineFollowerController(Controller):
         self.spin_controller = spin_controller
         super().__init__()
         self.phase_2 = False
+        self.theta_agnostic = False
 
     def set_path(self, p0: tuple[float, float], p1: tuple[float, float], theta_target: float):
         self.forward_controller.set_path(p0, p1, theta_target)
         self.spin_controller.set_path(p0, p1, theta_target)
         self.phase_2 = False
+        self.theta_agnostic = theta_target is None
         super().set_path(p0, p1, theta_target)
 
     def get_control_action(self, x: float, y: float, theta: float):
         if not self.phase_2 and not self.forward_controller.has_reached_goal():
             # keep progressing along the foward path
             return self.forward_controller.get_control_action(x, y, theta)
-        if self.spin_controller.has_reached_goal():
+        if self.spin_controller.has_reached_goal() or (self.forward_controller.has_reached_goal() and self.theta_agnostic):
             self.reached_goal = True
-        if not self.phase_2:
+        if not self.phase_2 and not self.theta_agnostic:
             print("SWITCHING TO SPIN CONTROLLER")
             self.phase_2 = True
-        return self.spin_controller.get_control_action(x, y, theta)
+        if self.phase_2:
+            return self.spin_controller.get_control_action(x, y, theta)
+        else:
+            return 0, 0
 
 def wrapToPi(angle):
     return (angle + pi) % (2 * pi) - pi

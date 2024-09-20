@@ -324,35 +324,14 @@ def main():
     robot_comm_dt = 0
     command = True
 
-    path_segments = [
-        [(0.3, 0.3), (0.6, 0.3), -pi/2],
-        [(0.6, 0.3), (0.6, 0.6), pi],
-        [(0.6, 0.6), (0.3, 0.6), -pi/2],
-        [(0.3, 0.6), (0.3, 0.3), 0],
-        ]
-    
-    current_segment = 0
-
-    ### Set up controllers
-    forward_controller = FowardController(k_angle=5,
-                                       k_v=0.2,
-                                       w=0.5,
-                                       goal_tolerance=0.01,
-                                       reversing_allowed=True)
-
-    # warning when tuning
-    spin_controller = SpinController(k_angle=5,
-                                     k_v=0.2,
-                                     angle_tolerance=0.05
-                                     )
-    controller = LineFollowerController(forward_controller, spin_controller)
-    p0, p1, theta_target = path_segments[current_segment]
-    controller.set_path(p0, p1, theta_target)
-    print(f"Currently moving along segment {current_segment}\n From {p0} to {p1} \nFinal orientation desired: {theta_target}")
-
     stats = {"x": [], "y": [], "z": [], "yaw": [], "pitch": [], "roll": []}
 
     ### BEN ###
+
+    ### Set up controllers
+    forward_controller = FowardController(k_angle=5, k_v=0.2, w=0.5, goal_tolerance=0.01, reversing_allowed=True)
+    spin_controller = SpinController(k_angle=5, k_v=0.2, angle_tolerance=0.05) # warning when tuning
+    controller = LineFollowerController(forward_controller, spin_controller)
 
     plan = Pathplanner()
     plan.set_controller(controller)
@@ -388,8 +367,6 @@ def main():
         ### LOCALISATION FINISHED
 
         ### PATH PLANNING
-
-        # check if goal was reached
         if all([e is not None for e in positions]):
             x, _, y, _, _, _ = np.ravel(positions).tolist()
             theta, _, _, _, _, _ = np.ravel(angles).tolist()
