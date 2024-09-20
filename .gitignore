@@ -1,3 +1,5 @@
 .venv
 images
 *calibration
+__pycache__
+.vscode
