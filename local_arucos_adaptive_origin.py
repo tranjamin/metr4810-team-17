@@ -246,6 +246,100 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     #             logger[int(id[0])][i].append(position_delta_origin_frame[i][0])
     return True, rot_relative, tvec_relative
 
+class Localisation():
+    def __init__(self):
+        self.origin: MarkerCollection
+        self.target: MarkerCollection
+
+    def setup(self):
+        camera_matrix = np.load('camera_matrix.npy')
+        dist_coeffs = np.load('dist_coeffs.npy')
+
+        # define objects to be tracked
+        origin = MarkerCollection()
+        target = MarkerCollection()
+
+        # PAGE AS ORIGIN
+        origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+        origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[0,0,0])
+
+        # CHANGE HERE FOR MEASURING BETWEEN TWO MARKERS
+        # origin.register_marker(4, 90.5, [0, 0, 0], R.identity())
+        # target.register_marker(5, 90.5, [0, 0, 0], R.identity())
+
+
+        # Data for page
+        # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+        # # demonstrate specifying second relative to first
+        # target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
+
+
+        # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+        # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+
+        # Below two for having in middle of page
+
+        # target.register_marker(4, 90.5, [0,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
+        # # demonstrate specifying second relative to first
+        # target.register_marker(5, 90.5, [-53.5, 132.5, 0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True)) #, reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
+
+        # Data for robot
+
+        # BACK SIDE MARKERS
+        # target.register_marker(6, 80, [-150/2, -76, 0], R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
+        # target.register_marker(7, 80, [-175-80, 80, 0], R.from_euler(EULER_ORDER, [-90, 0, 0], degrees=True),
+        #                        reference_tvec=[-150/2, -76, 0],
+        #                        reference_rotation=R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
+
+        # # FRONT SIDE MARKERS
+        # target.register_marker(8, 80, [150/2, -76-80, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)) # [150/2, -76 + 80, -8], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
+        # target.register_marker(9, 80, [175, 0 , 0], R.identity(), reference_tvec=[150/2, -76, -8], reference_rotation=R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
+
+        # Marker 9 relative to marker 8:
+        # t_8_9 = [347.4877680881446, 17.866119412373934, 21.19106322139052]
+        # r_8_9 = R.from_euler(EULER_ORDER, [1.9167375020493784, -0.2526571446309594, -0.08742266537942293])
+
+        # this method basically works, but probably better to just measure by hand rather than
+        # chain a bunch of uncertianties
+        t_4_5 = [-52.286, -132.22, -1.833]
+        r_4_5 = R.from_euler(EULER_ORDER, [0, 0, 0])
+        t_o_4 = [0,0,0]
+        r_o_4 = R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True)
+        t_o_4, r_o_4 = target.register_marker(4, 90.5, t_o_4, r_o_4)
+        t_o_9, r_o_9 = target.register_marker(5, 90.5, t_4_5, r_4_5, t_o_4, r_o_4)
+
+        R_dist = 0.01
+        Q_dist = np.array([[1, 0], [0, 1]])
+        R_angle = 0.01
+        Q_angle = np.array([[1, 0], [0, 1]])
+
+        self.robot = RigidBodyTracker(Q_dist, R_dist, Q_angle, R_angle)
+
+        self.origin = origin
+        self.target = target
+        self.camera_matrix = camera_matrix
+        self.dist_coeffs = dist_coeffs
+        self.logger = {}
+        self.last_measurement_time = None
+        
+    def get_position(self, img):
+        ### UPDATE LOCALISATION
+        valid, rot_relative, tvec_relative = process_image(img, self.camera_matrix, self.dist_coeffs, self.origin, self.target, self.logger)
+        measurement_time = time.time()
+
+        dt = 0
+        if self.last_measurement_time:
+            dt = measurement_time - self.last_measurement_time
+            # print(dt)
+        # always run predict step
+        self.robot.predict_estimate(dt)
+        if valid:
+            self.robot.update_estimate(rot_relative, tvec_relative, EULER_ORDER)
+        
+        self.last_measurement_time = measurement_time
+
+        positions, angles = self.robot.predict_estimate(0)
+        return positions, angles
 
 def main():
     cap = cv.VideoCapture(2, cv.CAP_DSHOW) # set to 2 to select external webcam
@@ -256,71 +350,13 @@ def main():
         print("Cannot open camera")
         exit()
 
-    camera_matrix = np.load('camera_matrix.npy')
-    dist_coeffs = np.load('dist_coeffs.npy')
-    logger = {}
+    localiser = Localisation()
+    localiser.setup()
 
-    # define objects to be tracked
-    origin = MarkerCollection()
-    target = MarkerCollection()
-
-    # PAGE AS ORIGIN
-    origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-    origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[0,0,0])
-
-    # CHANGE HERE FOR MEASURING BETWEEN TWO MARKERS
-    # origin.register_marker(4, 90.5, [0, 0, 0], R.identity())
-    # target.register_marker(5, 90.5, [0, 0, 0], R.identity())
+    robot = Robot("192.168.4.1")
 
 
-    # Data for page
-    # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-    # # demonstrate specifying second relative to first
-    # target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
-
-
-    # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-    # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-
-    # Below two for having in middle of page
-
-    # target.register_marker(4, 90.5, [0,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
-    # # demonstrate specifying second relative to first
-    # target.register_marker(5, 90.5, [-53.5, 132.5, 0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True)) #, reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
-
-    # Data for robot
-
-    # BACK SIDE MARKERS
-    # target.register_marker(6, 80, [-150/2, -76, 0], R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
-    # target.register_marker(7, 80, [-175-80, 80, 0], R.from_euler(EULER_ORDER, [-90, 0, 0], degrees=True),
-    #                        reference_tvec=[-150/2, -76, 0],
-    #                        reference_rotation=R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
-
-    # # FRONT SIDE MARKERS
-    # target.register_marker(8, 80, [150/2, -76-80, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)) # [150/2, -76 + 80, -8], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
-    # target.register_marker(9, 80, [175, 0 , 0], R.identity(), reference_tvec=[150/2, -76, -8], reference_rotation=R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
-
-    # Marker 9 relative to marker 8:
-    # t_8_9 = [347.4877680881446, 17.866119412373934, 21.19106322139052]
-    # r_8_9 = R.from_euler(EULER_ORDER, [1.9167375020493784, -0.2526571446309594, -0.08742266537942293])
-
-    # this method basically works, but probably better to just measure by hand rather than
-    # chain a bunch of uncertianties
-    t_4_5 = [-52.286, -132.22, -1.833]
-    r_4_5 = R.from_euler(EULER_ORDER, [0, 0, 0])
-    t_o_4 = [0,0,0]
-    r_o_4 = R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True)
-    t_o_4, r_o_4 = target.register_marker(4, 90.5, t_o_4, r_o_4)
-    t_o_9, r_o_9 = target.register_marker(5, 90.5, t_4_5, r_4_5, t_o_4, r_o_4)
-
-    R_dist = 0.01
-    Q_dist = np.array([[1, 0], [0, 1]])
-    R_angle = 0.01
-    Q_angle = np.array([[1, 0], [0, 1]])
-
-    robot = RigidBodyTracker(Q_dist, R_dist, Q_angle, R_angle)
     last_robot_communicate = 0
-    last_measurement_time = None
     robot_comm_dt = 0
     command = True
 
@@ -337,34 +373,14 @@ def main():
     plan.set_controller(controller)
     plan.set_waypoints(SnakeWaypointSequence())
 
-    ### BEN ###
-
-
     # Main loop
     while True:
         ret, img = cap.read()
         if not ret:
             break
 
-        ### UPDATE LOCALISATION
-        valid, rot_relative, tvec_relative = process_image(img, camera_matrix, dist_coeffs, origin, target, logger)
-        measurement_time = time.time()
-
-        dt = 0
-        if last_measurement_time:
-            dt = measurement_time - last_measurement_time
-            # print(dt)
-        # always run predict step
-        robot.predict_estimate(dt)
-        if valid:
-            robot.update_estimate(rot_relative, tvec_relative, EULER_ORDER)
-        
-        last_measurement_time = measurement_time
-
-        positions, angles = robot.predict_estimate(0)
-        
-
-        ### LOCALISATION FINISHED
+        ### LOCALISATION
+        positions, angles = localiser.get_position(img)
 
         ### PATH PLANNING
         if all([e is not None for e in positions]):
@@ -377,6 +393,11 @@ def main():
         v = plan.desired_velocity
         omega = plan.desired_angular
 
+        ### OUTPUT TO ROBOT
+        if time.time() - last_robot_communicate > robot_comm_dt:
+            robot.send_control_action(v, omega)
+            last_robot_communicate = time.time()
+
         # draw control info on screen
         labels = ["v", "omega"]
         for index, val in enumerate([v, omega]):
@@ -386,14 +407,6 @@ def main():
                         2,
                         (0, 0, 255),
                         4)
-
-        # if time.time() - last_robot_communicate > robot_comm_dt:
-        #     if command:
-        #         robot_communicate(1)
-        #     else:
-        #         robot_communicate(2)
-        #     command = not command
-        #     last_robot_communicate = time.time()
 
         labels = ["x", "y", "z", "yaw", "pitch", "roll"]
         for index, item in enumerate(np.concatenate((positions, angles))):
