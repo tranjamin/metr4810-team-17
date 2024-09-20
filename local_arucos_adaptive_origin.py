@@ -170,82 +170,6 @@ class PIController:
         self.error_accumulated += error
         return control_output
 
-def get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame,
-                      rvec_camera_to_target, p_target_camera_frame) -> tuple[R, np.ndarray]:
-
-    position_delta_camera_frame = p_target_camera_frame - p_origin_camera_frame
-    rot_camera_to_origin = R.from_rotvec(rvec_camera_to_origin.ravel())
-    rot_camera_to_target = R.from_rotvec(rvec_camera_to_target.ravel())
-    rot_origin_to_target = rot_camera_to_origin.inv() * rot_camera_to_target
-    position_delta_origin_frame = rot_camera_to_origin.inv().apply(position_delta_camera_frame.ravel())
-    
-    return rot_origin_to_target, position_delta_origin_frame
-
-def get_frame_image_coords(camera_matrix: cv.typing.MatLike,
-                           dist_coeffs: cv.typing.MatLike,
-                           frame_rvec: cv.typing.MatLike,
-                           p_frame_camera_frame: cv.typing.MatLike) -> tuple[int, int]:
-    """Returns the x, y position in image coordinates of the origin of the
-    specified frame. Useful for drawing lines on images.
-
-    Args:
-        camera_matrix (cv.typing.MatLike): camera matrix from calibration
-        dist_coeffs (cv.typing.MatLike): distortion coeffs from calibration
-        frame_rvec (cv.typing.MatLike): rvec to frame (from pose estimation)
-        p_frame_camera_frame (cv.typing.MatLike): tvec to frame (from pose estimation)
-
-    Returns:
-        tuple[int, int]: x, y location in image (pixel coordinates) 
-    """
-    point, _ = cv.projectPoints(np.array([0, 0, 0], dtype=np.float32),
-                                frame_rvec, p_frame_camera_frame,
-                                camera_matrix, dist_coeffs)
-    x_origin, y_origin = np.round(point.ravel()).astype(int).tolist()
-    return x_origin, y_origin
-
-def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, target: MarkerCollection, logger):
-    dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_100)
-    detector = cv.aruco.ArucoDetector(dictionary)
-    corners_list, ids, _ = detector.detectMarkers(img)
-
-    # find origin
-    origin_found, rvec_camera_to_origin, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
-    if not origin_found:
-        return False, None, None
-    origin.annotate(corners_list, ids, img, (0, 255, 255), 10)
-    cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame, 50,4)
-
-    target_found, rvec_camera_to_target, p_target_camera_frame = target.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
-    if not target_found:
-        return False, None, None
-    target.annotate(corners_list, ids, img, (255, 255, 0), 10)
-    cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_target, p_target_camera_frame, 50,4)
-
-    rot_relative, tvec_relative = get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame, rvec_camera_to_target, p_target_camera_frame)
-
-    yaw, pitch, roll = rot_relative.as_euler(EULER_ORDER ,degrees=True)
-
-    dist = np.linalg.norm(tvec_relative)
-
-    # Draw data onto image
-    x_origin, y_origin = get_frame_image_coords(camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame)
-    x, y = get_frame_image_coords(camera_matrix, dist_coeffs, rvec_camera_to_target, p_target_camera_frame)
-    # x_mid, y_mid = ((x_origin*0 + x) // 2, (y_origin*0 + y) // 2)
-    x_mid, y_mid = (x, y)
-    # cv.line(img, (x_origin, y_origin), (x, y), (255, 0, 0), 2)
-    # cv.putText(img, 'x: {:.3f}'.format(tvec_relative[0]), (x_mid, y_mid), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-    # cv.putText(img, 'y: {:.3f}'.format(tvec_relative[1]), (x_mid, y_mid+50), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-    # cv.putText(img, 'yaw: {:.3f}'.format(yaw), (x_mid, y_mid+100), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-    # cv.putText(img, 'dist: {:.3f}'.format(dist), (x_mid, y_mid+150), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
-
-    # log the values for statistics
-
-    #         if int(id[0]) not in logger:
-    #             logger[int(id[0])] = [[],[],[]]
-    #         for i in [0, 1, 2]:
-    #             logger[int(id[0])][i].append(position_delta_origin_frame[i][0])
-    return True, rot_relative, tvec_relative
-
 class Localisation():
     def __init__(self):
         self.origin: MarkerCollection
@@ -321,10 +245,86 @@ class Localisation():
         self.dist_coeffs = dist_coeffs
         self.logger = {}
         self.last_measurement_time = None
+
+    def get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame,
+                      rvec_camera_to_target, p_target_camera_frame) -> tuple[R, np.ndarray]:
+
+        position_delta_camera_frame = p_target_camera_frame - p_origin_camera_frame
+        rot_camera_to_origin = R.from_rotvec(rvec_camera_to_origin.ravel())
+        rot_camera_to_target = R.from_rotvec(rvec_camera_to_target.ravel())
+        rot_origin_to_target = rot_camera_to_origin.inv() * rot_camera_to_target
+        position_delta_origin_frame = rot_camera_to_origin.inv().apply(position_delta_camera_frame.ravel())
         
+        return rot_origin_to_target, position_delta_origin_frame
+
+    def get_frame_image_coords(camera_matrix: cv.typing.MatLike,
+                            dist_coeffs: cv.typing.MatLike,
+                            frame_rvec: cv.typing.MatLike,
+                            p_frame_camera_frame: cv.typing.MatLike) -> tuple[int, int]:
+        """Returns the x, y position in image coordinates of the origin of the
+        specified frame. Useful for drawing lines on images.
+
+        Args:
+            camera_matrix (cv.typing.MatLike): camera matrix from calibration
+            dist_coeffs (cv.typing.MatLike): distortion coeffs from calibration
+            frame_rvec (cv.typing.MatLike): rvec to frame (from pose estimation)
+            p_frame_camera_frame (cv.typing.MatLike): tvec to frame (from pose estimation)
+
+        Returns:
+            tuple[int, int]: x, y location in image (pixel coordinates) 
+        """
+        point, _ = cv.projectPoints(np.array([0, 0, 0], dtype=np.float32),
+                                    frame_rvec, p_frame_camera_frame,
+                                    camera_matrix, dist_coeffs)
+        x_origin, y_origin = np.round(point.ravel()).astype(int).tolist()
+        return x_origin, y_origin
+
+    def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, target: MarkerCollection, logger):
+        dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_100)
+        detector = cv.aruco.ArucoDetector(dictionary)
+        corners_list, ids, _ = detector.detectMarkers(img)
+
+        # find origin
+        origin_found, rvec_camera_to_origin, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
+        if not origin_found:
+            return False, None, None
+        origin.annotate(corners_list, ids, img, (0, 255, 255), 10)
+        cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame, 50,4)
+
+        target_found, rvec_camera_to_target, p_target_camera_frame = target.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
+        if not target_found:
+            return False, None, None
+        target.annotate(corners_list, ids, img, (255, 255, 0), 10)
+        cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_target, p_target_camera_frame, 50,4)
+
+        rot_relative, tvec_relative = Localisation.get_relative_pose(rvec_camera_to_origin, p_origin_camera_frame, rvec_camera_to_target, p_target_camera_frame)
+
+        yaw, pitch, roll = rot_relative.as_euler(EULER_ORDER ,degrees=True)
+
+        dist = np.linalg.norm(tvec_relative)
+
+        # Draw data onto image
+        x_origin, y_origin = Localisation.get_frame_image_coords(camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame)
+        x, y = Localisation.get_frame_image_coords(camera_matrix, dist_coeffs, rvec_camera_to_target, p_target_camera_frame)
+        # x_mid, y_mid = ((x_origin*0 + x) // 2, (y_origin*0 + y) // 2)
+        x_mid, y_mid = (x, y)
+        # cv.line(img, (x_origin, y_origin), (x, y), (255, 0, 0), 2)
+        # cv.putText(img, 'x: {:.3f}'.format(tvec_relative[0]), (x_mid, y_mid), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+        # cv.putText(img, 'y: {:.3f}'.format(tvec_relative[1]), (x_mid, y_mid+50), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+        # cv.putText(img, 'yaw: {:.3f}'.format(yaw), (x_mid, y_mid+100), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+        # cv.putText(img, 'dist: {:.3f}'.format(dist), (x_mid, y_mid+150), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 4)
+
+        # log the values for statistics
+
+        #         if int(id[0]) not in logger:
+        #             logger[int(id[0])] = [[],[],[]]
+        #         for i in [0, 1, 2]:
+        #             logger[int(id[0])][i].append(position_delta_origin_frame[i][0])
+        return True, rot_relative, tvec_relative
+
     def get_position(self, img):
         ### UPDATE LOCALISATION
-        valid, rot_relative, tvec_relative = process_image(img, self.camera_matrix, self.dist_coeffs, self.origin, self.target, self.logger)
+        valid, rot_relative, tvec_relative = Localisation.process_image(img, self.camera_matrix, self.dist_coeffs, self.origin, self.target, self.logger)
         measurement_time = time.time()
 
         dt = 0
@@ -341,8 +341,18 @@ class Localisation():
         positions, angles = self.robot.predict_estimate(0)
         return positions, angles
 
+class MockLocalisation(Localisation):
+    def __init__(self):
+        pass
+
+    def setup(self):
+        return
+
+    def get_position(self, img):
+        return (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0)
+
 def main():
-    cap = cv.VideoCapture(2, cv.CAP_DSHOW) # set to 2 to select external webcam
+    cap = cv.VideoCapture(0, cv.CAP_DSHOW) # set to 2 to select external webcam
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
     cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280)) # seems locked to 720p
 
@@ -350,19 +360,15 @@ def main():
         print("Cannot open camera")
         exit()
 
-    localiser = Localisation()
+    localiser = MockLocalisation()
     localiser.setup()
 
     robot = Robot("192.168.4.1")
 
-
     last_robot_communicate = 0
     robot_comm_dt = 0
-    command = True
 
     stats = {"x": [], "y": [], "z": [], "yaw": [], "pitch": [], "roll": []}
-
-    ### BEN ###
 
     ### Set up controllers
     forward_controller = FowardController(k_angle=5, k_v=0.2, w=0.5, goal_tolerance=0.01, reversing_allowed=True)
@@ -371,7 +377,7 @@ def main():
 
     plan = Pathplanner()
     plan.set_controller(controller)
-    plan.set_waypoints(SnakeWaypointSequence())
+    plan.set_waypoints(MockLocalisationWaypointSequence())
 
     # Main loop
     while True:
@@ -408,19 +414,19 @@ def main():
                         (0, 0, 255),
                         4)
 
-        labels = ["x", "y", "z", "yaw", "pitch", "roll"]
-        for index, item in enumerate(np.concatenate((positions, angles))):
-            if item is None:
-                continue
-            x, _ = item.ravel().tolist()
-            stats[labels[index]].append(x)
+        # labels = ["x", "y", "z", "yaw", "pitch", "roll"]
+        # for index, item in enumerate(np.concatenate((positions, angles))):
+        #     if item is None:
+        #         continue
+        #     x, _ = item.ravel().tolist()
+        #     stats[labels[index]].append(x)
 
-            cv.putText(img, '{}: {:.3f}'.format(labels[index], x),
-                       (50, 50 + 50*index),
-                       cv.FONT_HERSHEY_PLAIN,
-                       2,
-                       (0, 255, 0),
-                       4)
+        #     cv.putText(img, '{}: {:.3f}'.format(labels[index], x),
+        #                (50, 50 + 50*index),
+        #                cv.FONT_HERSHEY_PLAIN,
+        #                2,
+        #                (0, 255, 0),
+        #                4)
 
         cv.imshow('frame', img)
         if cv.waitKey(1) == ord('q'):

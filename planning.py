@@ -38,7 +38,7 @@ class Pathplanner():
             self.desired_velocity = 0
             self.desired_angular = 0
         else:
-            self.controller.set_path(None, self.current_waypoint.coords, self.current_waypoint.heading)
+            self.controller.set_path((self.current_x, self.current_y), self.current_waypoint.coords, self.current_waypoint.heading)
             self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta)
 
 class RobotGeometry():
@@ -212,6 +212,15 @@ class RectangleWaypointSequence(WaypointSequence):
             self.waypoints.append(Waypoint(500, 500 + RectangleWaypointSequence.LENGTH, heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
             self.waypoints.append(Waypoint(500 + RectangleWaypointSequence.WIDTH, 500 + RectangleWaypointSequence.LENGTH, heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
             self.waypoints.append(Waypoint(500 + RectangleWaypointSequence.WIDTH, 500, heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
+
+class MockLocalisationWaypointSequence(WaypointSequence):
+    '''
+    A waypoint to force the robot into a circle if using mock localisation
+    '''
+    def __init__(self):
+        super().__init__()
+
+        self.waypoints.append(Waypoint(500, 500, heading=None))
 
 class WaypointFollower():
     def __init__(self):
