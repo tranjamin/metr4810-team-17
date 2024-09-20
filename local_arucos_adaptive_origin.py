@@ -204,7 +204,9 @@ def get_frame_image_coords(camera_matrix: cv.typing.MatLike,
 
 def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, target: MarkerCollection, logger):
     dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_100)
-    detector = cv.aruco.ArucoDetector(dictionary)
+    params = cv.aruco.DetectorParameters()
+    params.cornerRefinementMethod = cv.aruco.CORNER_REFINE_SUBPIX
+    detector = cv.aruco.ArucoDetector(dictionary, detectorParams=params)
     corners_list, ids, _ = detector.detectMarkers(img)
 
     # find origin
@@ -273,9 +275,9 @@ def main():
 
 
     # Data for page
-    # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+    target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
     # # demonstrate specifying second relative to first
-    # target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
+    target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
 
 
     # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
@@ -312,12 +314,12 @@ def main():
     # t_o_4, r_o_4 = target.register_marker(4, 90.5, t_o_4, r_o_4)
     # t_o_9, r_o_9 = target.register_marker(5, 90.5, t_4_5, r_4_5, t_o_4, r_o_4)
 
-    target.register_marker(7, 80, [-150/2 + 41, 174/2 + 100, 0], R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True))
-    target.register_marker(9, 80, [150/2, 174/2+8, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
+    # target.register_marker(7, 80, [-150/2 + 41, 174/2 + 100, 0], R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True))
+    # target.register_marker(9, 80, [150/2, 174/2+8, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
 
-    target.register_marker(11, 80, [-150/2, 174/2+10, 0], R.from_euler(EULER_ORDER, [0, 90, 0], degrees=True))
+    # target.register_marker(11, 80, [-150/2, 174/2+10, 0], R.from_euler(EULER_ORDER, [0, 90, 0], degrees=True))
 
-    R_dist = 0.01
+    R_dist = 0.05
     Q_dist = np.array([[1, 0], [0, 1]])
     R_angle = 0.01
     Q_angle = np.array([[1, 0], [0, 1]])
