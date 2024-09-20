@@ -305,12 +305,17 @@ def main():
 
     # this method basically works, but probably better to just measure by hand rather than
     # chain a bunch of uncertianties
-    t_4_5 = [-52.286, -132.22, -1.833]
-    r_4_5 = R.from_euler(EULER_ORDER, [0, 0, 0])
-    t_o_4 = [0,0,0]
-    r_o_4 = R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True)
-    t_o_4, r_o_4 = target.register_marker(4, 90.5, t_o_4, r_o_4)
-    t_o_9, r_o_9 = target.register_marker(5, 90.5, t_4_5, r_4_5, t_o_4, r_o_4)
+    # t_4_5 = [-52.286, -132.22, -1.833]
+    # r_4_5 = R.from_euler(EULER_ORDER, [0, 0, 0])
+    # t_o_4 = [0,0,0]
+    # r_o_4 = R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True)
+    # t_o_4, r_o_4 = target.register_marker(4, 90.5, t_o_4, r_o_4)
+    # t_o_9, r_o_9 = target.register_marker(5, 90.5, t_4_5, r_4_5, t_o_4, r_o_4)
+
+    target.register_marker(7, 80, [-150/2 + 41, 174/2 + 100, 0], R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True))
+    target.register_marker(9, 80, [150/2, 174/2+8, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
+
+    target.register_marker(11, 80, [-150/2, 174/2+10, 0], R.from_euler(EULER_ORDER, [0, 90, 0], degrees=True))
 
     R_dist = 0.01
     Q_dist = np.array([[1, 0], [0, 1]])
