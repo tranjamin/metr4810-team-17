@@ -30,6 +30,8 @@ class MarkerCollection:
     def __init__(self) -> None:
         # dictionary to contain mapping from Aruco id to object points
         self._points: dict[int, np.ndarray] = {}
+        self.last_tvecs = None
+        self.last_rvecs = None
 
     def register_marker(self, id: int, marker_size: float, tvec: np.ndarray,
                         rotation: R, reference_tvec: np.ndarray = None,
@@ -124,18 +126,25 @@ class MarkerCollection:
 
         relevant_object_points = np.concatenate(objpts_collection)
 
+        use_guess = False
+        if self.last_rvecs is not None and self.last_tvecs is not None:
+            use_guess = True
         _, rvecs, tvecs = cv.solvePnP(relevant_object_points,
                                       relevant_corners,
                                       camera_matrix,
                                       dist_coeffs,
-                                      False,
-                                      cv.SOLVEPNP_SQPNP)
-        rvecs, tvecs = cv.solvePnPRefineLM(relevant_object_points,
-                                           relevant_corners,
-                                           camera_matrix,
-                                           dist_coeffs,
-                                           rvecs,
-                                           tvecs)
+                                    #   rvec=self.last_rvecs,
+                                    #   tvec=self.last_tvecs,
+                                    #   useExtrinsicGuess=use_guess,
+                                      flags=cv.SOLVEPNP_ITERATIVE)
+        # rvecs, tvecs = cv.solvePnPRefineLM(relevant_object_points,
+        #                                    relevant_corners,
+        #                                    camera_matrix,
+        #                                    dist_coeffs,
+        #                                    rvecs,
+        #                                    tvecs)
+        self.last_rvecs = rvecs
+        self.last_tvecs = tvecs
         return True, rvecs, tvecs
 
     def annotate(self, corners_list: np.ndarray, ids: np.ndarray,
@@ -212,7 +221,9 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_100)
     params = cv.aruco.DetectorParameters()
     params.cornerRefinementMethod = cv.aruco.CORNER_REFINE_SUBPIX
-    params.maxErroneousBitsInBorderRate = 0.05
+    params.maxErroneousBitsInBorderRate = 0.05 # default is 0.35
+    params.cornerRefinementMinAccuracy = 0.001 # default is 0.1
+    params.cornerRefinementMaxIterations = 50
     detector = cv.aruco.ArucoDetector(dictionary, detectorParams=params)
     corners_list, ids, _ = detector.detectMarkers(img)
 
@@ -220,12 +231,14 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     origin_found, rvec_camera_to_origin, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
     if not origin_found:
         return False, None, None
+    print(f"Origin : {rvec_camera_to_origin}")
     origin.annotate(corners_list, ids, img, (0, 255, 255), 10)
     cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame, 50,4)
 
     target_found, rvec_camera_to_target, p_target_camera_frame = target.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
     if not target_found:
         return False, None, None
+    print(f"Target : {rvec_camera_to_target}")
     target.annotate(corners_list, ids, img, (255, 255, 0), 10)
     cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_target, p_target_camera_frame, 50,4)
 
