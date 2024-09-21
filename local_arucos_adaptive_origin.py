@@ -5,6 +5,7 @@ from estimators import RigidBodyTracker
 import time
 from math import pi
 from robot import Robot, LineFollowerController, FowardController, SpinController
+from robotpy_apriltag import AprilTagDetector
 
 MARKER_SIZE = 100 #97 # mm
 ORIGIN_X_DELTA = -59
@@ -110,7 +111,7 @@ class MarkerCollection:
         # Collection, and build the list of object points
 
         # find relevant corners
-        corner_collection = [corners[0]
+        corner_collection = [corners
                              for index, corners in enumerate(corners_list)
                              if int(ids[index][0]) in self._points.keys()]
         if not corner_collection:
@@ -133,9 +134,9 @@ class MarkerCollection:
                                       relevant_corners,
                                       camera_matrix,
                                       dist_coeffs,
-                                    #   rvec=self.last_rvecs,
-                                    #   tvec=self.last_tvecs,
-                                    #   useExtrinsicGuess=use_guess,
+                                      rvec=self.last_rvecs,
+                                      tvec=self.last_tvecs,
+                                      useExtrinsicGuess=use_guess,
                                       flags=cv.SOLVEPNP_ITERATIVE)
         # rvecs, tvecs = cv.solvePnPRefineLM(relevant_object_points,
         #                                    relevant_corners,
@@ -163,7 +164,7 @@ class MarkerCollection:
         """
         for index, corners in enumerate(corners_list):
             if int(ids[index][0]) in self._points.keys():
-                pts = np.array(corners[0], dtype=np.int32)
+                pts = np.array(corners, dtype=np.int32)
                 cv.polylines(img, [pts], True, color, thickness)
 
 class PIController:
@@ -217,15 +218,17 @@ def get_frame_image_coords(camera_matrix: cv.typing.MatLike,
     x_origin, y_origin = np.round(point.ravel()).astype(int).tolist()
     return x_origin, y_origin
 
-def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, target: MarkerCollection, logger):
-    dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_100)
-    params = cv.aruco.DetectorParameters()
-    params.cornerRefinementMethod = cv.aruco.CORNER_REFINE_SUBPIX
-    params.maxErroneousBitsInBorderRate = 0.05 # default is 0.35
-    params.cornerRefinementMinAccuracy = 0.001 # default is 0.1
-    params.cornerRefinementMaxIterations = 50
-    detector = cv.aruco.ArucoDetector(dictionary, detectorParams=params)
-    corners_list, ids, _ = detector.detectMarkers(img)
+def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, target: MarkerCollection, detector: AprilTagDetector, logger):
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    stuff = detector.detect(gray)
+    if not stuff:
+        return False, None, None
+    corners_list = []
+    ids = []
+    for detection in stuff:
+        corners_list.append([[detection.getCorner(i).x,detection.getCorner(i).y] for i in range(3,-1,-1)])
+        ids.append([detection.getId()])
+    # corners_list, ids, _ = stuff
 
     # find origin
     origin_found, rvec_camera_to_origin, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
@@ -285,64 +288,13 @@ def main():
     origin = MarkerCollection()
     target = MarkerCollection()
 
-    # PAGE AS ORIGIN
-    origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-    origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[0,0,0])
+    origin.register_marker(8, 47, [0,0,0], R.from_euler(EULER_ORDER, [90, 0, -180], degrees=True))
+    origin.register_marker(9, 47, [0,99,0], R.from_euler(EULER_ORDER, [90, 0, -180], degrees=True))
 
-    # CHANGE HERE FOR MEASURING BETWEEN TWO MARKERS
-    # origin.register_marker(4, 90.5, [0, 0, 0], R.identity())
-    # target.register_marker(5, 90.5, [0, 0, 0], R.identity())
-
-
-    # Data for page
-    # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-    # # # demonstrate specifying second relative to first
-    # target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
-
-
-    # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-    # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-
-    # Below two for having in middle of page
-
-    # target.register_marker(4, 90.5, [0,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
-    # # demonstrate specifying second relative to first
-    # target.register_marker(5, 90.5, [-53.5, 132.5, 0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True)) #, reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
-
-    # Data for robot
-
-    # BACK SIDE MARKERS
-    # target.register_marker(6, 80, [-150/2, -76, 0], R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
-    # target.register_marker(7, 80, [-175-80, 80, 0], R.from_euler(EULER_ORDER, [-90, 0, 0], degrees=True),
-    #                        reference_tvec=[-150/2, -76, 0],
-    #                        reference_rotation=R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
-
-    # # FRONT SIDE MARKERS
-    # target.register_marker(8, 80, [150/2, -76-80, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)) # [150/2, -76 + 80, -8], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
-    # target.register_marker(9, 80, [175, 0 , 0], R.identity(), reference_tvec=[150/2, -76, -8], reference_rotation=R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
-
-    # Marker 9 relative to marker 8:
-    # t_8_9 = [347.4877680881446, 17.866119412373934, 21.19106322139052]
-    # r_8_9 = R.from_euler(EULER_ORDER, [1.9167375020493784, -0.2526571446309594, -0.08742266537942293])
-
-    # this method basically works, but probably better to just measure by hand rather than
-    # chain a bunch of uncertianties
-    # t_4_5 = [-52.286, -132.22, -1.833]
-    # r_4_5 = R.from_euler(EULER_ORDER, [0, 0, 0])
-    # t_o_4 = [0,0,0]
-    # r_o_4 = R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True)
-    # t_o_4, r_o_4 = target.register_marker(4, 90.5, t_o_4, r_o_4)
-    # t_o_9, r_o_9 = target.register_marker(5, 90.5, t_4_5, r_4_5, t_o_4, r_o_4)
-
-    # target.register_marker(7, 80, [-150/2 + 41, 174/2 + 100, 0], R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True))
-    # target.register_marker(9, 80, [150/2, 174/2+8, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
-
-    # target.register_marker(11, 80, [-150/2, 174/2+10, 0], R.from_euler(EULER_ORDER, [0, 90, 0], degrees=True))
-
-    # DATA FOR CUBE
-    target.register_marker(10, 80, [8, 8, 0], R.identity())
-    target.register_marker(6, 80, [10, 0, 8], R.from_euler(EULER_ORDER, [-90, -90, 0], degrees=True))
-    target.register_marker(8, 80, [0, 7.5+80, 9+80], R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
+    target.register_marker(5, 47, [19,69,0], R.from_euler(EULER_ORDER, [-90, 0, 0], degrees=True))
+    target.register_marker(4, 47, [25,0,22.5], R.from_euler(EULER_ORDER, [-90, -90, 0], degrees=True))
+    target.register_marker(2, 47, [0,25,24], R.from_euler(EULER_ORDER, [90, 0, 90], degrees=True))
+    target.register_marker(3, 47, [94.5,24,24], R.from_euler(EULER_ORDER, [0,-90, 0], degrees=True))
 
     R_dist = 0.05
     Q_dist = np.array([[1, 0], [0, 1]])
@@ -382,6 +334,18 @@ def main():
     print(f"Currently moving along segment {current_segment}\n From {p0} to {p1} \nFinal orientation desired: {theta_target}")
 
     stats = {"x": [], "y": [], "z": [], "yaw": [], "pitch": [], "roll": []}
+
+    config = AprilTagDetector.Config()
+    config.debug = False
+    config.decodeSharpening = 0.25
+    config.numThreads = 4 # default 1
+    config.quadDecimate = 1.0
+    config.quadSigma = 0.0
+    config.refineEdges = True
+    detector = AprilTagDetector()
+    detector.setConfig(config)
+    detector.addFamily("tagStandard41h12", )
+
     # Main loop
     while True:
         ret, img = cap.read()
@@ -389,7 +353,8 @@ def main():
             break
 
         ### UPDATE LOCALISATION
-        valid, rot_relative, tvec_relative = process_image(img, camera_matrix, dist_coeffs, origin, target, logger)
+        # gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+        valid, rot_relative, tvec_relative = process_image(img, camera_matrix, dist_coeffs, origin, target, detector, logger)
         measurement_time = time.time()
 
         dt = 0
