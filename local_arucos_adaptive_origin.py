@@ -212,6 +212,7 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_100)
     params = cv.aruco.DetectorParameters()
     params.cornerRefinementMethod = cv.aruco.CORNER_REFINE_SUBPIX
+    params.maxErroneousBitsInBorderRate = 0.05
     detector = cv.aruco.ArucoDetector(dictionary, detectorParams=params)
     corners_list, ids, _ = detector.detectMarkers(img)
 
@@ -281,9 +282,9 @@ def main():
 
 
     # Data for page
-    target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
-    # # demonstrate specifying second relative to first
-    target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
+    # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+    # # # demonstrate specifying second relative to first
+    # target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
 
 
     # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
@@ -324,6 +325,11 @@ def main():
     # target.register_marker(9, 80, [150/2, 174/2+8, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
 
     # target.register_marker(11, 80, [-150/2, 174/2+10, 0], R.from_euler(EULER_ORDER, [0, 90, 0], degrees=True))
+
+    # DATA FOR CUBE
+    target.register_marker(10, 80, [8, 8, 0], R.identity())
+    target.register_marker(6, 80, [10, 0, 8], R.from_euler(EULER_ORDER, [-90, -90, 0], degrees=True))
+    target.register_marker(8, 80, [0, 7.5+80, 9+80], R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
 
     R_dist = 0.05
     Q_dist = np.array([[1, 0], [0, 1]])
@@ -427,19 +433,22 @@ def main():
         #     command = not command
         #     last_robot_communicate = time.time()
 
+        # log raw data (not from kalman filter)
         labels = ["x", "y", "z", "yaw", "pitch", "roll"]
-        for index, item in enumerate(np.concatenate((positions, angles))):
-            if item is None:
-                continue
-            x, _ = item.ravel().tolist()
-            stats[labels[index]].append(x)
+        if rot_relative and all(tvec_relative):
+            raw_rotations = rot_relative.as_euler(EULER_ORDER, degrees=True)
+            for index, item in enumerate(np.concatenate((tvec_relative, raw_rotations))):
+                if item is None:
+                    continue
+                x = item.ravel().tolist()[0]
+                stats[labels[index]].append(x)
 
-            cv.putText(img, '{}: {:.3f}'.format(labels[index], x),
-                       (50, 50 + 50*index),
-                       cv.FONT_HERSHEY_PLAIN,
-                       2,
-                       (0, 255, 0),
-                       4)
+                cv.putText(img, '{}: {:.3f}'.format(labels[index], x),
+                        (50, 50 + 50*index),
+                        cv.FONT_HERSHEY_PLAIN,
+                        2,
+                        (0, 255, 0),
+                        4)
 
         cv.imshow('frame', img)
         if cv.waitKey(1) == ord('q'):
