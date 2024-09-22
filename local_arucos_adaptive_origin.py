@@ -326,6 +326,7 @@ def main():
 
     last_robot_communicate = 0
     robot_comm_dt = 0
+    send_to_robot = False
 
     stats = {"x": [], "y": [], "z": [], "yaw": [], "pitch": [], "roll": []}
 
@@ -359,9 +360,9 @@ def main():
         omega = plan.desired_angular
 
         ### OUTPUT TO ROBOT
-        # if time.time() - last_robot_communicate > robot_comm_dt:
-        #     robot.send_control_action(v, omega)
-        #     last_robot_communicate = time.time()
+        if (time.time() - last_robot_communicate > robot_comm_dt) and send_to_robot:
+            robot.send_control_action(v, omega)
+            last_robot_communicate = time.time()
 
         # draw control info on screen
         labels = ["v", "omega"]
@@ -373,19 +374,19 @@ def main():
                         (0, 0, 255),
                         4)
 
-        # labels = ["x", "y", "z", "yaw", "pitch", "roll"]
-        # for index, item in enumerate(np.concatenate((positions, angles))):
-        #     if item is None:
-        #         continue
-        #     x, _ = item.ravel().tolist()
-        #     stats[labels[index]].append(x)
+        labels = ["x", "y", "z", "yaw", "pitch", "roll"]
+        for index, item in enumerate(np.concatenate((positions, angles))):
+            if item is None:
+                continue
+            x, _ = item.ravel().tolist()
+            stats[labels[index]].append(x)
 
-        #     cv.putText(img, '{}: {:.3f}'.format(labels[index], x),
-        #                (50, 50 + 50*index),
-        #                cv.FONT_HERSHEY_PLAIN,
-        #                2,
-        #                (0, 255, 0),
-        #                4)
+            cv.putText(img, '{}: {:.3f}'.format(labels[index], x),
+                       (50, 50 + 50*index),
+                       cv.FONT_HERSHEY_PLAIN,
+                       2,
+                       (0, 255, 0),
+                       4)
 
         cv.imshow('frame', img)
         if cv.waitKey(1) == ord('q'):
