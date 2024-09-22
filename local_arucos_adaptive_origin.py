@@ -31,6 +31,8 @@ class MarkerCollection:
     def __init__(self) -> None:
         # dictionary to contain mapping from Aruco id to object points
         self._points: dict[int, np.ndarray] = {}
+        self.last_tvecs = None
+        self.last_rvecs = None
 
     def register_marker(self, id: int, marker_size: float, tvec: np.ndarray,
                         rotation: R, reference_tvec: np.ndarray = None,
@@ -125,12 +127,25 @@ class MarkerCollection:
 
         relevant_object_points = np.concatenate(objpts_collection)
 
+        use_guess = False
+        if self.last_rvecs is not None and self.last_tvecs is not None:
+            use_guess = True
         _, rvecs, tvecs = cv.solvePnP(relevant_object_points,
                                       relevant_corners,
                                       camera_matrix,
                                       dist_coeffs,
-                                      False,
-                                      cv.SOLVEPNP_SQPNP)
+                                    #   rvec=self.last_rvecs,
+                                    #   tvec=self.last_tvecs,
+                                    #   useExtrinsicGuess=use_guess,
+                                      flags=cv.SOLVEPNP_ITERATIVE)
+        # rvecs, tvecs = cv.solvePnPRefineLM(relevant_object_points,
+        #                                    relevant_corners,
+        #                                    camera_matrix,
+        #                                    dist_coeffs,
+        #                                    rvecs,
+        #                                    tvecs)
+        self.last_rvecs = rvecs
+        self.last_tvecs = tvecs
         return True, rvecs, tvecs
 
     def annotate(self, corners_list: np.ndarray, ids: np.ndarray,
@@ -174,6 +189,7 @@ class Localisation():
     def __init__(self):
         self.origin: MarkerCollection
         self.target: MarkerCollection
+        self.stats = {"x": [], "y": [], "z": [], "yaw": [], "pitch": [], "roll": []}
 
     def setup(self):
         camera_matrix = np.load('camera_matrix.npy')
@@ -187,11 +203,62 @@ class Localisation():
         origin.register_marker(0, MARKER_SIZE, [0, 0, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
         origin.register_marker(3, MARKER_SIZE, [-59, -146, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[0,0,0])
 
-        target.register_marker(7, 80, [150/2, -174/2-8, 0], R.from_euler(EULER_ORDER, [-180, 90, 0], degrees=True))
-        target.register_marker(9, 80, [150/2, 174/2-8, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
-        target.register_marker(11, 80, [-150/2, 174/2+10, 0], R.from_euler(EULER_ORDER, [0, 90, 0], degrees=True))
+        # CHANGE HERE FOR MEASURING BETWEEN TWO MARKERS
+        # origin.register_marker(4, 90.5, [0, 0, 0], R.identity())
+        # target.register_marker(5, 90.5, [0, 0, 0], R.identity())
 
-        R_dist = 0.01
+
+        # Data for page
+        # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+        # # # demonstrate specifying second relative to first
+        # target.register_marker(5, 90.5, [-53.5, -132.5, 0], R.identity(), reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
+
+
+        # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+        # target.register_marker(4, 90.5, [-90.5, 53.5, 0], R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True))
+
+        # Below two for having in middle of page
+
+        # target.register_marker(4, 90.5, [0,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
+        # # demonstrate specifying second relative to first
+        # target.register_marker(5, 90.5, [-53.5, 132.5, 0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True)) #, reference_rotation=R.from_euler(EULER_ORDER, [90, 0, 180], degrees=True), reference_tvec=[-90.5, 53.5, 0])
+
+        # Data for robot
+
+        # BACK SIDE MARKERS
+        # target.register_marker(6, 80, [-150/2, -76, 0], R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
+        # target.register_marker(7, 80, [-175-80, 80, 0], R.from_euler(EULER_ORDER, [-90, 0, 0], degrees=True),
+        #                        reference_tvec=[-150/2, -76, 0],
+        #                        reference_rotation=R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
+
+        # # FRONT SIDE MARKERS
+        # target.register_marker(8, 80, [150/2, -76-80, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)) # [150/2, -76 + 80, -8], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
+        # target.register_marker(9, 80, [175, 0 , 0], R.identity(), reference_tvec=[150/2, -76, -8], reference_rotation=R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
+
+        # Marker 9 relative to marker 8:
+        # t_8_9 = [347.4877680881446, 17.866119412373934, 21.19106322139052]
+        # r_8_9 = R.from_euler(EULER_ORDER, [1.9167375020493784, -0.2526571446309594, -0.08742266537942293])
+
+        # this method basically works, but probably better to just measure by hand rather than
+        # chain a bunch of uncertianties
+        # t_4_5 = [-52.286, -132.22, -1.833]
+        # r_4_5 = R.from_euler(EULER_ORDER, [0, 0, 0])
+        # t_o_4 = [0,0,0]
+        # r_o_4 = R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True)
+        # t_o_4, r_o_4 = target.register_marker(4, 90.5, t_o_4, r_o_4)
+        # t_o_9, r_o_9 = target.register_marker(5, 90.5, t_4_5, r_4_5, t_o_4, r_o_4)
+
+        # target.register_marker(7, 80, [-150/2 + 41, 174/2 + 100, 0], R.from_euler(EULER_ORDER, [0, 0, 180], degrees=True))
+        # target.register_marker(9, 80, [150/2, 174/2+8, 0], R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True))
+
+        # target.register_marker(11, 80, [-150/2, 174/2+10, 0], R.from_euler(EULER_ORDER, [0, 90, 0], degrees=True))
+
+        # DATA FOR CUBE
+        target.register_marker(10, 80, [8, 8, 0], R.identity())
+        target.register_marker(6, 80, [10, 0, 8], R.from_euler(EULER_ORDER, [-90, -90, 0], degrees=True))
+        target.register_marker(8, 80, [0, 7.5+80, 9+80], R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True))
+
+        R_dist = 0.05
         Q_dist = np.array([[1, 0], [0, 1]])
         R_angle = 0.01
         Q_angle = np.array([[1, 0], [0, 1]])
@@ -240,19 +307,26 @@ class Localisation():
 
     def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, target: MarkerCollection, logger):
         dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_100)
-        detector = cv.aruco.ArucoDetector(dictionary)
+        params = cv.aruco.DetectorParameters()
+        params.cornerRefinementMethod = cv.aruco.CORNER_REFINE_SUBPIX
+        params.maxErroneousBitsInBorderRate = 0.05 # default is 0.35
+        params.cornerRefinementMinAccuracy = 0.001 # default is 0.1
+        params.cornerRefinementMaxIterations = 50
+        detector = cv.aruco.ArucoDetector(dictionary, detectorParams=params)
         corners_list, ids, _ = detector.detectMarkers(img)
 
         # find origin
         origin_found, rvec_camera_to_origin, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
         if not origin_found:
             return False, None, None
+        print(f"Origin : {rvec_camera_to_origin}")
         origin.annotate(corners_list, ids, img, (0, 255, 255), 10)
         cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame, 50,4)
 
         target_found, rvec_camera_to_target, p_target_camera_frame = target.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
         if not target_found:
             return False, None, None
+        print(f"Target : {rvec_camera_to_target}")
         target.annotate(corners_list, ids, img, (255, 255, 0), 10)
         cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_target, p_target_camera_frame, 50,4)
 
@@ -298,6 +372,24 @@ class Localisation():
         self.last_measurement_time = measurement_time
 
         positions, angles = self.robot.predict_estimate(0)
+
+        # log raw data (not from kalman filter)
+        labels = ["x", "y", "z", "yaw", "pitch", "roll"]
+        if rot_relative and all(tvec_relative):
+            raw_rotations = rot_relative.as_euler(EULER_ORDER, degrees=True)
+            for index, item in enumerate(np.concatenate((tvec_relative, raw_rotations))):
+                if item is None:
+                    continue
+                x = item.ravel().tolist()[0]
+                self.stats[labels[index]].append(x)
+
+                cv.putText(img, '{}: {:.3f}'.format(labels[index], x),
+                        (50, 50 + 50*index),
+                        cv.FONT_HERSHEY_PLAIN,
+                        2,
+                        (0, 255, 0),
+                        4)
+
         return positions, angles
 
 class MockLocalisation(Localisation):
@@ -311,7 +403,7 @@ class MockLocalisation(Localisation):
         return (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0)
 
 def main():
-    cap = cv.VideoCapture(1, cv.CAP_DSHOW) # set to 2 to select external webcam
+    cap = cv.VideoCapture(0, cv.CAP_DSHOW) # set to 2 to select external webcam
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
     cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280)) # seems locked to 720p
 
@@ -327,8 +419,6 @@ def main():
     last_robot_communicate = 0
     robot_comm_dt = 0
     send_to_robot = False
-
-    stats = {"x": [], "y": [], "z": [], "yaw": [], "pitch": [], "roll": []}
 
     ### Set up controllers
     forward_controller = FowardController(k_angle=5, k_v=0.2, w=0.5, goal_tolerance=0.01, reversing_allowed=True)
@@ -374,20 +464,6 @@ def main():
                         (0, 0, 255),
                         4)
 
-        labels = ["x", "y", "z", "yaw", "pitch", "roll"]
-        for index, item in enumerate(np.concatenate((positions, angles))):
-            if item is None:
-                continue
-            x, _ = item.ravel().tolist()
-            stats[labels[index]].append(x)
-
-            cv.putText(img, '{}: {:.3f}'.format(labels[index], x),
-                       (50, 50 + 50*index),
-                       cv.FONT_HERSHEY_PLAIN,
-                       2,
-                       (0, 255, 0),
-                       4)
-
         cv.imshow('frame', img)
         if cv.waitKey(1) == ord('q'):
             break
@@ -402,8 +478,8 @@ def main():
     #     print(f"Mean {np.mean(logger[id][i])}")
     #     print(f"Max {np.max(logger[id][i])}")
     #     print(f"Min {np.min(logger[id][i])}")
-    for name in stats.keys():
-        array = stats[name]
+    for name in localiser.stats.keys():
+        array = localiser.stats[name]
         print(f"{name}: {np.mean(array)} (std: {np.std(array)})")
     cap.release()
     cv.destroyAllWindows()
