@@ -3,6 +3,7 @@ import numpy as np
 import math
 from typing import *
 from robot import Controller
+from abc import ABC
 
 class Pathplanner():
     '''
@@ -129,7 +130,6 @@ class Waypoint():
             delta_theta = abs(current_heading - self.heading) # ??
             return delta_theta < Waypoint.ANGULAR_EPS
 
-
 class DepositWaypoint(Waypoint):
     '''
     The specific waypoint of being next to the deposit chamber.
@@ -165,6 +165,7 @@ class DepositHelperWaypoint(Waypoint):
             vel = None
         )
 
+@ABC
 class WaypointSequence():
     '''
     A sequence of waypoints
@@ -187,6 +188,9 @@ class WaypointSequence():
         self.waypoints.insert(0, Waypoint(current_x, current_y))
         self.waypoints.insert(0, DepositWaypoint())
         self.waypoints.insert(0, DepositHelperWaypoint())
+    
+    def plan_to_emergency(self, current_x: float, current_y: float):
+        pass
     
     def get_current_waypoint(self) -> Waypoint | None:
         return self.waypoints[0] if len(self.waypoints) else None
@@ -255,7 +259,3 @@ class MockLocalisationWaypointSequence(WaypointSequence):
         super().__init__()
 
         self.waypoints.append(Waypoint(500, 500, heading=None))
-
-class WaypointFollower():
-    def __init__(self):
-        pass
