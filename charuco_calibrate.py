@@ -5,8 +5,8 @@ import cv2, numpy as np, os, glob
 ARUCO_DICT = cv2.aruco.DICT_6X6_250
 SQUARES_VERTICALLY = 7
 SQUARES_HORIZONTALLY = 5
-SQUARE_LENGTH = 0.03
-MARKER_LENGTH = 0.015
+SQUARE_LENGTH = 0.0404 # how could I get this wrong?
+MARKER_LENGTH = 0.020
 # ...
 # PATH_TO_YOUR_IMAGES = 'c270_calibration_2/'
 # ------------------------------
@@ -21,6 +21,7 @@ def calibrate_and_save_parameters():
     # image_files = [os.path.join(PATH_TO_YOUR_IMAGES, f) for f in os.listdir(PATH_TO_YOUR_IMAGES) if f.endswith(".png")]
     # image_files.sort()  # Ensure files are in order
     image_files = glob.glob('c270_calibration_3/*.jpg')
+    image_files.sort()  # Ensure files are in order
 
     all_charuco_corners = []
     all_charuco_ids = []

@@ -288,13 +288,15 @@ def main():
     origin = MarkerCollection()
     target = MarkerCollection()
 
-    origin.register_marker(8, 47, [0,0,0], R.from_euler(EULER_ORDER, [90, 0, -180], degrees=True))
-    origin.register_marker(9, 47, [0,99,0], R.from_euler(EULER_ORDER, [90, 0, -180], degrees=True))
+    april_inner = 47 #85/9 * 5 # size of internal square
+    origin.register_marker(8, april_inner, [0,0,0], R.from_euler(EULER_ORDER, [90, 0, -180], degrees=True))
+    origin.register_marker(9, april_inner, [0,99,0], R.from_euler(EULER_ORDER, [90, 0, -180], degrees=True))
 
-    target.register_marker(5, 47, [19,69,0], R.from_euler(EULER_ORDER, [-90, 0, 0], degrees=True))
-    target.register_marker(4, 47, [25,0,22.5], R.from_euler(EULER_ORDER, [-90, -90, 0], degrees=True))
-    target.register_marker(2, 47, [0,25,24], R.from_euler(EULER_ORDER, [90, 0, 90], degrees=True))
-    target.register_marker(3, 47, [94.5,24,24], R.from_euler(EULER_ORDER, [0,-90, 0], degrees=True))
+    target.register_marker(5, april_inner, [19,69,0], R.from_euler(EULER_ORDER, [-90, 0, 0], degrees=True))
+    target.register_marker(4, april_inner, [25,0,22.5], R.from_euler(EULER_ORDER, [-90, -90, 0], degrees=True))
+    target.register_marker(2, april_inner, [0,25,24], R.from_euler(EULER_ORDER, [90, 0, 90], degrees=True))
+    target.register_marker(3, april_inner, [94.5,24,24], R.from_euler(EULER_ORDER, [0,-90, 0], degrees=True))
+    # target.register_marker(10, april_inner, [0,0,0], R.identity())
 
     R_dist = 0.05
     Q_dist = np.array([[1, 0], [0, 1]])
@@ -344,7 +346,7 @@ def main():
     config.refineEdges = True
     detector = AprilTagDetector()
     detector.setConfig(config)
-    detector.addFamily("tagStandard41h12", )
+    detector.addFamily("tagStandard41h12")
 
     # Main loop
     while True:
