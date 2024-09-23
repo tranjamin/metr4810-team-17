@@ -127,17 +127,29 @@ class MarkerCollection:
 
         relevant_object_points = np.concatenate(objpts_collection)
 
-        use_guess = False
-        if self.last_rvecs is not None and self.last_tvecs is not None:
-            use_guess = True
+        # have tvecs changed a ton since the last measurement?
+
         _, rvecs, tvecs = cv.solvePnP(relevant_object_points,
                                       relevant_corners,
                                       camera_matrix,
                                       dist_coeffs,
-                                      rvec=self.last_rvecs,
-                                      tvec=self.last_tvecs,
-                                      useExtrinsicGuess=use_guess,
-                                      flags=cv.SOLVEPNP_ITERATIVE)
+                                      flags=cv.SOLVEPNP_SQPNP)
+
+        MAX_TVEC_CHANGE = 100 # have somehow moved 10cm between measurements
+
+        use_guess = False
+        if self.last_rvecs is not None and self.last_tvecs is not None and \
+            MAX_TVEC_CHANGE > np.linalg.norm(tvecs - self.last_tvecs):
+            use_guess = True
+            _, rvecs, tvecs = cv.solvePnP(relevant_object_points,
+                                        relevant_corners,
+                                        camera_matrix,
+                                        dist_coeffs,
+                                        rvec=self.last_rvecs,
+                                        tvec=self.last_tvecs,
+                                        useExtrinsicGuess=use_guess,
+                                        flags=cv.SOLVEPNP_ITERATIVE)
+        
         # rvecs, tvecs = cv.solvePnPRefineLM(relevant_object_points,
         #                                    relevant_corners,
         #                                    camera_matrix,
@@ -234,14 +246,14 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     origin_found, rvec_camera_to_origin, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
     if not origin_found:
         return False, None, None
-    print(f"Origin : {rvec_camera_to_origin}")
+    print(f"Origin : {p_origin_camera_frame}")
     origin.annotate(corners_list, ids, img, (0, 255, 255), 10)
     cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame, 50,4)
 
     target_found, rvec_camera_to_target, p_target_camera_frame = target.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
     if not target_found:
         return False, None, None
-    print(f"Target : {rvec_camera_to_target}")
+    print(f"Target : {p_target_camera_frame}")
     target.annotate(corners_list, ids, img, (255, 255, 0), 10)
     cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_target, p_target_camera_frame, 50,4)
 
