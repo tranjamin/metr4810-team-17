@@ -237,6 +237,8 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
         return False, None, None
     corners_list = []
     ids = []
+    # dumb stuff to put data in similar (but not same) order as would normally
+    # be given by OpenCV aruco detector module
     for detection in stuff:
         corners_list.append([[detection.getCorner(i).x,detection.getCorner(i).y] for i in range(3,-1,-1)])
         ids.append([detection.getId()])
@@ -246,14 +248,14 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     origin_found, rvec_camera_to_origin, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
     if not origin_found:
         return False, None, None
-    print(f"Origin : {p_origin_camera_frame}")
+    # print(f"Origin : {p_origin_camera_frame}")
     origin.annotate(corners_list, ids, img, (0, 255, 255), 10)
     cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame, 50,4)
 
     target_found, rvec_camera_to_target, p_target_camera_frame = target.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
     if not target_found:
         return False, None, None
-    print(f"Target : {p_target_camera_frame}")
+    # print(f"Target : {p_target_camera_frame}")
     target.annotate(corners_list, ids, img, (255, 255, 0), 10)
     cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_target, p_target_camera_frame, 50,4)
 
@@ -301,13 +303,19 @@ def main():
     target = MarkerCollection()
 
     april_inner = 47 #85/9 * 5 # size of internal square
-    origin.register_marker(8, april_inner, [0,0,0], R.from_euler(EULER_ORDER, [90, 0, -180], degrees=True))
-    origin.register_marker(9, april_inner, [0,99,0], R.from_euler(EULER_ORDER, [90, 0, -180], degrees=True))
+    target.register_marker(8, april_inner, [-73,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
+    target.register_marker(9, april_inner, [25.5,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
 
-    target.register_marker(5, april_inner, [19,69,0], R.from_euler(EULER_ORDER, [-90, 0, 0], degrees=True))
-    target.register_marker(4, april_inner, [25,0,22.5], R.from_euler(EULER_ORDER, [-90, -90, 0], degrees=True))
-    target.register_marker(2, april_inner, [0,25,24], R.from_euler(EULER_ORDER, [90, 0, 90], degrees=True))
-    target.register_marker(3, april_inner, [94.5,24,24], R.from_euler(EULER_ORDER, [0,-90, 0], degrees=True))
+    origin.register_marker(5, april_inner, [-69,24,0], R.from_euler(EULER_ORDER, [0, 0, 0], degrees=True))
+    origin.register_marker(4, april_inner, [0,22.5,24], R.from_euler(EULER_ORDER, [0, -90, 0], degrees=True))
+    #                        reference_tvec=[0,0,0],
+    #                        reference_rotation=R.identity())
+    origin.register_marker(2, april_inner, [-25,0,24], R.from_euler(EULER_ORDER, [180, 0, 90], degrees=True))
+    #                        reference_tvec=[0,0,0],
+    #                        reference_rotation=R.identity())
+    # origin.register_marker(3, april_inner, [94.5,24,24], R.from_euler(EULER_ORDER, [0,-90, 0], degrees=True),
+    #                        reference_tvec=[0,0,0],
+    #                        reference_rotation=R.identity())
     # target.register_marker(10, april_inner, [0,0,0], R.identity())
 
     R_dist = 0.05
@@ -322,10 +330,10 @@ def main():
     command = True
 
     path_segments = [
-        [(0.3, 0.3), (0.6, 0.3), -pi/2],
-        [(0.6, 0.3), (0.6, 0.6), pi],
-        [(0.6, 0.6), (0.3, 0.6), -pi/2],
-        [(0.3, 0.6), (0.3, 0.3), 0],
+        [(0.3, 0.3), (0.8, 0.3), -pi/2],
+        [(0.8, 0.3), (0.8, 0.8), pi],
+        [(0.8, 0.8), (0.3, 0.8), -pi/2],
+        [(0.3, 0.8), (0.3, 0.3), 0],
         ]
     
     current_segment = 0
@@ -359,6 +367,8 @@ def main():
     detector = AprilTagDetector()
     detector.setConfig(config)
     detector.addFamily("tagStandard41h12")
+
+    robot_comms = Robot("192.168.4.1")
 
     # Main loop
     while True:
@@ -406,6 +416,7 @@ def main():
                 print(f"Currently moving along segment {current_segment}\n From {p0} to {p1} \nFinal orientation desired: {theta_target}")
             
             v, omega = controller.get_control_action(x, y, theta)
+            robot_comms.send_control_action(v, omega)
 
         # draw control info on screen
         labels = ["v", "omega"]
@@ -461,6 +472,9 @@ def main():
         print(f"{name}: {np.mean(array)} (std: {np.std(array)})")
     cap.release()
     cv.destroyAllWindows()
+
+    # stop the robot
+    robot_comms.send_control_action(0,0)
 
 
 if __name__ == "__main__":
