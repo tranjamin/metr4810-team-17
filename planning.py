@@ -165,8 +165,7 @@ class DepositHelperWaypoint(Waypoint):
             vel = None
         )
 
-@ABC
-class WaypointSequence():
+class WaypointSequence(ABC):
     '''
     A sequence of waypoints
     '''
