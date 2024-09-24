@@ -7,6 +7,7 @@
 #include "pico/stdlib.h"
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
+#include "lwip/udp.h"
 #include "dhcpserver.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -20,6 +21,7 @@
 #define VDELAY 100
 
 #define TCP_PORT 80 // the port to host the wifi on
+#define UDP_PORT 80
 #define POLL_TIME_S 0.1 // the polling time of the wifi server
 #define HTTP_GET "GET" // GET Request
 
@@ -28,6 +30,7 @@
 #define LOG_PATH "/log"
 #define CONTROL_PATH "/control"
 #define LOCALISATION_PATH "/localisation"
+#define UDP_PATH "/udp"
 
 // params
 #define CONTROL_PARAM "command=%d"
@@ -67,6 +70,8 @@
 
 #define STR_MATCH(str, CONST) (strncmp(str, CONST, sizeof(CONST) - 1) == 0)
 
+volatile int udp_count = 0;
+
 // Structure to represent the server
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
@@ -74,6 +79,14 @@ typedef struct TCP_SERVER_T_ {
     ip_addr_t gw;
     async_context_t *context;
 } TCP_SERVER_T;
+
+// Structure to represent the server
+typedef struct UDP_SERVER_T_ {
+    struct udp_pcb *server_pcb;
+    bool complete;
+    ip_addr_t gw;
+    async_context_t *context;
+} UDP_SERVER_T;
 
 // Structure to represent the connection packet
 typedef struct TCP_CONNECT_STATE_T_ {
@@ -95,6 +108,10 @@ bool tcp_server_open(void*, const char*);
 err_t tcp_close_client_connection(TCP_CONNECT_STATE_T*, struct tcp_pcb*, err_t);
 void tcp_server_close(TCP_SERVER_T*);
 err_t tcp_server_sent(void*, struct tcp_pcb*, u16_t);
+
+// Esoteric UDP handlers
+bool udp_server_open(void *arg, const char *ap_name);
+void udp_server_recv(void*, struct udp_pcb*, struct pbuf*, const ip_addr_t*, u16_t);
 
 // Handles response
 int generate_response(const char*, const char*, char*, size_t);
@@ -179,6 +196,54 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
     return ERR_OK;
 }
 
+// Handle request from client
+void udp_server_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t* addr, u16_t port) {
+    UDP_SERVER_T *state = (UDP_SERVER_T*) arg;
+    if (!p) {
+        return;
+    }
+    if (p->tot_len > 0) {
+        float lhs_param, rhs_param;
+        udp_count++;
+
+        // copy params from ROM
+        char params_copy[23];
+        strncpy(params_copy, p->payload, 23);
+        
+        // split params and convert to floats
+        params_copy[11] = '\0';
+        lhs_param = strtof(params_copy + 4, NULL);
+        rhs_param = strtof(params_copy + 16, NULL);
+
+        vDebugLog("Localisation params: %d, %d'\n", lhs_param, rhs_param);
+
+        // send motor controls
+        if (lhs_param > 0) {
+            SET_TRAVERSAL_LHS_FORWARD();
+            setTraversalDuty_LHS(lhs_param);
+        } else if (lhs_param < 0) {
+            SET_TRAVERSAL_LHS_BACKWARD();
+            setTraversalDuty_LHS(-lhs_param);
+        } else {
+            SET_TRAVERSAL_LHS_STOPPED();
+            setTraversalDuty_LHS(0);
+        }
+
+        if (rhs_param > 0) {
+            SET_TRAVERSAL_RHS_FORWARD();
+            setTraversalDuty_RHS(rhs_param);
+        } else if (rhs_param < 0) {
+            SET_TRAVERSAL_RHS_BACKWARD();
+            setTraversalDuty_RHS(-rhs_param);
+        } else {
+            SET_TRAVERSAL_RHS_STOPPED();
+            setTraversalDuty_RHS(0);
+        }
+    }
+    pbuf_free(p);
+    return;
+}
+
 // Poll server for client connections
 err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
@@ -257,6 +322,27 @@ bool tcp_server_open(void *arg, const char *ap_name) {
     return true;
 }
 
+// Open server
+bool udp_server_open(void *arg, const char *ap_name) {
+    UDP_SERVER_T* state = (UDP_SERVER_T*)arg;
+
+    struct udp_pcb* pcb = udp_new();
+    if (!pcb) {
+        vDebugLog("failed to create udp pcb\n");
+        return false;
+    }
+
+    err_t err = udp_bind(pcb, IP_ADDR_ANY, UDP_PORT);
+    if (err) {
+        vDebugLog("failed to bind to udp port %d\n", UDP_PORT);
+        return false;
+    }
+
+    udp_recv(pcb, udp_server_recv, state);
+    state->server_pcb = pcb;
+    vDebugLog("Opened UDP Server");
+}
+
 // Close a connection to client
 err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, struct tcp_pcb *client_pcb, err_t close_err) {
     if (client_pcb) {
@@ -313,6 +399,11 @@ int generate_response(const char *request, const char *params, char *result, siz
             snprintf(msg.message, DIAGNOSTICS_MAX_SIZE, "No Diagnostics Available\n");
         }
         len = snprintf(result, max_result_len, msg.message);
+    } 
+
+    // UDP PAGE
+    if (STR_MATCH(request, UDP_PATH)) {
+        len = snprintf(result, max_result_len, "UDP Message Count: %d", udp_count);
     } 
     
     // DEBUG LOG PAGE
@@ -439,6 +530,7 @@ void vWifiTask() {
     for (;;) {
         // Enable server
         TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
+        UDP_SERVER_T *udp_state = calloc(1, sizeof(UDP_SERVER_T));
         
         const char *ap_name = "METR4810 Team 17";
         const char *password = "password";
@@ -456,12 +548,14 @@ void vWifiTask() {
         // Open server
         if (!tcp_server_open(state, ap_name)) {
             // vDebugLog("failed to open server\n");
-            return;
+            continue;
+        }
+        if (!udp_server_open(udp_state, ap_name)) {
+            continue;
         }
         
         // Wait for completion (in background)
-        state->complete = false;
-        while(!state->complete) {
+        while(true) {
             // cyw43_arch_poll();
             vTaskDelay(VDELAY);
         }
