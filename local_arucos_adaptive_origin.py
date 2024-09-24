@@ -4,8 +4,9 @@ from scipy.spatial.transform import Rotation as R
 from estimators import RigidBodyTracker
 import time
 from math import pi
-from robot import Robot, LineFollowerController, FowardController, SpinController
+from robot import Robot, RobotUDP, LineFollowerController, FowardController, SpinController
 from robotpy_apriltag import AprilTagDetector
+from planning import *
 
 MARKER_SIZE = 100 #97 # mm
 ORIGIN_X_DELTA = -59
@@ -286,7 +287,7 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
 
 
 def main():
-    cap = cv.VideoCapture(1, cv.CAP_DSHOW) # set to 2 to select external webcam
+    cap = cv.VideoCapture(0, cv.CAP_DSHOW) # set to 2 to select external webcam
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
     cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280)) # seems locked to 720p
 
@@ -368,7 +369,7 @@ def main():
     detector.setConfig(config)
     detector.addFamily("tagStandard41h12")
 
-    robot_comms = Robot("192.168.4.1")
+    robot_comms = RobotUDP("192.168.4.1")
 
     # Main loop
     while True:
@@ -474,8 +475,7 @@ def main():
     cv.destroyAllWindows()
 
     # stop the robot
-    for i in range(100):
-        robot_comms.send_control_action(0,0)
+    robot_comms.send_control_action(0,0, True)
 
 
 if __name__ == "__main__":

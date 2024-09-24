@@ -1,6 +1,7 @@
 import requests
 import numpy as np
 from math import sin, cos, atan2, pi
+import socket
 
 
 ROBOT_PWM_ADDRESS = "localisation?lhs={}&rhs={}"
@@ -59,6 +60,14 @@ class Robot:
             pass
         except requests.exceptions.Timeout:
             pass
+
+class RobotUDP(Robot):
+    def __init__(self, ip: str):
+        super().__init__(ip)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def send_command(self, command: int):
+        self.sock.sendto(bytes(command, "utf-8"), (self.ip, 80))
 
 class Controller:
     def __init__(self):
