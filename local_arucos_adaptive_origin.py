@@ -286,7 +286,7 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
 
 
 def main():
-    cap = cv.VideoCapture(2, cv.CAP_DSHOW) # set to 2 to select external webcam
+    cap = cv.VideoCapture(1, cv.CAP_DSHOW) # set to 2 to select external webcam
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
     cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280)) # seems locked to 720p
 
@@ -330,10 +330,10 @@ def main():
     command = True
 
     path_segments = [
-        [(0.3, 0.3), (0.8, 0.3), -pi/2],
-        [(0.8, 0.3), (0.8, 0.8), pi],
-        [(0.8, 0.8), (0.3, 0.8), -pi/2],
-        [(0.3, 0.8), (0.3, 0.3), 0],
+        [(0.3, 0.3), (0.6, 0.3), pi/2],
+        [(0.6, 0.3), (0.6, 0.6), pi],
+        [(0.6, 0.6), (0.3, 0.6), -pi/2],
+        [(0.3, 0.6), (0.3, 0.3), 0],
         ]
     
     current_segment = 0
@@ -343,12 +343,12 @@ def main():
                                        k_v=0.2,
                                        w=0.5,
                                        goal_tolerance=0.01,
-                                       reversing_allowed=True)
+                                       reversing_allowed=False)
 
     # warning when tuning
-    spin_controller = SpinController(k_angle=5,
+    spin_controller = SpinController(k_angle=3,
                                      k_v=0.2,
-                                     angle_tolerance=0.05
+                                     angle_tolerance=0.2
                                      )
     controller = LineFollowerController(forward_controller, spin_controller)
     p0, p1, theta_target = path_segments[current_segment]
@@ -416,7 +416,7 @@ def main():
                 print(f"Currently moving along segment {current_segment}\n From {p0} to {p1} \nFinal orientation desired: {theta_target}")
             
             v, omega = controller.get_control_action(x, y, theta)
-            robot_comms.send_control_action(v, omega)
+            robot_comms.send_control_action(v, omega, do_print=True)
 
         # draw control info on screen
         labels = ["v", "omega"]
@@ -474,7 +474,8 @@ def main():
     cv.destroyAllWindows()
 
     # stop the robot
-    robot_comms.send_control_action(0,0)
+    for i in range(100):
+        robot_comms.send_control_action(0,0)
 
 
 if __name__ == "__main__":
