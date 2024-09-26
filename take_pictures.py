@@ -1,7 +1,7 @@
 import numpy as np
 import cv2 as cv
 
-IMAGE_FOLDER = "c270_calibration_3"
+IMAGE_FOLDER = "c270_calibration_4"
 
 image_counter = 0
 # Below code taken from Miguel's OpenCV UQ Mars talk in 2023

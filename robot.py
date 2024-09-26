@@ -1,9 +1,10 @@
 import requests
 import numpy as np
 from math import sin, cos, atan2, pi
+import socket
 
 
-ROBOT_PWM_ADDRESS = "localisation?lhs={}&rhs={}"
+ROBOT_PWM_ADDRESS = "lhs={}&rhs={}"
 ROBOT_LED_ADDRESS = "ledtest?led={}"
 ROBOT_CONTROL_ADDRESS = "control?command={}"
 
@@ -15,13 +16,13 @@ class Robot:
         self.pwm_left = 0
         self.pwm_right = 0
 
-    def send_control_action(self, v: float, omega: float):
-        mapping_matrix = np.matrix([[1, 1], [-1, 1]])
-        control_vector = np.linalg.inv(mapping_matrix) * np.array([[v],[omega]])
+    def send_control_action(self, v: float, omega: float, do_print=False):
+        mapping_matrix = np.matrix([[1, 1], [1, -1]])
+        control_vector = mapping_matrix * np.array([[v],[omega]])
+        if do_print:
+            print(f"v: {v}, omega: {omega}")
         ul, ur = np.ravel(control_vector).tolist()
-        ul *= 20
-        ur *= 20
-        self.set_pwm(ul, ur)
+        self.set_pwm(ul, ur, do_print=do_print)
         # ul, ur = 0, 0
         # if v > 0 and omega > 0:
         #     self.send_command(ROBOT_CONTROL_ADDRESS.format(4))
@@ -37,11 +38,12 @@ class Robot:
         #     self.send_command(ROBOT_CONTROL_ADDRESS.format(2))
 
     
-    def set_pwm(self, left: int, right: int):
+    def set_pwm(self, left: int, right: int, do_print=False):
         self.pwm_left = round(max(min(left, 100.0), -100.0), 3)
         self.pwm_right = round(max(min(right, 100.0), -100.0), 3)
         # fill with zeros to match code on the pico
-        print(ROBOT_PWM_ADDRESS.format(str(self.pwm_left).zfill(7), str(self.pwm_right).zfill(7)))
+        if do_print:
+            print(ROBOT_PWM_ADDRESS.format(str(self.pwm_left).zfill(7), str(self.pwm_right).zfill(7)))
         self.send_command(ROBOT_PWM_ADDRESS.format(str(self.pwm_left).zfill(7), str(self.pwm_right).zfill(7)))
     
     def control_function(self, command):
@@ -49,15 +51,23 @@ class Robot:
 
     def send_command(self, command: int):
         try:
-            print("sending robot command")
+            # print("sending robot command")
             url = f"http://{self.ip}/{command}"
-            requests.get(url, timeout=(0.5, 0.001))
+            requests.get(url, timeout=(0.005, 0.001))
             # Hack from: https://stackoverflow.com/questions/27021440/python-requests-dont-wait-for-request-to-finish
             # timeout means we ignore any response from the pico
         except requests.exceptions.ReadTimeout: 
             pass
         except requests.exceptions.Timeout:
             pass
+
+class RobotUDP(Robot):
+    def __init__(self, ip: str):
+        super().__init__(ip)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def send_command(self, command: int):
+        self.sock.sendto(bytes(command, "utf-8"), (self.ip, 80))
 
 class Controller:
     def __init__(self):
@@ -131,7 +141,7 @@ class FowardController(Controller):
         self.k_v = k_v
         self.w = w
         self.goal_tolerance = goal_tolerance
-        self.reversing_allowed = True
+        self.reversing_allowed = reversing_allowed
         super().__init__()
     
     def get_control_action(self, x: float, y: float, theta: float) -> tuple[float, float]:
