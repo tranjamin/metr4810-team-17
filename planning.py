@@ -236,19 +236,28 @@ class RectangleWaypointSequence(WaypointSequence):
     A sequence of waypoints which is just a rectangle
     '''
 
-    LENGTH = 1000
-    WIDTH = 1000
-    STOPPING = False
-    NUM_LOOPS = 5
+    STOPPING = True
 
-    def __init__(self):
+    def __init__(self, length_x, length_y, origin_x, origin_y, num_loops):
         super().__init__()
 
-        for i in range(RectangleWaypointSequence.NUM_LOOPS):
-            self.waypoints.append(Waypoint(500, 500, heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
-            self.waypoints.append(Waypoint(500, 500 + RectangleWaypointSequence.LENGTH, heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
-            self.waypoints.append(Waypoint(500 + RectangleWaypointSequence.WIDTH, 500 + RectangleWaypointSequence.LENGTH, heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
-            self.waypoints.append(Waypoint(500 + RectangleWaypointSequence.WIDTH, 500, heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
+        for i in range(num_loops):
+            self.waypoints.append(Waypoint(
+                origin_x, 
+                origin_y, 
+                heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
+            self.waypoints.append(Waypoint(
+                origin_x, 
+                origin_y + length_y, 
+                heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
+            self.waypoints.append(Waypoint(
+                origin_x + length_x, 
+                origin_y + length_y, 
+                heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
+            self.waypoints.append(Waypoint(
+                origin_x + length_x, 
+                origin_y, 
+                heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
 
 class MockLocalisationWaypointSequence(WaypointSequence):
     '''

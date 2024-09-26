@@ -8,6 +8,7 @@ from robot import Robot, RobotUDP, LineFollowerController, FowardController, Spi
 from planning import *
 from robotpy_apriltag import AprilTagDetector
 from planning import *
+import json
 
 MARKER_SIZE = 100 #97 # mm
 ORIGIN_X_DELTA = -59
@@ -24,6 +25,7 @@ EULER_ORDER = 'ZYX' # determines conversion from angles to rotations
 # 2. uses intrinsic rotations (subsequent rotations are done about the axes that
 #    have already been rotated)
 
+CONFIG_FILE = json.load(open("config.json"))
 
 class MarkerCollection:
     """
@@ -213,102 +215,61 @@ class Localisation():
         origin = MarkerCollection()
         target = MarkerCollection()
 
-        april_inner_bigger = 95 * 5 / 9
-        april_border = 95 * 2 / 9
+        apriltag_config = CONFIG_FILE["apriltags"]
 
+        apriltag_sizings = apriltag_config["sizing"]
 
-        mid_distance = 171.5
-        left_box_width = 130
-        left_box_depth = 170
+        april_inner_bigger = float(eval(str(apriltag_sizings["april_inner_bigger"])))
+        april_border = float(eval(str(apriltag_sizings["april_border"])))
+        april_inner = float(eval(str(apriltag_sizings["april_inner"])))
+
+        mid_distance = float(eval(str(apriltag_sizings["mid_distance"])))
+        left_box_width = float(eval(str(apriltag_sizings["left_box_width"])))
+        left_box_depth = float(eval(str(apriltag_sizings["left_box_depth"])))
 
         t_to_left = [left_box_depth / 2, -mid_distance/2 - left_box_width, 0] 
         r_to_left = R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)
         t_to_right = [-left_box_depth / 2, mid_distance/2 + left_box_width, 16] 
         r_to_right = R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True)
 
+        reference_tvec_mappings = {"LEFT": t_to_left, "RIGHT": t_to_right, "NONE": None}
+        reference_rvec_mappings = {"LEFT": r_to_left, "RIGHT": r_to_right, "NONE": None}
 
-        target.register_marker(18,
-                            april_inner_bigger,
-                            [15+april_border,0,32.5+april_border],
-                            R.from_euler(EULER_ORDER, [-90,-90,0], degrees=True),
-                            reference_tvec=t_to_left,
-                            reference_rotation=r_to_left
-                            )
-        
-        target.register_marker(16,
-                            april_inner_bigger,
-                            [0,4.5+april_border,33+april_border],
-                            R.from_euler(EULER_ORDER, [90,0,90], degrees=True),
-                            reference_tvec=t_to_left,
-                            reference_rotation=r_to_left
-                            )
+        for marker in apriltag_config["target-markers"]:
+            target.register_marker(
+                                marker["marker-id"],
+                                april_inner_bigger,
+                                [
+                                    float(eval(str(marker["tvec"]["X"]))),
+                                    float(eval(str(marker["tvec"]["Y"]))),
+                                    float(eval(str(marker["tvec"]["Z"])))
+                                    ],
+                                R.from_euler(EULER_ORDER, [
+                                    marker["rvec"]["Z"],
+                                    marker["rvec"]["Y"],
+                                    marker["rvec"]["X"]
+                                    ], degrees=True),
+                                reference_tvec=reference_tvec_mappings[marker["tvec"]["REF"]],
+                                reference_rotation=reference_rvec_mappings[marker["rvec"]["REF"]]
+                                )
 
-        target.register_marker(17,
-                            april_inner_bigger,
-                            [24+april_border,4+april_border,0],
-                            R.from_euler(EULER_ORDER, [0,0,0], degrees=True),
-                            reference_tvec=t_to_left,
-                            reference_rotation=r_to_left
-                            )
-
-        target.register_marker(15,
-                            april_inner_bigger,
-                            [24+april_border,4+april_border,169.5],
-                            R.from_euler(EULER_ORDER, [90,0,180], degrees=True),
-                            reference_tvec=t_to_left,
-                            reference_rotation=r_to_left
-                            )
-
-
-        target.register_marker(14,
-                            april_inner_bigger,
-                            [15+april_border,0,32.5+april_border],
-                            R.from_euler(EULER_ORDER, [-90,-90,0], degrees=True),
-                            reference_tvec=t_to_right,
-                            reference_rotation=r_to_right
-                            )
-        
-        target.register_marker(5,
-                            april_inner_bigger,
-                            [0,4.5+april_border + april_inner_bigger,left_box_depth - 33 - april_border],
-                            R.from_euler(EULER_ORDER, [-90,0,-90], degrees=True),
-                            reference_tvec=t_to_right,
-                            reference_rotation=r_to_right
-                            )
-
-        target.register_marker(13,
-                            april_inner_bigger,
-                            [24+april_border,4+april_border,0],
-                            R.from_euler(EULER_ORDER, [0,0,0], degrees=True),
-                            reference_tvec=t_to_right,
-                            reference_rotation=r_to_right
-                            )
-
-        target.register_marker(12,
-                            april_inner_bigger,
-                            [24+april_border,4+april_border,169.5],
-                            R.from_euler(EULER_ORDER, [90,0,180], degrees=True),
-                            reference_tvec=t_to_right,
-                            reference_rotation=r_to_right
-                            )
-        # Paper
-        # target.register_marker(8, april_inner_bigger, [-73,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
-        # target.register_marker(9, april_inner, [25.5,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
-
-
-        # Dog food box:
-        april_inner = 47 #85/9 * 5 # size of internal square
-        # origin.register_marker(5, april_inner, [-69,24,0], R.from_euler(EULER_ORDER, [0, 0, 0], degrees=True))
-        origin.register_marker(4, april_inner, [0,22.5,24], R.from_euler(EULER_ORDER, [0, -90, 0], degrees=True))
-        #                        reference_tvec=[0,0,0],
-        #                        reference_rotation=R.identity())
-        origin.register_marker(2, april_inner, [-25,0,24], R.from_euler(EULER_ORDER, [180, 0, 90], degrees=True))
-        #                        reference_tvec=[0,0,0],
-        #                        reference_rotation=R.identity())
-        # origin.register_marker(3, april_inner, [94.5,24,24], R.from_euler(EULER_ORDER, [0,-90, 0], degrees=True),
-        #                        reference_tvec=[0,0,0],
-        #                        reference_rotation=R.identity())
-        # target.register_marker(10, april_inner, [0,0,0], R.identity())
+        for marker in apriltag_config["origin-markers"]:
+            origin.register_marker(
+                                marker["marker-id"],
+                                april_inner,
+                                [
+                                    float(eval(str(marker["tvec"]["X"]))),
+                                    float(eval(str(marker["tvec"]["Y"]))),
+                                    float(eval(str(marker["tvec"]["Z"])))
+                                    ],
+                                R.from_euler(EULER_ORDER, [
+                                    marker["rvec"]["Z"],
+                                    marker["rvec"]["Y"],
+                                    marker["rvec"]["X"]
+                                    ], degrees=True),
+                                reference_tvec=reference_tvec_mappings[marker["tvec"]["REF"]],
+                                reference_rotation=reference_rvec_mappings[marker["rvec"]["REF"]]
+                                )
 
         config = AprilTagDetector.Config()
         config.debug = False
@@ -474,7 +435,7 @@ class MockLocalisation(Localisation):
         return (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0)
 
 def main():
-    cap = cv.VideoCapture(0, cv.CAP_DSHOW) # set to 2 to select external webcam
+    cap = cv.VideoCapture(CONFIG_FILE["input-output"]["camera"], cv.CAP_DSHOW) # set to 2 to select external webcam
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
     cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280)) # seems locked to 720p
 
@@ -485,29 +446,37 @@ def main():
     localiser = Localisation()
     localiser.setup()
 
-    robot = Robot("192.168.4.1")
+    robot = Robot(CONFIG_FILE["input-output"]["robot-ip"])
 
     last_robot_communicate = 0
     robot_comm_dt = 0
     send_to_robot = False
 
+    controller_config = CONFIG_FILE["controllers"]
+
     ### Set up controllers
-    forward_controller = FowardController(k_angle=100,
-                                       k_v=60,
-                                       w=0.5,
-                                       goal_tolerance=0.05,
-                                       reversing_allowed=True)
+    forward_controller = FowardController(
+        k_angle=controller_config["forward-controller"]["k_angle"],
+        k_v=controller_config["forward-controller"]["k_v"],
+        w=controller_config["forward-controller"]["w"],
+        goal_tolerance=controller_config["forward-controller"]["tol"],
+        reversing_allowed=controller_config["forward-controller"]["reversing"])
 
     # warning when tuning
-    spin_controller = SpinController(k_angle=8*20,
-                                     k_v=0,
-                                     angle_tolerance=0.2
-                                     )
+    spin_controller = SpinController(
+        k_angle=controller_config["spin-controller"]["k_angle"],
+        k_v=controller_config["spin-controller"]["k_v"],
+        angle_tolerance=controller_config["spin-controller"]["tol"])
+    
     controller = LineFollowerController(forward_controller, spin_controller)
 
     plan = Pathplanner()
     plan.set_controller(controller)
-    plan.set_waypoints(SnakeWaypointSequence())
+
+    pathplanner_class = eval(CONFIG_FILE["pathplan"]["reference-class"])
+    pathplanner_kwargs = CONFIG_FILE["pathplan"]["args"]
+
+    plan.set_waypoints(pathplanner_class(**pathplanner_kwargs))
 
     # Main loop
     while True:
