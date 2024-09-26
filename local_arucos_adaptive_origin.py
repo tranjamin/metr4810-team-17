@@ -139,8 +139,8 @@ class MarkerCollection:
         MAX_TVEC_CHANGE = 100 # have somehow moved 10cm between measurements
 
         use_guess = False
-        if self.last_rvecs is not None and self.last_tvecs is not None and \
-            MAX_TVEC_CHANGE > np.linalg.norm(tvecs - self.last_tvecs):
+        if self.last_rvecs is not None and self.last_tvecs is not None: # and \
+            # MAX_TVEC_CHANGE > np.linalg.norm(tvecs - self.last_tvecs):
             use_guess = True
             _, rvecs, tvecs = cv.solvePnP(relevant_object_points,
                                         relevant_corners,
@@ -311,9 +311,9 @@ def main():
     left_box_width = 130
     left_box_depth = 170
 
-    t_to_left = [left_box_width / 2, -mid_distance/2 - left_box_width, 0] 
+    t_to_left = [left_box_depth / 2, -mid_distance/2 - left_box_width, 0] 
     r_to_left = R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)
-    t_to_right = [-left_box_width / 2, mid_distance/2 + left_box_width, 16] 
+    t_to_right = [-left_box_depth / 2, mid_distance/2 + left_box_width, 16] 
     r_to_right = R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True)
 
 
@@ -405,31 +405,37 @@ def main():
     R_angle = 0.01
     Q_angle = np.array([[1, 0], [0, 1]])
 
-    robot = RigidBodyTracker(Q_dist, R_dist, Q_angle, R_angle)
+    robot_tracker = RigidBodyTracker(Q_dist, R_dist, Q_angle, R_angle)
     last_robot_communicate = 0
     last_measurement_time = None
     robot_comm_dt = 0
     command = True
 
-    path_segments = [
-        [(0.3, 0.3), (0.6, 0.3), pi/2],
-        [(0.6, 0.3), (0.6, 0.6), pi],
-        [(0.6, 0.6), (0.3, 0.6), -pi/2],
-        [(0.3, 0.6), (0.3, 0.3), 0],
-        ]
+    # path_segments = [
+    #     [(0.3, 0.5), (1.3, 0.5), pi/2],
+    #     [(1.3, 0.5), (1.3, 1.5), pi],
+    #     [(1.3, 1.5), (0.3, 1.5), -pi/2],
+    #     [(0.3, 1.5), (0.3, 0.5), 0],
+    #     ]
     
+    path_segments = [
+        [(0.073, 0.436), (1.553, 0.432), pi/2],
+        [(1.553, 0.432), (1.564, 1.997), pi],
+        [(1.564, 1.997), (0.093, 1.930), -pi/2],
+        [(0.093, 1.930), (0.073, 0.436), 0],
+        ]
     current_segment = 0
 
     ### Set up controllers
-    forward_controller = FowardController(k_angle=5*20,
-                                       k_v=0.2*100,
+    forward_controller = FowardController(k_angle=100,
+                                       k_v=60,
                                        w=0.5,
-                                       goal_tolerance=0.01,
-                                       reversing_allowed=False)
+                                       goal_tolerance=0.05,
+                                       reversing_allowed=True)
 
     # warning when tuning
-    spin_controller = SpinController(k_angle=3*20,
-                                     k_v=0.2*100,
+    spin_controller = SpinController(k_angle=8*20,
+                                     k_v=0,
                                      angle_tolerance=0.2
                                      )
     controller = LineFollowerController(forward_controller, spin_controller)
@@ -468,13 +474,13 @@ def main():
             dt = measurement_time - last_measurement_time
             # print(dt)
         # always run predict step
-        robot.predict_estimate(dt)
+        robot_tracker.predict_estimate(dt)
         if valid:
-            robot.update_estimate(rot_relative, tvec_relative, EULER_ORDER)
+            robot_tracker.update_estimate(rot_relative, tvec_relative, EULER_ORDER)
         
         last_measurement_time = measurement_time
 
-        positions, angles = robot.predict_estimate(0)
+        positions, angles = robot_tracker.predict_estimate(0)
         
 
         ### LOCALISATION FINISHED

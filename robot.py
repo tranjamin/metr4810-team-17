@@ -4,7 +4,7 @@ from math import sin, cos, atan2, pi
 import socket
 
 
-ROBOT_PWM_ADDRESS = "localisation?lhs={}&rhs={}"
+ROBOT_PWM_ADDRESS = "lhs={}&rhs={}"
 ROBOT_LED_ADDRESS = "ledtest?led={}"
 ROBOT_CONTROL_ADDRESS = "control?command={}"
 
@@ -39,8 +39,8 @@ class Robot:
 
     
     def set_pwm(self, left: int, right: int, do_print=False):
-        self.pwm_left = round(max(min(left, 80.0), -80.0), 3)
-        self.pwm_right = round(max(min(right, 80.0), -80.0), 3)
+        self.pwm_left = round(max(min(left, 100.0), -100.0), 3)
+        self.pwm_right = round(max(min(right, 100.0), -100.0), 3)
         # fill with zeros to match code on the pico
         if do_print:
             print(ROBOT_PWM_ADDRESS.format(str(self.pwm_left).zfill(7), str(self.pwm_right).zfill(7)))
@@ -141,7 +141,7 @@ class FowardController(Controller):
         self.k_v = k_v
         self.w = w
         self.goal_tolerance = goal_tolerance
-        self.reversing_allowed = True
+        self.reversing_allowed = reversing_allowed
         super().__init__()
     
     def get_control_action(self, x: float, y: float, theta: float) -> tuple[float, float]:
