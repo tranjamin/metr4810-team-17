@@ -20,7 +20,6 @@
 #define VDELAY 100
 
 // function prototypes
-void vRGBTask();
 void vRGBInit();
 void setRGB_RED(float);
 void setRGB_GREEN(float);
@@ -129,19 +128,4 @@ void vRGBInit() {
     setRGB_RED(0.0);
     setRGB_GREEN(0.0);
     setRGB_BLUE(0.0);
-}
-
-void vRGBTask() {
-    float i = 0;
-    for (;;) {
-        // do stuff
-        // taskENTER_CRITICAL();
-        // setRGB_COLOUR_WHITE();
-        // taskEXIT_CRITICAL();
-        i++;
-        if (i >= 100) i = 0;
-
-        // block for some time
-        vTaskDelay(VDELAY);
-    }
 }

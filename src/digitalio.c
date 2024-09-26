@@ -17,7 +17,6 @@
 #define MANUAL_EXTRACTION_SPEED 50
 
 void vDigitalIOInit();
-void vDigitalIOTask();
 
 void gpioCallback();
 
@@ -133,8 +132,4 @@ void gpioCallback(uint gpio_number, uint32_t events) {
                 }
             }
     }
-}
-
-void vDigitalIOTask() {
-
 }

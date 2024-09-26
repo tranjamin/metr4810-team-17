@@ -15,15 +15,11 @@ pico_sdk_init()
 
 add_executable( main 
     main.c
-    controller.c
     delivery.c
-    detection.c
     diagnostics.c
     extraction.c
     blink.c
-    localisation.c
     motors.c
-    pathplanning.c
     wifi.c
     rgb.c
     digitalio.c

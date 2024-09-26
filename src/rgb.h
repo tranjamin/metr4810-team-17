@@ -29,7 +29,6 @@ void setRGB_COLOUR_WHITE();
 void setRGB_COLOUR_GRAY();
 void setRGB_COLOUR_BLACK();
 
-void vRGBTask();
 void vRGBInit();
 
 #endif

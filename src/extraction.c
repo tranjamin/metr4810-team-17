@@ -10,12 +10,9 @@
 #define EXTRACTION_PWM_SLICE pwm_gpio_to_slice_num(EXTRACTION_PWM)
 
 #define VDELAY 3
-#define SEMPH_TICKS 10
 
 #define CLK_DIVIDER 128
 #define PWM_TOP 8192
-
-SemaphoreHandle_t extractionSemaphore;
 
 // function prototypes
 void vExtractionTask();
@@ -41,30 +38,8 @@ void vExtractionInit() {
 
     // enable pwm
     pwm_set_enabled(EXTRACTION_PWM_SLICE, true);
-
-    extractionSemaphore = xSemaphoreCreateBinary();
 }
 
 void setExtractionPWM(float percent) {
     pwm_set_chan_level(EXTRACTION_PWM_SLICE, EXTRACTION_PWM_CHAN, (uint16_t) PWM_TOP * percent / 100);
-}
-
-void vEnableExtraction() {
-    xSemaphoreGiveFromISR(extractionSemaphore, NULL);
-}
-
-void vDisableExtraction() {
-    xSemaphoreTakeFromISR(extractionSemaphore, NULL);
-}
-
-void vExtractionTask() {
-    for (;;) {
-        // wait to take semaphore
-        if (xSemaphoreTake(extractionSemaphore, SEMPH_TICKS) == pdTRUE) {
-
-
-        }
-        // block for some time
-        vTaskDelay(VDELAY);
-    }
 }

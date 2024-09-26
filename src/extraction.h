@@ -17,7 +17,6 @@
 #define SET_EXTRACTION_BACKWARD() (gpio_put(EXTRACTION_INA, 0), gpio_put(EXTRACTION_INB, 1))
 #define SET_EXTRACTION_BRAKED() (gpio_put(EXTRACTION_INA, 1), gpio_put(EXTRACTION_INB, 1))
 
-void vExtractionTask();
 void vExtractionInit();
 void setExtractionPWM(float);
 
