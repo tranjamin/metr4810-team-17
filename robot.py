@@ -17,7 +17,7 @@ class Robot:
         self.pwm_right = 0
 
     def send_control_action(self, v: float, omega: float, do_print=False):
-        mapping_matrix = np.matrix([[100, 20], [100, -20]])
+        mapping_matrix = np.matrix([[1, 1], [1, -1]])
         control_vector = mapping_matrix * np.array([[v],[omega]])
         if do_print:
             print(f"v: {v}, omega: {omega}")

@@ -287,7 +287,7 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
 
 
 def main():
-    cap = cv.VideoCapture(0, cv.CAP_DSHOW) # set to 2 to select external webcam
+    cap = cv.VideoCapture(2, cv.CAP_DSHOW) # set to 2 to select external webcam
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
     cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280)) # seems locked to 720p
 
@@ -303,11 +303,92 @@ def main():
     origin = MarkerCollection()
     target = MarkerCollection()
 
-    april_inner = 47 #85/9 * 5 # size of internal square
-    target.register_marker(8, april_inner, [-73,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
-    target.register_marker(9, april_inner, [25.5,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
+    april_inner_bigger = 95 * 5 / 9
+    april_border = 95 * 2 / 9
 
-    origin.register_marker(5, april_inner, [-69,24,0], R.from_euler(EULER_ORDER, [0, 0, 0], degrees=True))
+
+    mid_distance = 171.5
+    left_box_width = 130
+    left_box_depth = 170
+
+    t_to_left = [left_box_width / 2, -mid_distance/2 - left_box_width, 0] 
+    r_to_left = R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)
+    t_to_right = [-left_box_width / 2, mid_distance/2 + left_box_width, 16] 
+    r_to_right = R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True)
+
+
+    target.register_marker(18,
+                           april_inner_bigger,
+                           [15+april_border,0,32.5+april_border],
+                           R.from_euler(EULER_ORDER, [-90,-90,0], degrees=True),
+                           reference_tvec=t_to_left,
+                           reference_rotation=r_to_left
+                           )
+    
+    target.register_marker(16,
+                           april_inner_bigger,
+                           [0,4.5+april_border,33+april_border],
+                           R.from_euler(EULER_ORDER, [90,0,90], degrees=True),
+                           reference_tvec=t_to_left,
+                           reference_rotation=r_to_left
+                           )
+
+    target.register_marker(17,
+                           april_inner_bigger,
+                           [24+april_border,4+april_border,0],
+                           R.from_euler(EULER_ORDER, [0,0,0], degrees=True),
+                           reference_tvec=t_to_left,
+                           reference_rotation=r_to_left
+                           )
+
+    target.register_marker(15,
+                           april_inner_bigger,
+                           [24+april_border,4+april_border,169.5],
+                           R.from_euler(EULER_ORDER, [90,0,180], degrees=True),
+                           reference_tvec=t_to_left,
+                           reference_rotation=r_to_left
+                           )
+
+
+    target.register_marker(14,
+                           april_inner_bigger,
+                           [15+april_border,0,32.5+april_border],
+                           R.from_euler(EULER_ORDER, [-90,-90,0], degrees=True),
+                           reference_tvec=t_to_right,
+                           reference_rotation=r_to_right
+                           )
+    
+    target.register_marker(5,
+                           april_inner_bigger,
+                           [0,4.5+april_border + april_inner_bigger,left_box_depth - 33 - april_border],
+                           R.from_euler(EULER_ORDER, [-90,0,-90], degrees=True),
+                           reference_tvec=t_to_right,
+                           reference_rotation=r_to_right
+                           )
+
+    target.register_marker(13,
+                           april_inner_bigger,
+                           [24+april_border,4+april_border,0],
+                           R.from_euler(EULER_ORDER, [0,0,0], degrees=True),
+                           reference_tvec=t_to_right,
+                           reference_rotation=r_to_right
+                           )
+
+    target.register_marker(12,
+                           april_inner_bigger,
+                           [24+april_border,4+april_border,169.5],
+                           R.from_euler(EULER_ORDER, [90,0,180], degrees=True),
+                           reference_tvec=t_to_right,
+                           reference_rotation=r_to_right
+                           )
+    # Paper
+    # target.register_marker(8, april_inner_bigger, [-73,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
+    # target.register_marker(9, april_inner, [25.5,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
+
+
+    # Dog food box:
+    april_inner = 47 #85/9 * 5 # size of internal square
+    # origin.register_marker(5, april_inner, [-69,24,0], R.from_euler(EULER_ORDER, [0, 0, 0], degrees=True))
     origin.register_marker(4, april_inner, [0,22.5,24], R.from_euler(EULER_ORDER, [0, -90, 0], degrees=True))
     #                        reference_tvec=[0,0,0],
     #                        reference_rotation=R.identity())
@@ -340,15 +421,15 @@ def main():
     current_segment = 0
 
     ### Set up controllers
-    forward_controller = FowardController(k_angle=5,
-                                       k_v=0.2,
+    forward_controller = FowardController(k_angle=5*20,
+                                       k_v=0.2*100,
                                        w=0.5,
                                        goal_tolerance=0.01,
                                        reversing_allowed=False)
 
     # warning when tuning
-    spin_controller = SpinController(k_angle=3,
-                                     k_v=0.2,
+    spin_controller = SpinController(k_angle=3*20,
+                                     k_v=0.2*100,
                                      angle_tolerance=0.2
                                      )
     controller = LineFollowerController(forward_controller, spin_controller)
