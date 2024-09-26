@@ -71,10 +71,12 @@ void vDeliveryInit() {
 
     // enable pwm
     pwm_set_enabled(DELIVERY_PWM_SLICE, true);
+    setDeliveryPWM(30);
 
     // set up semaphore
     deliverySemaphore = xSemaphoreCreateBinary();
     delivery_state = IDLE;
+    
 
     // set up alarm
     alarm_pool_init_default();
