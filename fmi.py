@@ -3,8 +3,9 @@ import fmpy.fmi2
 import time
 
 from robot import Robot
+from localisation import Localisation
 
-class RobotSim(Robot):
+class RobotSim(Robot, Localisation):
     def __new__(cls):
         if not hasattr(cls, 'instance'):
             cls.instance = super(RobotSim, cls).__new__(cls)
