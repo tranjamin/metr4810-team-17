@@ -51,6 +51,9 @@ class Pathplanner():
             return
         if self.current_waypoint.is_reached(self.current_x, self.current_y, self.current_theta):
             self.current_waypoint = self.waypoints.move_to_next_waypoint()
+            if self.current_waypoint is None:
+                print("---- FINISHED PATH ----")
+                return
             print("---- MOVE TO NEXT WAYPOINT ----")
             print(f"(Next waypoint is at: {self.current_waypoint.coords})")
     
