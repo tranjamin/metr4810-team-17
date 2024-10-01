@@ -4,6 +4,7 @@ import math
 from typing import *
 from robot import Controller
 from abc import ABC
+from math import pi
 
 class Pathplanner():
     '''
@@ -88,7 +89,7 @@ class Waypoint():
 
     # tolerances for how close we need to get to the waypoints
     LINEAR_EPS = 50 # units are in mm
-    ANGULAR_EPS = 10 # units are in deg
+    ANGULAR_EPS = 0.2 # units are in rad
 
     def __init__(self, 
                  x: float, 
@@ -243,26 +244,30 @@ class RectangleWaypointSequence(WaypointSequence):
 
     STOPPING = True
 
-    def __init__(self, length_x, length_y, origin_x, origin_y, num_loops):
+    def __init__(self, length_x, length_y, origin_x, origin_y, num_loops, angle_agnostic=False):
         super().__init__()
 
         for i in range(num_loops):
             self.waypoints.append(Waypoint(
                 origin_x, 
+                origin_y + length_y, 
+                heading=None if angle_agnostic else -pi/2, 
+                vel=0 if RectangleWaypointSequence.STOPPING else None))
+            self.waypoints.append(Waypoint(
+                origin_x + length_x, 
+                origin_y + length_y, 
+                heading=None if angle_agnostic else pi,
+                vel=0 if RectangleWaypointSequence.STOPPING else None))
+            self.waypoints.append(Waypoint(
+                origin_x + length_x, 
                 origin_y, 
-                heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
+                heading=None if angle_agnostic else pi/2, 
+                vel=0 if RectangleWaypointSequence.STOPPING else None))
             self.waypoints.append(Waypoint(
                 origin_x, 
-                origin_y + length_y, 
-                heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
-            self.waypoints.append(Waypoint(
-                origin_x + length_x, 
-                origin_y + length_y, 
-                heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
-            self.waypoints.append(Waypoint(
-                origin_x + length_x, 
                 origin_y, 
-                heading=None, vel=0 if RectangleWaypointSequence.STOPPING else None))
+                heading=None if angle_agnostic else 0, 
+                vel=0 if RectangleWaypointSequence.STOPPING else None))
 
 class MockLocalisationWaypointSequence(WaypointSequence):
     '''

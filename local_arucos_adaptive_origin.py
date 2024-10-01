@@ -21,21 +21,6 @@ def main():
     localiser.init("tank_sim.fmu")
     localiser.setup()
 
-    # path_segments = [
-    #     [(0.3, 0.5), (1.3, 0.5), pi/2],
-    #     [(1.3, 0.5), (1.3, 1.5), pi],
-    #     [(1.3, 1.5), (0.3, 1.5), -pi/2],
-    #     [(0.3, 1.5), (0.3, 0.5), 0],
-    #     ]
-    
-    # path_segments = [
-    #     [(0.073, 0.436), (1.553, 0.432), pi/2],
-    #     [(1.553, 0.432), (1.564, 1.997), pi],
-    #     [(1.564, 1.997), (0.093, 1.930), -pi/2],
-    #     [(0.093, 1.930), (0.073, 0.436), 0],
-    #     ]
-    # current_segment = 0
-
     ### Set up controllers
     forward_controller = FowardController(k_angle=50,
                                        k_v=60*20,
@@ -52,7 +37,7 @@ def main():
 
     plan = Pathplanner()
     plan.set_controller(controller)
-    # waypoints = RectangleWaypointSequence(1000, 1000, 0, 0, 10)
+    # waypoints = RectangleWaypointSequence(1000, 1000, 500, 500, 10, angle_agnostic=True)
     waypoints = SnakeWaypointSequence()
     plan.set_waypoints(waypoints)
 
@@ -109,16 +94,6 @@ def main():
         if cv.waitKey(1) == ord('q'):
             break
 
-    localiser.plot_results()
-    data = np.array(localiser.results)
-    plt.plot(data[:, 1], data[:, 2])
-    plt.xlim((0, 2000))
-    plt.ylim((0, 2000))
-    plt.show()
-
-    # for name in localiser.stats.keys():
-    #     array = localiser.stats[name]
-    #     print(f"{name}: {np.mean(array)} (std: {np.std(array)})")
     cap.release()
     cv.destroyAllWindows()
 

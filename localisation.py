@@ -15,7 +15,14 @@ LAST_ROBOT_COMMUNICATE = 0
 EULER_ORDER = 'ZYX' # determines conversion from angles to rotations
 
 class Localisation():
-    pass
+    def deinit(self):
+        pass
+
+    def setup(self):
+        pass
+
+    def get_position(self):
+        pass
 
 
 class MarkerCollection:
