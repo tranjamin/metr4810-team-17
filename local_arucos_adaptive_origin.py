@@ -303,84 +303,170 @@ def main():
     origin = MarkerCollection()
     target = MarkerCollection()
 
-    april_inner_bigger = 95 * 5 / 9
-    april_border = 95 * 2 / 9
+    # april_inner_bigger = 95 * 5 / 9
+    # april_border = 95 * 2 / 9
+    SIZE_1 = 107
+    SIZE_2 = 100
+    SIZE_3 = 90
 
-
+    inner_size_factor = 5/9
+    border_factor = 2/9
     mid_distance = 171.5
-    left_box_width = 130
-    left_box_depth = 170
+    left_box_width = 129.5 # mm, in the y direction
+    right_box_width = 109.5 # mm, in the y direction
+    mid_distance = 173.0375 # mm, between each acrylic plate
+    left_box_depth = 169.5
+    right_box_depth = 159
+    right_box_lower = 5 # mm lower than horizontal plane of left box
 
-    t_to_left = [left_box_depth / 2, -mid_distance/2 - left_box_width, 0] 
-    r_to_left = R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)
-    t_to_right = [-left_box_depth / 2, mid_distance/2 + left_box_width, 16] 
-    r_to_right = R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True)
+    left_box_height = 109 # mm in z direction
+    right_box_height = left_box_height
 
+    t_to_left = [-left_box_depth / 2, mid_distance/2 + left_box_width, 0] 
+    r_to_left = R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True)
 
-    target.register_marker(18,
-                           april_inner_bigger,
-                           [15+april_border,0,32.5+april_border],
-                           R.from_euler(EULER_ORDER, [-90,-90,0], degrees=True),
-                           reference_tvec=t_to_left,
-                           reference_rotation=r_to_left
-                           )
-    
-    target.register_marker(16,
-                           april_inner_bigger,
-                           [0,4.5+april_border,33+april_border],
-                           R.from_euler(EULER_ORDER, [90,0,90], degrees=True),
+    t_to_right = [right_box_depth / 2, -mid_distance/2 - right_box_width, -right_box_lower] 
+    r_to_right = R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)
+
+    target.register_marker(14,
+                           SIZE_1 * inner_size_factor,
+                           [left_box_width - border_factor * SIZE_1, left_box_height - border_factor * SIZE_1, 0],
+                           R.from_euler(EULER_ORDER, [180,0,0], degrees=True),
                            reference_tvec=t_to_left,
                            reference_rotation=r_to_left
                            )
 
     target.register_marker(17,
-                           april_inner_bigger,
-                           [24+april_border,4+april_border,0],
-                           R.from_euler(EULER_ORDER, [0,0,0], degrees=True),
+                           SIZE_2 * inner_size_factor,
+                           [102.5 - border_factor * SIZE_2, 0, 134.5 - border_factor * SIZE_2],
+                           R.from_euler(EULER_ORDER, [90, 90, 0], degrees=True),
                            reference_tvec=t_to_left,
                            reference_rotation=r_to_left
                            )
 
-    target.register_marker(15,
-                           april_inner_bigger,
-                           [24+april_border,4+april_border,169.5],
-                           R.from_euler(EULER_ORDER, [90,0,180], degrees=True),
-                           reference_tvec=t_to_left,
-                           reference_rotation=r_to_left
-                           )
-
-
-    target.register_marker(14,
-                           april_inner_bigger,
-                           [15+april_border,0,32.5+april_border],
-                           R.from_euler(EULER_ORDER, [-90,-90,0], degrees=True),
-                           reference_tvec=t_to_right,
-                           reference_rotation=r_to_right
-                           )
-    
     target.register_marker(5,
-                           april_inner_bigger,
-                           [0,4.5+april_border + april_inner_bigger,left_box_depth - 33 - april_border],
-                           R.from_euler(EULER_ORDER, [-90,0,-90], degrees=True),
-                           reference_tvec=t_to_right,
-                           reference_rotation=r_to_right
-                           )
-
-    target.register_marker(13,
-                           april_inner_bigger,
-                           [24+april_border,4+april_border,0],
-                           R.from_euler(EULER_ORDER, [0,0,0], degrees=True),
-                           reference_tvec=t_to_right,
-                           reference_rotation=r_to_right
+                           SIZE_1 * inner_size_factor,
+                           [0, left_box_height - border_factor * SIZE_1, 138 - border_factor * SIZE_1],
+                           R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True),
+                           reference_tvec=t_to_left,
+                           reference_rotation=r_to_left
                            )
 
     target.register_marker(12,
-                           april_inner_bigger,
-                           [24+april_border,4+april_border,169.5],
-                           R.from_euler(EULER_ORDER, [90,0,180], degrees=True),
+                           SIZE_1 * inner_size_factor,
+                           [left_box_width - border_factor * SIZE_1, left_box_height - border_factor * SIZE_1, left_box_depth],
+                           R.from_euler(EULER_ORDER, [-90, 0, 180], degrees=True),
+                           reference_tvec=t_to_left,
+                           reference_rotation=r_to_left
+                           )
+
+    # RIGHT SIDE
+    target.register_marker(13,
+                           SIZE_1 * inner_size_factor,
+                           [right_box_width - border_factor * SIZE_1, right_box_height - border_factor * SIZE_1, 0],
+                           R.from_euler(EULER_ORDER, [180,0,0], degrees=True),
                            reference_tvec=t_to_right,
                            reference_rotation=r_to_right
                            )
+
+    target.register_marker(18,
+                           SIZE_3 * inner_size_factor,
+                           [93 - border_factor * SIZE_3, 0, 125 - border_factor * SIZE_3],
+                           R.from_euler(EULER_ORDER, [90, 90, 0], degrees=True),
+                           reference_tvec=t_to_right,
+                           reference_rotation=r_to_right
+                           )
+
+    target.register_marker(15,
+                           SIZE_1 * inner_size_factor,
+                           [0, right_box_height - border_factor * SIZE_1, 133 - border_factor * SIZE_1],
+                           R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True),
+                           reference_tvec=t_to_right,
+                           reference_rotation=r_to_right
+                           )
+
+    target.register_marker(16,
+                           SIZE_1 * inner_size_factor,
+                           [right_box_width - border_factor * SIZE_1, right_box_height - border_factor * SIZE_1, right_box_depth],
+                           R.from_euler(EULER_ORDER, [-90, 0, 180], degrees=True),
+                           reference_tvec=t_to_right,
+                           reference_rotation=r_to_right
+                           )
+
+    # mid_distance = 171.5
+    # left_box_width = 130
+    # left_box_depth = 170
+
+    # t_to_left = [left_box_depth / 2, -mid_distance/2 - left_box_width, 0] 
+    # r_to_left = R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)
+    # t_to_right = [-left_box_depth / 2, mid_distance/2 + left_box_width, 16] 
+    # r_to_right = R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True)
+
+
+    # target.register_marker(18,
+    #                        april_inner_bigger,
+    #                        [15+april_border,0,32.5+april_border],
+    #                        R.from_euler(EULER_ORDER, [-90,-90,0], degrees=True),
+    #                        reference_tvec=t_to_left,
+    #                        reference_rotation=r_to_left
+    #                        )
+    
+    # target.register_marker(16,
+    #                        april_inner_bigger,
+    #                        [0,4.5+april_border,33+april_border],
+    #                        R.from_euler(EULER_ORDER, [90,0,90], degrees=True),
+    #                        reference_tvec=t_to_left,
+    #                        reference_rotation=r_to_left
+    #                        )
+
+    # target.register_marker(17,
+    #                        april_inner_bigger,
+    #                        [24+april_border,4+april_border,0],
+    #                        R.from_euler(EULER_ORDER, [0,0,0], degrees=True),
+    #                        reference_tvec=t_to_left,
+    #                        reference_rotation=r_to_left
+    #                        )
+
+    # target.register_marker(15,
+    #                        april_inner_bigger,
+    #                        [24+april_border,4+april_border,169.5],
+    #                        R.from_euler(EULER_ORDER, [90,0,180], degrees=True),
+    #                        reference_tvec=t_to_left,
+    #                        reference_rotation=r_to_left
+    #                        )
+
+
+    # target.register_marker(14,
+    #                        april_inner_bigger,
+    #                        [15+april_border,0,32.5+april_border],
+    #                        R.from_euler(EULER_ORDER, [-90,-90,0], degrees=True),
+    #                        reference_tvec=t_to_right,
+    #                        reference_rotation=r_to_right
+    #                        )
+    
+    # target.register_marker(5,
+    #                        april_inner_bigger,
+    #                        [0,4.5+april_border + april_inner_bigger,left_box_depth - 33 - april_border],
+    #                        R.from_euler(EULER_ORDER, [-90,0,-90], degrees=True),
+    #                        reference_tvec=t_to_right,
+    #                        reference_rotation=r_to_right
+    #                        )
+
+    # target.register_marker(13,
+    #                        april_inner_bigger,
+    #                        [24+april_border,4+april_border,0],
+    #                        R.from_euler(EULER_ORDER, [0,0,0], degrees=True),
+    #                        reference_tvec=t_to_right,
+    #                        reference_rotation=r_to_right
+    #                        )
+
+    # target.register_marker(12,
+    #                        april_inner_bigger,
+    #                        [24+april_border,4+april_border,169.5],
+    #                        R.from_euler(EULER_ORDER, [90,0,180], degrees=True),
+    #                        reference_tvec=t_to_right,
+    #                        reference_rotation=r_to_right
+    #                        )
     # Paper
     # target.register_marker(8, april_inner_bigger, [-73,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
     # target.register_marker(9, april_inner, [25.5,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
@@ -389,12 +475,16 @@ def main():
     # Dog food box:
     april_inner = 47 #85/9 * 5 # size of internal square
     # origin.register_marker(5, april_inner, [-69,24,0], R.from_euler(EULER_ORDER, [0, 0, 0], degrees=True))
+
+    # THESE TWO
     origin.register_marker(4, april_inner, [0,22.5,24], R.from_euler(EULER_ORDER, [0, -90, 0], degrees=True))
     #                        reference_tvec=[0,0,0],
     #                        reference_rotation=R.identity())
     origin.register_marker(2, april_inner, [-25,0,24], R.from_euler(EULER_ORDER, [180, 0, 90], degrees=True))
     #                        reference_tvec=[0,0,0],
     #                        reference_rotation=R.identity())
+
+    # NOT THESE
     # origin.register_marker(3, april_inner, [94.5,24,24], R.from_euler(EULER_ORDER, [0,-90, 0], degrees=True),
     #                        reference_tvec=[0,0,0],
     #                        reference_rotation=R.identity())
