@@ -51,6 +51,8 @@ class Pathplanner():
             return
         if self.current_waypoint.is_reached(self.current_x, self.current_y, self.current_theta):
             self.current_waypoint = self.waypoints.move_to_next_waypoint()
+            print("---- MOVE TO NEXT WAYPOINT ----")
+            print(f"(Next waypoint is at: {self.current_waypoint.coords})")
     
     def controller_step(self):
         '''
@@ -82,8 +84,8 @@ class Waypoint():
     '''
 
     # tolerances for how close we need to get to the waypoints
-    LINEAR_EPS = 0.05 # units are in #TODO??
-    ANGULAR_EPS = 0.2 # units are in #TODO??
+    LINEAR_EPS = 50 # units are in mm
+    ANGULAR_EPS = 10 # units are in deg
 
     def __init__(self, 
                  x: float, 
@@ -111,9 +113,9 @@ class Waypoint():
         self.resumeFlag = resumeExtraction
 
         # TODO: make sure the units line up
-        assert self.x < 2000 and self.x > 0
-        assert self.y < 2000 and self.y > 0
-        assert self.heading is None or (self.heading > -180 and self.heading < 180)
+        assert self.x <= 2000 and self.x >= 0
+        assert self.y <= 2000 and self.y >= 0
+        assert self.heading is None or (self.heading >= -180 and self.heading <= 180)
     
     def is_reached(self, current_x: float, current_y: float, current_heading: float) -> bool:
         '''

@@ -6,6 +6,8 @@ from robot import Robot, RobotUDP, LineFollowerController, FowardController, Spi
 from planning import *
 from fmi import *
 
+import matplotlib.pyplot as plt
+
 def main():
     cap = cv.VideoCapture(0, cv.CAP_DSHOW) # set to 2 to select external webcam
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
@@ -35,8 +37,8 @@ def main():
     # current_segment = 0
 
     ### Set up controllers
-    forward_controller = FowardController(k_angle=100,
-                                       k_v=60,
+    forward_controller = FowardController(k_angle=50,
+                                       k_v=60*20,
                                        w=0.5,
                                        goal_tolerance=0.05,
                                        reversing_allowed=True)
@@ -50,7 +52,8 @@ def main():
 
     plan = Pathplanner()
     plan.set_controller(controller)
-    waypoints = RectangleWaypointSequence(1, 1, 0.3, 0.5, 10)
+    # waypoints = RectangleWaypointSequence(1000, 1000, 0, 0, 10)
+    waypoints = SnakeWaypointSequence()
     plan.set_waypoints(waypoints)
 
     robot_comms = RobotSim()
@@ -72,18 +75,23 @@ def main():
             x, _, y, _, _, _ = np.ravel(positions).tolist()
             theta, _, _, _, _, _ = np.ravel(angles).tolist()
 
-            print("X, Y, Theta: ", x, y, theta)
-
-            x = x /1000
-            y = y/1000
-
             plan.update_robot_position(x, y, theta)
             plan.controller_step()
 
             v = plan.desired_velocity
             omega = plan.desired_angular
             
-            robot_comms.send_control_action(v, omega, do_print=True)
+            robot_comms.send_control_action(v, omega, do_print=False)
+
+            # draw control info on screen
+            labels = ["x", "y"]
+            for index, val in enumerate([x, y]):
+                cv.putText(img, '{}: {:.3f}'.format(labels[index], val),
+                            (500, 50 + 50*index),
+                            cv.FONT_HERSHEY_PLAIN,
+                            2,
+                            (0, 0, 255),
+                            4)
 
         # draw control info on screen
         labels = ["v", "omega"]
@@ -94,14 +102,23 @@ def main():
                         2,
                         (0, 0, 255),
                         4)
+    
+
 
         cv.imshow('frame', img)
         if cv.waitKey(1) == ord('q'):
             break
 
-    for name in localiser.stats.keys():
-        array = localiser.stats[name]
-        print(f"{name}: {np.mean(array)} (std: {np.std(array)})")
+    localiser.plot_results()
+    data = np.array(localiser.results)
+    plt.plot(data[:, 1], data[:, 2])
+    plt.xlim((0, 2000))
+    plt.ylim((0, 2000))
+    plt.show()
+
+    # for name in localiser.stats.keys():
+    #     array = localiser.stats[name]
+    #     print(f"{name}: {np.mean(array)} (std: {np.std(array)})")
     cap.release()
     cv.destroyAllWindows()
 

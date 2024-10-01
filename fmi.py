@@ -1,6 +1,7 @@
 import fmpy
 import fmpy.fmi2
 import time
+import numpy as np
 
 from robot import Robot
 from localisation import Localisation
@@ -39,8 +40,10 @@ class RobotSim(Robot, Localisation):
         self.fmu.exitInitializationMode()
 
         self.time = 0.0
-        self.step_size = 0.1
+        self.step_size = 0.05
         self.last_sim_time = 0.0
+
+        self.results = []
     
     def dump(self):
         fmpy.dump(self.model)
@@ -58,6 +61,8 @@ class RobotSim(Robot, Localisation):
         self.time += self.step_size
         self.last_sim_time = time.time()
 
+        self.results.append((self.time, *self.fmu.getReal([self.vrs["x"], self.vrs["y"], self.vrs["theta"]])))
+
     def deinit(self):
         self.fmu.terminate()
         self.fmu.freeInstance()
@@ -67,5 +72,8 @@ class RobotSim(Robot, Localisation):
             print(f"v: {v}, omega: {omega}")
         
         self.fmu.setReal([self.vrs["v"], self.vrs["omega"]], [v, omega])
+    
+    def plot_results(self):
+        fmpy.util.plot_result(np.array(self.results, dtype=np.dtype([('time', np.float64), ('x', np.float64),  ('y', np.float64),  ('theta', np.float64)])))
 
 pass
