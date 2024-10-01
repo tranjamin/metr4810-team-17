@@ -82,8 +82,8 @@ class Waypoint():
     '''
 
     # tolerances for how close we need to get to the waypoints
-    LINEAR_EPS = 0.01 # units are in #TODO??
-    ANGULAR_EPS = 0.1 # units are in #TODO??
+    LINEAR_EPS = 0.05 # units are in #TODO??
+    ANGULAR_EPS = 0.2 # units are in #TODO??
 
     def __init__(self, 
                  x: float, 

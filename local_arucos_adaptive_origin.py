@@ -569,12 +569,12 @@ def main():
     localiser = Localisation()
     localiser.setup()
 
-    path_segments = [
-        [(0.3, 0.5), (1.3, 0.5), pi/2],
-        [(1.3, 0.5), (1.3, 1.5), pi],
-        [(1.3, 1.5), (0.3, 1.5), -pi/2],
-        [(0.3, 1.5), (0.3, 0.5), 0],
-        ]
+    # path_segments = [
+    #     [(0.3, 0.5), (1.3, 0.5), pi/2],
+    #     [(1.3, 0.5), (1.3, 1.5), pi],
+    #     [(1.3, 1.5), (0.3, 1.5), -pi/2],
+    #     [(0.3, 1.5), (0.3, 0.5), 0],
+    #     ]
     
     # path_segments = [
     #     [(0.073, 0.436), (1.553, 0.432), pi/2],
@@ -582,7 +582,7 @@ def main():
     #     [(1.564, 1.997), (0.093, 1.930), -pi/2],
     #     [(0.093, 1.930), (0.073, 0.436), 0],
     #     ]
-    current_segment = 0
+    # current_segment = 0
 
     ### Set up controllers
     forward_controller = FowardController(k_angle=100,
@@ -597,10 +597,14 @@ def main():
                                      angle_tolerance=0.2
                                      )
     controller = LineFollowerController(forward_controller, spin_controller)
-    p0, p1, theta_target = path_segments[current_segment]
-    controller.set_path(p0, p1, theta_target)
-    print(f"Currently moving along segment {current_segment}\n From {p0} to {p1} \nFinal orientation desired: {theta_target}")
 
+    plan = Pathplanner()
+    plan.set_controller(controller)
+    waypoints = RectangleWaypointSequence(1, 1, 0.3, 0.5, 10)
+    plan.set_waypoints(waypoints)
+
+    # p0, p1, theta_target = path_segments[current_segment]
+    # controller.set_path(p0, p1, theta_target)
 
     robot_comms = RobotUDP("192.168.4.1")
 
@@ -615,7 +619,6 @@ def main():
         positions, angles = localiser.get_position(img)
 
         ### PATH PLANNING
-
         v, omega = 0, 0
         not_none = lambda x: x is not None
         if all([not_none(e) for e in positions]):
@@ -623,14 +626,13 @@ def main():
             theta, _, _, _, _, _ = np.ravel(angles).tolist()
             x = x /1000
             y = y/1000
-            if controller.has_reached_goal():
-                current_segment += 1
-                current_segment %= len(path_segments)
-                p0, p1, theta_target = path_segments[current_segment]
-                controller.set_path(p0, p1, theta_target)
-                print(f"Currently moving along segment {current_segment}\n From {p0} to {p1} \nFinal orientation desired: {theta_target}")
+
+            plan.update_robot_position(x, y, theta)
+            plan.controller_step()
+
+            v = plan.desired_velocity
+            omega = plan.desired_angular
             
-            v, omega = controller.get_control_action(x, y, theta)
             robot_comms.send_control_action(v, omega, do_print=True)
 
         # draw control info on screen
