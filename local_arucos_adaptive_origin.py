@@ -25,7 +25,7 @@ def main():
     forward_controller = FowardController(k_angle=50,
                                        k_v=60*20,
                                        w=0.5,
-                                       goal_tolerance=0.05,
+                                       goal_tolerance=50,
                                        reversing_allowed=True)
 
     # warning when tuning
@@ -37,8 +37,8 @@ def main():
 
     plan = Pathplanner()
     plan.set_controller(controller)
-    # waypoints = RectangleWaypointSequence(1000, 1000, 500, 500, 10, angle_agnostic=True)
-    waypoints = SnakeWaypointSequence()
+    waypoints = RectangleWaypointSequence(1000, 1000, 500, 500, 10, angle_agnostic=False)
+    # waypoints = SnakeWaypointSequence(theta_agnostic=False)
     plan.set_waypoints(waypoints)
 
     robot_comms = RobotSim()

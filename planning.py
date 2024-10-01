@@ -25,6 +25,8 @@ class Pathplanner():
 
         # the current waypoint we are tracking
         self.current_waypoint: Waypoint = None
+        self.previous_waypoint: tuple = (0, 0)
+        self.update_controller_path = True
 
     def set_waypoints(self, waypoints: WaypointSequence):
         '''
@@ -50,8 +52,10 @@ class Pathplanner():
         # if we have reached the current waypoint, move to the next one
         if self.current_waypoint is None:
             return
-        if self.current_waypoint.is_reached(self.current_x, self.current_y, self.current_theta):
+        if self.controller.has_reached_goal():
+            self.previous_waypoint = self.current_waypoint.coords
             self.current_waypoint = self.waypoints.move_to_next_waypoint()
+            self.update_controller_path = True
             if self.current_waypoint is None:
                 print("---- FINISHED PATH ----")
                 return
@@ -68,7 +72,10 @@ class Pathplanner():
             self.desired_angular = 0
         # else, get the control actions
         else:
-            self.controller.set_path((self.current_x, self.current_y), self.current_waypoint.coords, self.current_waypoint.heading)
+            if self.update_controller_path:
+                self.controller.set_path(self.previous_waypoint, self.current_waypoint.coords, self.current_waypoint.heading)
+                self.update_controller_path = False
+            
             self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta)
 
 class RobotGeometry():
@@ -125,6 +132,7 @@ class Waypoint():
         '''
         determines whether the waypoint has been reached wrt the current position
         '''
+
         delta_x = abs(current_x - self.x)
         delta_y = abs(current_y - self.y)
 
@@ -135,6 +143,7 @@ class Waypoint():
         else:  
             delta_theta = abs(current_heading - self.heading) # ??
             return delta_theta < Waypoint.ANGULAR_EPS
+    
 
 class DepositWaypoint(Waypoint):
     '''
@@ -214,9 +223,9 @@ class SnakeWaypointSequence(WaypointSequence):
     BORDER_PADDING: float = RobotGeometry.RADIUS
     ENV_LENGTH: float = 2000
     ENV_WIDTH: float = 2000
-    POINTS_PER_LINE: int = 4
+    POINTS_PER_LINE: int = 2
 
-    def __init__(self):
+    def __init__(self, theta_agnostic=False):
         super().__init__()
         
         # calculate the y coordinates
@@ -230,9 +239,16 @@ class SnakeWaypointSequence(WaypointSequence):
 
         for i, x in enumerate(x_coords):
             for j, y in enumerate(reversed_y_coords if i % 2 else y_coords): # toggle the direction of each line
+                if (j != len(y_coords) and j != 0):
+                    target_heading = 0 if i % 2 else pi
+                elif j == len(y_coords):
+                    target_heading = -pi/2 if i % 2 else pi
+                else:
+                    target_heading = -pi/2 if i % 2 else 0
+                
                 waypoint = Waypoint(
                     x, y,
-                    heading = None,
+                    heading = None if theta_agnostic else target_heading,
                     vel = 0 if j == 0 or j == len(y_coords) else None, # set velocity to 0 if it is the first or last in a line
                 )
                 self.waypoints.append(waypoint)
