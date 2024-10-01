@@ -285,9 +285,280 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     #             logger[int(id[0])][i].append(position_delta_origin_frame[i][0])
     return True, rot_relative, tvec_relative
 
+class Localisation():
+    def __init__(self):
+        self.origin: MarkerCollection
+        self.target: MarkerCollection
+        self.stats = {"x": [], "y": [], "z": [], "yaw": [], "pitch": [], "roll": []}
+    
+    def setup(self):
+        camera_matrix = np.load('camera_matrix.npy')
+        dist_coeffs = np.load('dist_coeffs.npy')
+        logger = {}
+
+        # define objects to be tracked
+        origin = MarkerCollection()
+        target = MarkerCollection()
+
+        # april_inner_bigger = 95 * 5 / 9
+        # april_border = 95 * 2 / 9
+        SIZE_1 = 107
+        SIZE_2 = 100
+        SIZE_3 = 90
+
+        inner_size_factor = 5/9
+        border_factor = 2/9
+        mid_distance = 171.5
+        left_box_width = 129.5 # mm, in the y direction
+        right_box_width = 109.5 # mm, in the y direction
+        mid_distance = 173.0375 # mm, between each acrylic plate
+        left_box_depth = 169.5
+        right_box_depth = 159
+        right_box_lower = 5 # mm lower than horizontal plane of left box
+
+        left_box_height = 109 # mm in z direction
+        right_box_height = left_box_height
+
+        t_to_left = [-left_box_depth / 2, mid_distance/2 + left_box_width, 0] 
+        r_to_left = R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True)
+
+        t_to_right = [right_box_depth / 2, -mid_distance/2 - right_box_width, -right_box_lower] 
+        r_to_right = R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)
+
+        target.register_marker(14,
+                            SIZE_1 * inner_size_factor,
+                            [left_box_width - border_factor * SIZE_1, left_box_height - border_factor * SIZE_1, 0],
+                            R.from_euler(EULER_ORDER, [180,0,0], degrees=True),
+                            reference_tvec=t_to_left,
+                            reference_rotation=r_to_left
+                            )
+
+        target.register_marker(17,
+                            SIZE_2 * inner_size_factor,
+                            [102.5 - border_factor * SIZE_2, 0, 134.5 - border_factor * SIZE_2],
+                            R.from_euler(EULER_ORDER, [90, 90, 0], degrees=True),
+                            reference_tvec=t_to_left,
+                            reference_rotation=r_to_left
+                            )
+
+        target.register_marker(5,
+                            SIZE_1 * inner_size_factor,
+                            [0, left_box_height - border_factor * SIZE_1, 138 - border_factor * SIZE_1],
+                            R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True),
+                            reference_tvec=t_to_left,
+                            reference_rotation=r_to_left
+                            )
+
+        target.register_marker(12,
+                            SIZE_1 * inner_size_factor,
+                            [left_box_width - border_factor * SIZE_1, left_box_height - border_factor * SIZE_1, left_box_depth],
+                            R.from_euler(EULER_ORDER, [-90, 0, 180], degrees=True),
+                            reference_tvec=t_to_left,
+                            reference_rotation=r_to_left
+                            )
+
+        # RIGHT SIDE
+        target.register_marker(13,
+                            SIZE_1 * inner_size_factor,
+                            [right_box_width - border_factor * SIZE_1, right_box_height - border_factor * SIZE_1, 0],
+                            R.from_euler(EULER_ORDER, [180,0,0], degrees=True),
+                            reference_tvec=t_to_right,
+                            reference_rotation=r_to_right
+                            )
+
+        target.register_marker(18,
+                            SIZE_3 * inner_size_factor,
+                            [93 - border_factor * SIZE_3, 0, 125 - border_factor * SIZE_3],
+                            R.from_euler(EULER_ORDER, [90, 90, 0], degrees=True),
+                            reference_tvec=t_to_right,
+                            reference_rotation=r_to_right
+                            )
+
+        target.register_marker(15,
+                            SIZE_1 * inner_size_factor,
+                            [0, right_box_height - border_factor * SIZE_1, 133 - border_factor * SIZE_1],
+                            R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True),
+                            reference_tvec=t_to_right,
+                            reference_rotation=r_to_right
+                            )
+
+        target.register_marker(16,
+                            SIZE_1 * inner_size_factor,
+                            [right_box_width - border_factor * SIZE_1, right_box_height - border_factor * SIZE_1, right_box_depth],
+                            R.from_euler(EULER_ORDER, [-90, 0, 180], degrees=True),
+                            reference_tvec=t_to_right,
+                            reference_rotation=r_to_right
+                            )
+
+        # mid_distance = 171.5
+        # left_box_width = 130
+        # left_box_depth = 170
+
+        # t_to_left = [left_box_depth / 2, -mid_distance/2 - left_box_width, 0] 
+        # r_to_left = R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)
+        # t_to_right = [-left_box_depth / 2, mid_distance/2 + left_box_width, 16] 
+        # r_to_right = R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True)
+
+
+        # target.register_marker(18,
+        #                        april_inner_bigger,
+        #                        [15+april_border,0,32.5+april_border],
+        #                        R.from_euler(EULER_ORDER, [-90,-90,0], degrees=True),
+        #                        reference_tvec=t_to_left,
+        #                        reference_rotation=r_to_left
+        #                        )
+        
+        # target.register_marker(16,
+        #                        april_inner_bigger,
+        #                        [0,4.5+april_border,33+april_border],
+        #                        R.from_euler(EULER_ORDER, [90,0,90], degrees=True),
+        #                        reference_tvec=t_to_left,
+        #                        reference_rotation=r_to_left
+        #                        )
+
+        # target.register_marker(17,
+        #                        april_inner_bigger,
+        #                        [24+april_border,4+april_border,0],
+        #                        R.from_euler(EULER_ORDER, [0,0,0], degrees=True),
+        #                        reference_tvec=t_to_left,
+        #                        reference_rotation=r_to_left
+        #                        )
+
+        # target.register_marker(15,
+        #                        april_inner_bigger,
+        #                        [24+april_border,4+april_border,169.5],
+        #                        R.from_euler(EULER_ORDER, [90,0,180], degrees=True),
+        #                        reference_tvec=t_to_left,
+        #                        reference_rotation=r_to_left
+        #                        )
+
+
+        # target.register_marker(14,
+        #                        april_inner_bigger,
+        #                        [15+april_border,0,32.5+april_border],
+        #                        R.from_euler(EULER_ORDER, [-90,-90,0], degrees=True),
+        #                        reference_tvec=t_to_right,
+        #                        reference_rotation=r_to_right
+        #                        )
+        
+        # target.register_marker(5,
+        #                        april_inner_bigger,
+        #                        [0,4.5+april_border + april_inner_bigger,left_box_depth - 33 - april_border],
+        #                        R.from_euler(EULER_ORDER, [-90,0,-90], degrees=True),
+        #                        reference_tvec=t_to_right,
+        #                        reference_rotation=r_to_right
+        #                        )
+
+        # target.register_marker(13,
+        #                        april_inner_bigger,
+        #                        [24+april_border,4+april_border,0],
+        #                        R.from_euler(EULER_ORDER, [0,0,0], degrees=True),
+        #                        reference_tvec=t_to_right,
+        #                        reference_rotation=r_to_right
+        #                        )
+
+        # target.register_marker(12,
+        #                        april_inner_bigger,
+        #                        [24+april_border,4+april_border,169.5],
+        #                        R.from_euler(EULER_ORDER, [90,0,180], degrees=True),
+        #                        reference_tvec=t_to_right,
+        #                        reference_rotation=r_to_right
+        #                        )
+        # Paper
+        # target.register_marker(8, april_inner_bigger, [-73,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
+        # target.register_marker(9, april_inner, [25.5,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
+
+
+        # Dog food box:
+        april_inner = 47 #85/9 * 5 # size of internal square
+        # origin.register_marker(5, april_inner, [-69,24,0], R.from_euler(EULER_ORDER, [0, 0, 0], degrees=True))
+
+        # THESE TWO
+        origin.register_marker(4, april_inner, [0,22.5,24], R.from_euler(EULER_ORDER, [0, -90, 0], degrees=True))
+        #                        reference_tvec=[0,0,0],
+        #                        reference_rotation=R.identity())
+        origin.register_marker(2, april_inner, [-25,0,24], R.from_euler(EULER_ORDER, [180, 0, 90], degrees=True))
+        #                        reference_tvec=[0,0,0],
+        #                        reference_rotation=R.identity())
+
+        # NOT THESE
+        # origin.register_marker(3, april_inner, [94.5,24,24], R.from_euler(EULER_ORDER, [0,-90, 0], degrees=True),
+        #                        reference_tvec=[0,0,0],
+        #                        reference_rotation=R.identity())
+        # target.register_marker(10, april_inner, [0,0,0], R.identity())
+
+        R_dist = 0.05
+        Q_dist = np.array([[1, 0], [0, 1]])
+        R_angle = 0.01
+        Q_angle = np.array([[1, 0], [0, 1]])
+
+        config = AprilTagDetector.Config()
+        config.debug = False
+        config.decodeSharpening = 0.25
+        config.numThreads = 4 # default 1
+        config.quadDecimate = 1.0
+        config.quadSigma = 0.0
+        config.refineEdges = True
+        detector = AprilTagDetector()
+        detector.setConfig(config)
+        detector.addFamily("tagStandard41h12")
+
+        self.robot_tracker = RigidBodyTracker(Q_dist, R_dist, Q_angle, R_angle)
+        self.last_measurement_time = None
+
+        self.origin = origin
+        self.target = target
+        self.camera_matrix = camera_matrix
+        self.dist_coeffs = dist_coeffs
+        self.logger = {}
+        self.last_measurement_time = None
+        self.detector = detector
+        self.config = config
+        self.stats = {"x": [], "y": [], "z": [], "yaw": [], "pitch": [], "roll": []}
+
+    def get_position(self, img):
+        ### UPDATE LOCALISATION
+        # gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+        valid, rot_relative, tvec_relative = process_image(img, self.camera_matrix, self.dist_coeffs, self.origin, self.target, self.detector, self.logger)
+        measurement_time = time.time()
+
+        dt = 0
+        if self.last_measurement_time:
+            dt = measurement_time - self.last_measurement_time
+            # print(dt)
+        # always run predict step
+        self.robot_tracker.predict_estimate(dt)
+        if valid:
+            self.robot_tracker.update_estimate(rot_relative, tvec_relative, EULER_ORDER)
+        
+        self.last_measurement_time = measurement_time
+
+        positions, angles = self.robot_tracker.predict_estimate(0)
+
+        # log raw data (not from kalman filter)
+        stats = self.stats
+        labels = ["x", "y", "z", "yaw", "pitch", "roll"]
+        if rot_relative and all(tvec_relative):
+            raw_rotations = rot_relative.as_euler(EULER_ORDER, degrees=True)
+            for index, item in enumerate(np.concatenate((tvec_relative, raw_rotations))):
+                if item is None:
+                    continue
+                x = item.ravel().tolist()[0]
+                stats[labels[index]].append(x)
+
+                cv.putText(img, '{}: {:.3f}'.format(labels[index], x),
+                        (50, 50 + 50*index),
+                        cv.FONT_HERSHEY_PLAIN,
+                        2,
+                        (0, 255, 0),
+                        4)
+
+
+        return positions, angles
+
 
 def main():
-    cap = cv.VideoCapture(2, cv.CAP_DSHOW) # set to 2 to select external webcam
+    cap = cv.VideoCapture(0, cv.CAP_DSHOW) # set to 2 to select external webcam
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
     cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280)) # seems locked to 720p
 
@@ -295,225 +566,22 @@ def main():
         print("Cannot open camera")
         exit()
 
-    camera_matrix = np.load('camera_matrix.npy')
-    dist_coeffs = np.load('dist_coeffs.npy')
-    logger = {}
+    localiser = Localisation()
+    localiser.setup()
 
-    # define objects to be tracked
-    origin = MarkerCollection()
-    target = MarkerCollection()
-
-    # april_inner_bigger = 95 * 5 / 9
-    # april_border = 95 * 2 / 9
-    SIZE_1 = 107
-    SIZE_2 = 100
-    SIZE_3 = 90
-
-    inner_size_factor = 5/9
-    border_factor = 2/9
-    mid_distance = 171.5
-    left_box_width = 129.5 # mm, in the y direction
-    right_box_width = 109.5 # mm, in the y direction
-    mid_distance = 173.0375 # mm, between each acrylic plate
-    left_box_depth = 169.5
-    right_box_depth = 159
-    right_box_lower = 5 # mm lower than horizontal plane of left box
-
-    left_box_height = 109 # mm in z direction
-    right_box_height = left_box_height
-
-    t_to_left = [-left_box_depth / 2, mid_distance/2 + left_box_width, 0] 
-    r_to_left = R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True)
-
-    t_to_right = [right_box_depth / 2, -mid_distance/2 - right_box_width, -right_box_lower] 
-    r_to_right = R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)
-
-    target.register_marker(14,
-                           SIZE_1 * inner_size_factor,
-                           [left_box_width - border_factor * SIZE_1, left_box_height - border_factor * SIZE_1, 0],
-                           R.from_euler(EULER_ORDER, [180,0,0], degrees=True),
-                           reference_tvec=t_to_left,
-                           reference_rotation=r_to_left
-                           )
-
-    target.register_marker(17,
-                           SIZE_2 * inner_size_factor,
-                           [102.5 - border_factor * SIZE_2, 0, 134.5 - border_factor * SIZE_2],
-                           R.from_euler(EULER_ORDER, [90, 90, 0], degrees=True),
-                           reference_tvec=t_to_left,
-                           reference_rotation=r_to_left
-                           )
-
-    target.register_marker(5,
-                           SIZE_1 * inner_size_factor,
-                           [0, left_box_height - border_factor * SIZE_1, 138 - border_factor * SIZE_1],
-                           R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True),
-                           reference_tvec=t_to_left,
-                           reference_rotation=r_to_left
-                           )
-
-    target.register_marker(12,
-                           SIZE_1 * inner_size_factor,
-                           [left_box_width - border_factor * SIZE_1, left_box_height - border_factor * SIZE_1, left_box_depth],
-                           R.from_euler(EULER_ORDER, [-90, 0, 180], degrees=True),
-                           reference_tvec=t_to_left,
-                           reference_rotation=r_to_left
-                           )
-
-    # RIGHT SIDE
-    target.register_marker(13,
-                           SIZE_1 * inner_size_factor,
-                           [right_box_width - border_factor * SIZE_1, right_box_height - border_factor * SIZE_1, 0],
-                           R.from_euler(EULER_ORDER, [180,0,0], degrees=True),
-                           reference_tvec=t_to_right,
-                           reference_rotation=r_to_right
-                           )
-
-    target.register_marker(18,
-                           SIZE_3 * inner_size_factor,
-                           [93 - border_factor * SIZE_3, 0, 125 - border_factor * SIZE_3],
-                           R.from_euler(EULER_ORDER, [90, 90, 0], degrees=True),
-                           reference_tvec=t_to_right,
-                           reference_rotation=r_to_right
-                           )
-
-    target.register_marker(15,
-                           SIZE_1 * inner_size_factor,
-                           [0, right_box_height - border_factor * SIZE_1, 133 - border_factor * SIZE_1],
-                           R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True),
-                           reference_tvec=t_to_right,
-                           reference_rotation=r_to_right
-                           )
-
-    target.register_marker(16,
-                           SIZE_1 * inner_size_factor,
-                           [right_box_width - border_factor * SIZE_1, right_box_height - border_factor * SIZE_1, right_box_depth],
-                           R.from_euler(EULER_ORDER, [-90, 0, 180], degrees=True),
-                           reference_tvec=t_to_right,
-                           reference_rotation=r_to_right
-                           )
-
-    # mid_distance = 171.5
-    # left_box_width = 130
-    # left_box_depth = 170
-
-    # t_to_left = [left_box_depth / 2, -mid_distance/2 - left_box_width, 0] 
-    # r_to_left = R.from_euler(EULER_ORDER, [90, 0, -90], degrees=True)
-    # t_to_right = [-left_box_depth / 2, mid_distance/2 + left_box_width, 16] 
-    # r_to_right = R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True)
-
-
-    # target.register_marker(18,
-    #                        april_inner_bigger,
-    #                        [15+april_border,0,32.5+april_border],
-    #                        R.from_euler(EULER_ORDER, [-90,-90,0], degrees=True),
-    #                        reference_tvec=t_to_left,
-    #                        reference_rotation=r_to_left
-    #                        )
-    
-    # target.register_marker(16,
-    #                        april_inner_bigger,
-    #                        [0,4.5+april_border,33+april_border],
-    #                        R.from_euler(EULER_ORDER, [90,0,90], degrees=True),
-    #                        reference_tvec=t_to_left,
-    #                        reference_rotation=r_to_left
-    #                        )
-
-    # target.register_marker(17,
-    #                        april_inner_bigger,
-    #                        [24+april_border,4+april_border,0],
-    #                        R.from_euler(EULER_ORDER, [0,0,0], degrees=True),
-    #                        reference_tvec=t_to_left,
-    #                        reference_rotation=r_to_left
-    #                        )
-
-    # target.register_marker(15,
-    #                        april_inner_bigger,
-    #                        [24+april_border,4+april_border,169.5],
-    #                        R.from_euler(EULER_ORDER, [90,0,180], degrees=True),
-    #                        reference_tvec=t_to_left,
-    #                        reference_rotation=r_to_left
-    #                        )
-
-
-    # target.register_marker(14,
-    #                        april_inner_bigger,
-    #                        [15+april_border,0,32.5+april_border],
-    #                        R.from_euler(EULER_ORDER, [-90,-90,0], degrees=True),
-    #                        reference_tvec=t_to_right,
-    #                        reference_rotation=r_to_right
-    #                        )
-    
-    # target.register_marker(5,
-    #                        april_inner_bigger,
-    #                        [0,4.5+april_border + april_inner_bigger,left_box_depth - 33 - april_border],
-    #                        R.from_euler(EULER_ORDER, [-90,0,-90], degrees=True),
-    #                        reference_tvec=t_to_right,
-    #                        reference_rotation=r_to_right
-    #                        )
-
-    # target.register_marker(13,
-    #                        april_inner_bigger,
-    #                        [24+april_border,4+april_border,0],
-    #                        R.from_euler(EULER_ORDER, [0,0,0], degrees=True),
-    #                        reference_tvec=t_to_right,
-    #                        reference_rotation=r_to_right
-    #                        )
-
-    # target.register_marker(12,
-    #                        april_inner_bigger,
-    #                        [24+april_border,4+april_border,169.5],
-    #                        R.from_euler(EULER_ORDER, [90,0,180], degrees=True),
-    #                        reference_tvec=t_to_right,
-    #                        reference_rotation=r_to_right
-    #                        )
-    # Paper
-    # target.register_marker(8, april_inner_bigger, [-73,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
-    # target.register_marker(9, april_inner, [25.5,0,0], R.from_euler(EULER_ORDER, [0, 0, -180], degrees=True))
-
-
-    # Dog food box:
-    april_inner = 47 #85/9 * 5 # size of internal square
-    # origin.register_marker(5, april_inner, [-69,24,0], R.from_euler(EULER_ORDER, [0, 0, 0], degrees=True))
-
-    # THESE TWO
-    origin.register_marker(4, april_inner, [0,22.5,24], R.from_euler(EULER_ORDER, [0, -90, 0], degrees=True))
-    #                        reference_tvec=[0,0,0],
-    #                        reference_rotation=R.identity())
-    origin.register_marker(2, april_inner, [-25,0,24], R.from_euler(EULER_ORDER, [180, 0, 90], degrees=True))
-    #                        reference_tvec=[0,0,0],
-    #                        reference_rotation=R.identity())
-
-    # NOT THESE
-    # origin.register_marker(3, april_inner, [94.5,24,24], R.from_euler(EULER_ORDER, [0,-90, 0], degrees=True),
-    #                        reference_tvec=[0,0,0],
-    #                        reference_rotation=R.identity())
-    # target.register_marker(10, april_inner, [0,0,0], R.identity())
-
-    R_dist = 0.05
-    Q_dist = np.array([[1, 0], [0, 1]])
-    R_angle = 0.01
-    Q_angle = np.array([[1, 0], [0, 1]])
-
-    robot_tracker = RigidBodyTracker(Q_dist, R_dist, Q_angle, R_angle)
-    last_robot_communicate = 0
-    last_measurement_time = None
-    robot_comm_dt = 0
-    command = True
-
-    # path_segments = [
-    #     [(0.3, 0.5), (1.3, 0.5), pi/2],
-    #     [(1.3, 0.5), (1.3, 1.5), pi],
-    #     [(1.3, 1.5), (0.3, 1.5), -pi/2],
-    #     [(0.3, 1.5), (0.3, 0.5), 0],
-    #     ]
-    
     path_segments = [
-        [(0.073, 0.436), (1.553, 0.432), pi/2],
-        [(1.553, 0.432), (1.564, 1.997), pi],
-        [(1.564, 1.997), (0.093, 1.930), -pi/2],
-        [(0.093, 1.930), (0.073, 0.436), 0],
+        [(0.3, 0.5), (1.3, 0.5), pi/2],
+        [(1.3, 0.5), (1.3, 1.5), pi],
+        [(1.3, 1.5), (0.3, 1.5), -pi/2],
+        [(0.3, 1.5), (0.3, 0.5), 0],
         ]
+    
+    # path_segments = [
+    #     [(0.073, 0.436), (1.553, 0.432), pi/2],
+    #     [(1.553, 0.432), (1.564, 1.997), pi],
+    #     [(1.564, 1.997), (0.093, 1.930), -pi/2],
+    #     [(0.093, 1.930), (0.073, 0.436), 0],
+    #     ]
     current_segment = 0
 
     ### Set up controllers
@@ -533,18 +601,6 @@ def main():
     controller.set_path(p0, p1, theta_target)
     print(f"Currently moving along segment {current_segment}\n From {p0} to {p1} \nFinal orientation desired: {theta_target}")
 
-    stats = {"x": [], "y": [], "z": [], "yaw": [], "pitch": [], "roll": []}
-
-    config = AprilTagDetector.Config()
-    config.debug = False
-    config.decodeSharpening = 0.25
-    config.numThreads = 4 # default 1
-    config.quadDecimate = 1.0
-    config.quadSigma = 0.0
-    config.refineEdges = True
-    detector = AprilTagDetector()
-    detector.setConfig(config)
-    detector.addFamily("tagStandard41h12")
 
     robot_comms = RobotUDP("192.168.4.1")
 
@@ -554,30 +610,11 @@ def main():
         if not ret:
             break
 
-        ### UPDATE LOCALISATION
-        # gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-        valid, rot_relative, tvec_relative = process_image(img, camera_matrix, dist_coeffs, origin, target, detector, logger)
-        measurement_time = time.time()
-
-        dt = 0
-        if last_measurement_time:
-            dt = measurement_time - last_measurement_time
-            # print(dt)
-        # always run predict step
-        robot_tracker.predict_estimate(dt)
-        if valid:
-            robot_tracker.update_estimate(rot_relative, tvec_relative, EULER_ORDER)
         
-        last_measurement_time = measurement_time
-
-        positions, angles = robot_tracker.predict_estimate(0)
-        
-
         ### LOCALISATION FINISHED
+        positions, angles = localiser.get_position(img)
 
         ### PATH PLANNING
-
-        # check if goal was reached
 
         v, omega = 0, 0
         not_none = lambda x: x is not None
@@ -606,47 +643,12 @@ def main():
                         (0, 0, 255),
                         4)
 
-        # if time.time() - last_robot_communicate > robot_comm_dt:
-        #     if command:
-        #         robot_communicate(1)
-        #     else:
-        #         robot_communicate(2)
-        #     command = not command
-        #     last_robot_communicate = time.time()
-
-        # log raw data (not from kalman filter)
-        labels = ["x", "y", "z", "yaw", "pitch", "roll"]
-        if rot_relative and all(tvec_relative):
-            raw_rotations = rot_relative.as_euler(EULER_ORDER, degrees=True)
-            for index, item in enumerate(np.concatenate((tvec_relative, raw_rotations))):
-                if item is None:
-                    continue
-                x = item.ravel().tolist()[0]
-                stats[labels[index]].append(x)
-
-                cv.putText(img, '{}: {:.3f}'.format(labels[index], x),
-                        (50, 50 + 50*index),
-                        cv.FONT_HERSHEY_PLAIN,
-                        2,
-                        (0, 255, 0),
-                        4)
-
         cv.imshow('frame', img)
         if cv.waitKey(1) == ord('q'):
             break
 
-    # print out the statistics for each marker we saw
-    # only valid for stationary markers
-    # for id in logger.keys():
-    # print(f"STATS FOR MARKER {id}")
-    # for i, letter in enumerate(["x", "y", "z"]):
-    #     print(letter)
-    #     print(f"Standard Deviation {np.std(logger[id][i])}")
-    #     print(f"Mean {np.mean(logger[id][i])}")
-    #     print(f"Max {np.max(logger[id][i])}")
-    #     print(f"Min {np.min(logger[id][i])}")
-    for name in stats.keys():
-        array = stats[name]
+    for name in localiser.stats.keys():
+        array = localiser.stats[name]
         print(f"{name}: {np.mean(array)} (std: {np.std(array)})")
     cap.release()
     cv.destroyAllWindows()
