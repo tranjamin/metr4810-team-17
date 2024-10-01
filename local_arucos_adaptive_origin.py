@@ -7,6 +7,7 @@ from math import pi
 from robot import Robot, RobotUDP, LineFollowerController, FowardController, SpinController
 from robotpy_apriltag import AprilTagDetector
 from planning import *
+from fmi import *
 
 MARKER_SIZE = 100 #97 # mm
 ORIGIN_X_DELTA = -59
@@ -566,7 +567,8 @@ def main():
         print("Cannot open camera")
         exit()
 
-    localiser = Localisation()
+    localiser = RobotSim()
+    localiser.init("tank_sim.fmu")
     localiser.setup()
 
     # path_segments = [
@@ -606,7 +608,7 @@ def main():
     # p0, p1, theta_target = path_segments[current_segment]
     # controller.set_path(p0, p1, theta_target)
 
-    robot_comms = RobotUDP("192.168.4.1")
+    robot_comms = RobotSim()
 
     # Main loop
     while True:
@@ -624,6 +626,9 @@ def main():
         if all([not_none(e) for e in positions]):
             x, _, y, _, _, _ = np.ravel(positions).tolist()
             theta, _, _, _, _, _ = np.ravel(angles).tolist()
+
+            print("X, Y, Theta: ", x, y, theta)
+
             x = x /1000
             y = y/1000
 
@@ -657,6 +662,7 @@ def main():
 
     # stop the robot
     robot_comms.send_control_action(0,0, True)
+    localiser.deinit()
 
 
 if __name__ == "__main__":

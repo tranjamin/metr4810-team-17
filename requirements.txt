@@ -3,3 +3,6 @@ scipy
 opencv-python
 pygame
 requests
+
+fmpy
+plotly
