@@ -36,8 +36,13 @@ void vExtractionInit() {
     // set the TOP
     pwm_set_wrap(EXTRACTION_PWM_SLICE, PWM_TOP);
 
+    // set PWM and DIR
+    setExtractionPWM(50);
+    SET_EXTRACTION_STOPPED();
+
     // enable pwm
     pwm_set_enabled(EXTRACTION_PWM_SLICE, true);
+    
 }
 
 void setExtractionPWM(float percent) {
