@@ -7,3 +7,5 @@ requests
 fmpy
 plotly
 matplotlib
+
+argparse

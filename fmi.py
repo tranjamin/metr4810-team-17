@@ -8,18 +8,20 @@ from robot import Robot, wrapToPi
 from localisation import Localisation
 
 class RobotSim(Robot, Localisation):
-    def __new__(cls):
+    fmu_file: str
+
+    def __new__(cls, filename):
         if not hasattr(cls, 'instance'):
             cls.instance = super(RobotSim, cls).__new__(cls)
+            cls.instance.init(filename)
+            
         return cls.instance
     
-    def __init__(self):
-        pass
-
-    def setup(self):
+    def __init__(self, filename):
         pass
     
     def init(self, filename):
+        print("initing robotsim")
         self.model = filename
         self.model_description = fmpy.read_model_description(self.model)
         self.variables = self.model_description.modelVariables
@@ -45,6 +47,9 @@ class RobotSim(Robot, Localisation):
         self.last_sim_time = 0.0
 
         self.results = []
+        
+    def setup(self):
+        pass
     
     def dump(self):
         fmpy.dump(self.model)

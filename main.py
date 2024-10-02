@@ -5,11 +5,17 @@ from math import pi
 from robot import Robot, RobotUDP, LineFollowerController, FowardController, SpinController
 from planning import *
 from fmi import *
+import argparse
+import json
+
+from localisation import *
 
 import matplotlib.pyplot as plt
 
-def main():
-    cap = cv.VideoCapture(0, cv.CAP_DSHOW) # set to 2 to select external webcam
+def main(configfile, camera):
+    CONFIG_FILE = json.load(open(configfile))
+
+    cap = cv.VideoCapture(camera, cv.CAP_DSHOW) # set to 2 to select external webcam
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
     cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280)) # seems locked to 720p
 
@@ -17,32 +23,30 @@ def main():
         print("Cannot open camera")
         exit()
 
-    localiser = RobotSim()
-    localiser.init("tank_sim.fmu")
+    config_localiser = CONFIG_FILE["localisation"]
+    config_localiser_args = config_localiser["args"]
+    config_localiser_class = eval(config_localiser["localisation-class"])
+    localiser: Localisation = config_localiser_class(**config_localiser_args)
+
     localiser.setup()
 
     ### Set up controllers
-    forward_controller = FowardController(k_angle=5,
-                                       k_v=200,
-                                       w=0.5,
-                                       goal_tolerance=5,
-                                       reversing_allowed=True)
-
-    # warning when tuning
-    spin_controller = SpinController(k_angle=5,
-                                     k_v=0,
-                                     angle_tolerance=0.05
-                                     )
+    controller_config = CONFIG_FILE["controllers"]
+    forward_controller = FowardController(**controller_config["forward-controller"])
+    spin_controller = SpinController(**controller_config["spin-controller"])
     controller = LineFollowerController(forward_controller, spin_controller)
 
     plan = Pathplanner()
     plan.set_controller(controller)
-    # waypoints = RectangleWaypointSequence(1000, 1000, 500, 500, 10, angle_agnostic=False)
-    waypoints = SnakeWaypointSequence(theta_agnostic=False)
-    plan.set_waypoints(waypoints)
 
-    robot_comms = RobotSim()
+    pathplanner_class: WaypointSequence = eval(CONFIG_FILE["pathplan"]["reference-class"])
+    pathplanner_kwargs = CONFIG_FILE["pathplan"]["args"]
+    plan.set_waypoints(pathplanner_class(**pathplanner_kwargs))
 
+    robot_config = CONFIG_FILE["robot"]
+    robot_class: Robot = eval(robot_config["robot-class"])
+    robot_comms = robot_class(**robot_config["args"])
+    
     # Main loop
     while True:
         ret, img = cap.read()
@@ -111,4 +115,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--filename", "-f", default="config.json")
+    parser.add_argument("--camera", "-c", default=0)
+    args = parser.parse_args()
+    print(f"Reading file {args.filename} and camera {args.camera}")
+
+    main(args.filename, args.camera)

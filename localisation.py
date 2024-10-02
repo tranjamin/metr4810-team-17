@@ -268,6 +268,10 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     #             logger[int(id[0])][i].append(position_delta_origin_frame[i][0])
     return True, rot_relative, tvec_relative
 
+class MockLocalisation(Localisation):
+    def get_position(self, img):
+        return (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0)
+
 class CameraLocalisation(Localisation):
     def __init__(self):
         self.origin: MarkerCollection
