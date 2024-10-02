@@ -20,29 +20,61 @@
 #define VDELAY 100
 
 // function prototypes
-void vRGBTask();
 void vRGBInit();
 void setRGB_RED(float);
 void setRGB_GREEN(float);
 void setRGB_BLUE(float);
 
+#define SET_RGB_COLOUR(R, G, B) (setRGB_RED(R), setRGB_BLUE(B), setRGB_GREEN(G))
+
 void setRGB_COLOUR_RED() {
-    setRGB_RED(100);
-    setRGB_BLUE(0);
-    setRGB_GREEN(0);
+    SET_RGB_COLOUR(100, 0, 0);
+}
+
+void setRGB_COLOUR_DARK_RED() {
+    SET_RGB_COLOUR(1, 0, 0);
 }
 
 void setRGB_COLOUR_GREEN() {
-    setRGB_RED(0);
-    setRGB_BLUE(100);
-    setRGB_GREEN(0);
+    SET_RGB_COLOUR(0, 100, 0);
+}
+
+void setRGB_COLOUR_DARK_GREEN() {
+    SET_RGB_COLOUR(0, 1, 0);
 }
 
 void setRGB_COLOUR_BLUE() {
-    setRGB_RED(0);
-    setRGB_BLUE(0);
-    setRGB_GREEN(100);
+    SET_RGB_COLOUR(0, 0, 100);
 }
+
+void setRGB_COLOUR_DARK_BLUE() {
+    SET_RGB_COLOUR(0, 0, 1);
+}
+
+void setRGB_COLOUR_WHITE() {
+    SET_RGB_COLOUR(50, 70, 100);
+}
+
+void setRGB_COLOUR_PURPLE() {
+    SET_RGB_COLOUR(50, 0, 100);
+}
+
+void setRGB_COLOUR_CYAN() {
+    SET_RGB_COLOUR(0, 70, 100);
+}
+
+void setRGB_COLOUR_YELLOW() {
+    SET_RGB_COLOUR(50, 70, 0);
+}
+
+void setRGB_COLOUR_BLACK() {
+    SET_RGB_COLOUR(0, 0, 0);
+}
+
+void setRGB_COLOUR_GRAY() {
+    SET_RGB_COLOUR(5, 7, 10);
+}
+
 
 void setRGB_RED(float percent) {
     pwm_set_chan_level(RGB_RED_SLICE, RGB_RED_CHAN, (uint16_t) PWM_TOP * (100 - percent) / 100);
@@ -96,21 +128,4 @@ void vRGBInit() {
     setRGB_RED(0.0);
     setRGB_GREEN(0.0);
     setRGB_BLUE(0.0);
-}
-
-void vRGBTask() {
-    float i = 0;
-    for (;;) {
-        // do stuff
-        // taskENTER_CRITICAL();
-        // setRGB_RED(i);
-        // setRGB_BLUE(i);
-        // setRGB_GREEN(i);
-        // taskEXIT_CRITICAL();
-        // i++;
-        // if (i >= 100) i = 0;
-
-        // block for some time
-        vTaskDelay(VDELAY);
-    }
 }

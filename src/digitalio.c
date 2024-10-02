@@ -17,7 +17,6 @@
 #define MANUAL_EXTRACTION_SPEED 50
 
 void vDigitalIOInit();
-void vDigitalIOTask();
 
 void gpioCallback();
 
@@ -25,6 +24,7 @@ volatile uint32_t pushbutton_debounce_timer = 0;
 volatile uint32_t switch_debounce_timer = 0;
 volatile uint32_t csense_lhs_debounce_timer = 0;
 volatile uint32_t csense_rhs_debounce_timer = 0;
+volatile uint32_t csense_extraction_debounce_timer = 0;
 
 volatile bool pushbutton_is_blue = false;
 
@@ -55,9 +55,9 @@ void vDigitalIOInit() {
 
     gpio_set_irq_enabled(PUSHBUTTON_PIN, GPIO_IRQ_EDGE_RISE, true);
     gpio_set_irq_enabled(SWITCH_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
-    gpio_set_irq_enabled(CSENSE_LHS, GPIO_IRQ_EDGE_RISE, true);
-    gpio_set_irq_enabled(CSENSE_RHS, GPIO_IRQ_EDGE_RISE, true);
-    gpio_set_irq_enabled(CSENSE_EXTRACTION, GPIO_IRQ_EDGE_RISE, true);
+    gpio_set_irq_enabled(CSENSE_LHS, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(CSENSE_RHS, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(CSENSE_EXTRACTION, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
 
     gpio_set_irq_callback(&gpioCallback);
 }
@@ -83,7 +83,7 @@ void gpioCallback(uint gpio_number, uint32_t events) {
                 } else if (events & GPIO_IRQ_EDGE_FALL) {
                     vDebugLog("Received Falling Edge on Switch\n");
                     switch_debounce_timer = current_time;
-                    setRGB_COLOUR_GREEN();
+                    setRGB_COLOUR_BLACK();
                 }
             }
             break;
@@ -93,13 +93,16 @@ void gpioCallback(uint gpio_number, uint32_t events) {
                     vDebugLog("Received Rising Edge on Current Sense 1\n");
                     csense_lhs_debounce_timer = current_time;
                     SET_EXTRACTION_FORWARD();
+                    setRGB_COLOUR_PURPLE();
                     setExtractionPWM(MANUAL_EXTRACTION_SPEED);
                 } else if (events & GPIO_IRQ_EDGE_FALL) {
                     vDebugLog("Received Falling Edge on Current Sense 1\n");
                     csense_lhs_debounce_timer = current_time;
                     SET_EXTRACTION_STOPPED();
+                    setRGB_COLOUR_BLACK();
                 }
             }
+            break;
         case CSENSE_RHS:
             if (current_time - csense_rhs_debounce_timer > DEBOUNCE_INTERVAL_MS) {
                 if (events & GPIO_IRQ_EDGE_RISE) {
@@ -107,17 +110,26 @@ void gpioCallback(uint gpio_number, uint32_t events) {
                     csense_rhs_debounce_timer = current_time;
                     SET_EXTRACTION_BACKWARD();
                     setExtractionPWM(MANUAL_EXTRACTION_SPEED);
+                    setRGB_COLOUR_CYAN();
                 } else if (events & GPIO_IRQ_EDGE_FALL) {
                     vDebugLog("Received Falling Edge on Current Sense 2\n");
                     csense_rhs_debounce_timer = current_time;
                     SET_EXTRACTION_STOPPED();
+                    setRGB_COLOUR_BLACK();
                 }
             }
-        case CSENSE_EXTRACTION:
             break;
+        case CSENSE_EXTRACTION:
+            if (current_time - csense_extraction_debounce_timer > DEBOUNCE_INTERVAL_MS) {
+                if (events & GPIO_IRQ_EDGE_RISE) {
+                    vDebugLog("Received Rising Edge on Current Sense 3\n");
+                    csense_extraction_debounce_timer = current_time;
+                    setRGB_COLOUR_YELLOW();
+                } else if (events & GPIO_IRQ_EDGE_FALL) {
+                    vDebugLog("Received Falling Edge on Current Sense 3\n");
+                    csense_extraction_debounce_timer = current_time;
+                    setRGB_COLOUR_BLACK();
+                }
+            }
     }
-}
-
-void vDigitalIOTask() {
-
 }

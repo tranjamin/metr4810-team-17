@@ -15,21 +15,17 @@ pico_sdk_init()
 
 add_executable( main 
     main.c
-    controller.c
     delivery.c
-    detection.c
     diagnostics.c
     extraction.c
     blink.c
-    localisation.c
     motors.c
-    pathplanning.c
     wifi.c
     rgb.c
     digitalio.c
+    watchdog.c
 
     dhcpserver/dhcpserver.c
-    dnsserver/dnsserver.c
     ../FreeRTOS-Kernel/portable/MemMang/heap_4.c
     )
 
@@ -38,7 +34,6 @@ target_include_directories(
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/..
     ${CMAKE_CURRENT_LIST_DIR}/dhcpserver
-    ${CMAKE_CURRENT_LIST_DIR}/dnsserver
 )
  
 #for Pico W
@@ -48,6 +43,7 @@ target_link_libraries(
     pico_stdlib
     pico_time
     hardware_pwm
+    hardware_watchdog
     FreeRTOS-Kernel 
     FreeRTOS-Kernel-Heap4
     # pico_cyw43_arch_lwip_poll

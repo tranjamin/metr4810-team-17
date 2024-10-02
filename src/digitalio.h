@@ -8,7 +8,6 @@
 #define DIGITALIO_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE)
 #define DIGITALIO_TASK_COREMASK 0x01
 
-void vDigitalIOTask();
 void vDigitalIOInit();
 
 #endif
