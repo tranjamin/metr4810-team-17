@@ -1,0 +1,39 @@
+{
+    "controllers": {
+        "forward-controller": {
+            "k_angle": 100,
+            "k_v": 60,
+            "w": 0.5,
+            "goal_tolerance": 5,
+            "reversing_allowed": true 
+        },
+        "spin-controller": {
+            "k_angle": 160,
+            "k_v": 0,
+            "angle_tolerance": 0.2
+        }
+    },
+    "localisation": {
+        "localisation-class": "CameraLocalisation",
+        "args": {
+            
+        }
+    },
+    "robot": {
+        "robot-class": "RobotUDP",
+        "args": {
+            "ip": "192.168.4.1"
+        }
+    },
+    "pathplan": {
+        "reference-class": "RectangleWaypointSequence",
+        "args": {
+            "length_x": 1000,
+            "length_y": 1000,
+            "origin_x": 500,
+            "origin_y": 500,
+            "num_loops": 5,
+            "angle_agnostic": false
+        }
+    }
+}
