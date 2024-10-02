@@ -2,15 +2,18 @@ import numpy as np
 import cv2 as cv
 import time
 from math import pi
-from robot import Robot, RobotUDP, LineFollowerController, FowardController, SpinController
-from planning import *
-from fmi import *
 import argparse
 import json
 
+from robot import *
+from planning import *
+from fmi import *
 from localisation import *
 
 import matplotlib.pyplot as plt
+
+import ctypes
+ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 def main(configfile, camera):
     CONFIG_FILE = json.load(open(configfile))

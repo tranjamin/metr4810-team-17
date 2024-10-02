@@ -18,8 +18,8 @@ The motor connections are routed as MH21-MH24 on the top left of the PCB. Connec
 
 - MH21: *unknown*
 - MH22: *unknown*
-- MH23: *unknown*
-- MH24: *unknown*
+- MH23: Extraction
+- MH24: Deposit
 
 ### Onboard LED
 
@@ -134,21 +134,15 @@ pip install -r requirements.txt
 
 ### Running
 
-To run the client-side application, run `python local_arucos_adaptive_origin.py`. Depending on what you want to do, you have the following options (eventually these will probably go into config files):
+To run the client-side application, run `python main.py`. Depending on what you want to do, you have the following options (eventually these will probably go into config files):
 
 (You need to be on `add-pathplanning` branch to do this, but `aruco-localise` will have the latest localisation code)
 
 - Choose which camera to use:
-  - Change the first argument of `cv.VideoCapture()` at the start of `main`. You might have to try several different numbers (usually it's 0, 1, or 2).
+  - Run `python main.py -c <camera-number>`
 
-- Choose what path to follow:
-  - Change the path in `plan.set_waypoints` towards the start of `main`. You can either make it `SnakeWaypointSequence()` for the actual robot path, or `RectangleWaypointSequence()`/`MockLocalisationWaypointSequence()` for testing.
-
-- Choose whether to use localisation or not:
-  - To test in isolation of the localisation algorithm, set `localiser = MockLocalisation()` at the start of `main`. This will replace the algorithm with a stub which just returns the origin. To use localisation, use `localiser = Localisation()`.
-
-- Choose whether to send commands to the robot:
-  - To send the PWM commands to the robot, you must have connected to the `METR4810 Team 17` WiFi. Then, enable robot commands with `send_to_robot = True` near the start of `main`.
+- Set up configuration:
+  - Run `python main.py -f <config-file>`.
 
 ### Simulating
 
@@ -156,6 +150,8 @@ To run the simulator, run `python simulator.py`. As of right now, it only maps t
 
 - Change with path to follow:
   - Modify the argument of `sim.set_waypoints()` in the same way as how you would change the path when running normally.
+
+Alternatively, run the normal script using on of the sim config files.
 
 ### File Guide
 
@@ -182,7 +178,7 @@ I (Ben) am in the process of objectifying the code. As it stands, here is how it
   - `Controller`: a class which takes care of planning between waypoints (i.e. to an arbitrary destination along a straight line path). Does weird stuff.
   - `Robot`: a class which takes care of communication to the physical robot. The important function is `send_control_action`, which will send the desired linear and angular velocity as PWMs to the robot.
 - `estimators.py`: The file which encapsulates all to do with Kalman filters and pose estimation. I saw the `@` operator for matrix multiplication and noped out of there.
-- `local_arucos_adaptive_origin.py`: The main file. Really should be renamed as `main`.
+- `localisation.py`: The file to keep all localisation.
   - `MarkerCollection`: a class to hold a set of Aruco markers representing a single (rigid) object. Important functions are:
     - `register_marker()`: adds a marker to the collection
     - `estimate_pose()`: estimates the pose of the object as a translation and rotation vector from origin. I think.
@@ -191,4 +187,5 @@ I (Ben) am in the process of objectifying the code. As it stands, here is how it
     - `setup()`: configures the localisation problem in terms of an origin marker set and object marker set. Eventually will think of a good way to put this in a config file.
     - `get_position()`: gets the position of the object relative to the origin.
   - `MockLocalisation`: The mock class used to mimic `Localisation` but just return the origin repeatedly.
-  - `main.py`: the monolithic function where everything happens.
+- `fmi.py`: the file which holds the class to run the Simulink simulation.
+  - `RobotSim`: the (singleton) class used to represent both the simulated Localisation and Robot.
