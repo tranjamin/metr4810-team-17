@@ -1,0 +1,11 @@
+numpy
+scipy
+opencv-python
+pygame
+requests
+
+fmpy
+plotly
+matplotlib
+
+argparse

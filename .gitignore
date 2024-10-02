@@ -1,1 +1,9 @@
-src/build
+.venv
+images
+*calibration
+__pycache__
+.pylintrc
+.vscode
+
+
+*.autosave
