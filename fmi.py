@@ -4,7 +4,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-from robot import Robot
+from robot import Robot, wrapToPi
 from localisation import Localisation
 
 class RobotSim(Robot, Localisation):
@@ -55,6 +55,7 @@ class RobotSim(Robot, Localisation):
 
         x, y, theta =  self.fmu.getReal([self.vrs["x"], self.vrs["y"], self.vrs["theta"]])
         _ = 0
+        theta = wrapToPi(theta)
         return (x, _, y, _, _, _), (theta, _, _, _, _, _)
     
     def step(self):

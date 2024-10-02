@@ -22,23 +22,23 @@ def main():
     localiser.setup()
 
     ### Set up controllers
-    forward_controller = FowardController(k_angle=50,
-                                       k_v=60*20,
+    forward_controller = FowardController(k_angle=5,
+                                       k_v=200,
                                        w=0.5,
-                                       goal_tolerance=50,
+                                       goal_tolerance=5,
                                        reversing_allowed=True)
 
     # warning when tuning
-    spin_controller = SpinController(k_angle=8*20,
+    spin_controller = SpinController(k_angle=5,
                                      k_v=0,
-                                     angle_tolerance=0.2
+                                     angle_tolerance=0.05
                                      )
     controller = LineFollowerController(forward_controller, spin_controller)
 
     plan = Pathplanner()
     plan.set_controller(controller)
-    waypoints = RectangleWaypointSequence(1000, 1000, 500, 500, 10, angle_agnostic=False)
-    # waypoints = SnakeWaypointSequence(theta_agnostic=False)
+    # waypoints = RectangleWaypointSequence(1000, 1000, 500, 500, 10, angle_agnostic=False)
+    waypoints = SnakeWaypointSequence(theta_agnostic=False)
     plan.set_waypoints(waypoints)
 
     robot_comms = RobotSim()
@@ -91,8 +91,16 @@ def main():
 
 
         cv.imshow('frame', img)
-        if cv.waitKey(1) == ord('q'):
+        key = cv.waitKey(1)
+        if key == ord('q'):
             break
+        elif key == ord('d'):
+            print("D")
+            plan.previous_waypoint = (plan.current_x, plan.current_y)
+            plan.waypoints.plan_to_deposit(x, y, theta)
+            plan.current_waypoint = plan.waypoints.get_current_waypoint()
+            plan.update_controller_path = True
+
 
     cap.release()
     cv.destroyAllWindows()

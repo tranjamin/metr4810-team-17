@@ -4,7 +4,7 @@ import math
 from typing import *
 from robot import Controller
 from abc import ABC
-from math import pi
+from math import pi, atan2
 
 class Pathplanner():
     '''
@@ -153,7 +153,7 @@ class DepositWaypoint(Waypoint):
     # parameters of waypoint
     DEPOSIT_X: float = 1600
     DEPOSIT_Y: float = 1900
-    DEPOSIT_HEADING: float = 0
+    DEPOSIT_HEADING: float = pi/2
 
     def __init__(self):
         super().__init__(
@@ -172,11 +172,11 @@ class DepositHelperWaypoint(Waypoint):
     DEPOSIT_HELPER_X: float = 1600
     DEPOSIT_HELPER_Y: float = 1600
 
-    def __init__(self):
+    def __init__(self, heading=pi/2):
         super().__init__(
             DepositHelperWaypoint.DEPOSIT_HELPER_X,
             DepositHelperWaypoint.DEPOSIT_HELPER_Y,
-            heading = None,
+            heading = heading,
             vel = None
         )
 
@@ -187,7 +187,7 @@ class WaypointSequence(ABC):
     def __init__(self):
         self.waypoints: list[float] = list()
     
-    def plan_to_deposit(self, current_x: float, current_y: float):
+    def plan_to_deposit(self, current_x: float, current_y: float, current_theta: float):
         '''
         Plans to the deposit chamber.
             1. Adds a waypoint to just below the deposit chamber
@@ -198,8 +198,9 @@ class WaypointSequence(ABC):
             current_x: the current x position of the robot
             current_y: the current y position of the robot
         '''
-
-        self.waypoints.insert(0, Waypoint(current_x, current_y))
+        return_angle = atan2(current_y - DepositHelperWaypoint.DEPOSIT_HELPER_Y, current_x - DepositHelperWaypoint.DEPOSIT_HELPER_X)
+        self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta))
+        self.waypoints.insert(0, DepositHelperWaypoint(heading = return_angle))
         self.waypoints.insert(0, DepositWaypoint())
         self.waypoints.insert(0, DepositHelperWaypoint())
     
@@ -239,12 +240,10 @@ class SnakeWaypointSequence(WaypointSequence):
 
         for i, x in enumerate(x_coords):
             for j, y in enumerate(reversed_y_coords if i % 2 else y_coords): # toggle the direction of each line
-                if (j != len(y_coords) and j != 0):
-                    target_heading = 0 if i % 2 else pi
-                elif j == len(y_coords):
-                    target_heading = -pi/2 if i % 2 else pi
+                if (j != len(y_coords) - 1): # if not at the end
+                    target_heading = pi/2 if i % 2 else -pi/2
                 else:
-                    target_heading = -pi/2 if i % 2 else 0
+                    target_heading = 0
                 
                 waypoint = Waypoint(
                     x, y,
@@ -267,22 +266,22 @@ class RectangleWaypointSequence(WaypointSequence):
             self.waypoints.append(Waypoint(
                 origin_x, 
                 origin_y + length_y, 
-                heading=None if angle_agnostic else -pi/2, 
+                heading=None if angle_agnostic else 0, 
                 vel=0 if RectangleWaypointSequence.STOPPING else None))
             self.waypoints.append(Waypoint(
                 origin_x + length_x, 
                 origin_y + length_y, 
-                heading=None if angle_agnostic else pi,
+                heading=None if angle_agnostic else -pi/2,
                 vel=0 if RectangleWaypointSequence.STOPPING else None))
             self.waypoints.append(Waypoint(
                 origin_x + length_x, 
                 origin_y, 
-                heading=None if angle_agnostic else pi/2, 
+                heading=None if angle_agnostic else pi, 
                 vel=0 if RectangleWaypointSequence.STOPPING else None))
             self.waypoints.append(Waypoint(
                 origin_x, 
                 origin_y, 
-                heading=None if angle_agnostic else 0, 
+                heading=None if angle_agnostic else pi/2, 
                 vel=0 if RectangleWaypointSequence.STOPPING else None))
 
 class MockLocalisationWaypointSequence(WaypointSequence):
