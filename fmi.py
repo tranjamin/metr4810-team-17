@@ -80,6 +80,9 @@ class RobotSim(Robot, Localisation):
             print(f"v: {v}, omega: {omega}")
         
         self.fmu.setReal([self.vrs["v"], self.vrs["omega"]], [v, omega])
+
+    def send_command(self, command):
+        print(f"Would send command {command}")
     
     def plot_results(self):
         fmpy.util.plot_result(np.array(self.results, dtype=np.dtype([('time', np.float64), ('x', np.float64),  ('y', np.float64),  ('theta', np.float64)])))

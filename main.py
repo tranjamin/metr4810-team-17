@@ -12,6 +12,7 @@ import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 ROBOT_STARTED = False
+ROBOT_EXTRACTION = True
 
 def main(configfile, camera):
     global ROBOT_STARTED
@@ -49,6 +50,8 @@ def main(configfile, camera):
     robot_config = CONFIG_FILE["robot"]
     robot_class = eval(robot_config["robot-class"])
     robot_comms: Robot = robot_class(**robot_config["args"])
+
+    plan.set_robot(robot_comms)
     
     # Main loop
     while True:
@@ -56,29 +59,28 @@ def main(configfile, camera):
         if not ret:
             break
 
-        
+        v, omega = 0, 0
         ### LOCALISATION FINISHED
         positions, angles = localiser.get_position(img)
 
         ### PATH PLANNING
-        v, omega = 0, 0
         not_none = lambda x: x is not None
         if all([not_none(e) for e in positions]):
             x, _, y, _, _, _ = np.ravel(positions).tolist()
             theta, _, _, _, _, _ = np.ravel(angles).tolist()
 
             plan.update_robot_position(x, y, theta)
-            plan.controller_step()
-
-            v = plan.desired_velocity
-            omega = plan.desired_angular
-            
             if ROBOT_STARTED:
+                plan.controller_step()
+
+                v = plan.desired_velocity
+                omega = plan.desired_angular
+                
                 robot_comms.send_control_action(v, omega, do_print=False)
 
             # draw control info on screen
-            labels = ["x", "y"]
-            for index, val in enumerate([x, y]):
+            labels = ["x", "y", "theta"]
+            for index, val in enumerate([x, y, theta*180/pi]):
                 cv.putText(img, '{}: {:.3f}'.format(labels[index], val),
                             (500, 50 + 50*index),
                             cv.FONT_HERSHEY_PLAIN,
@@ -102,18 +104,16 @@ def main(configfile, camera):
         key = cv.waitKey(1)
         if key == ord('q'): # stop robot and exit
             break
-        elif key == ord('d'): # return to delivery
-            print("D")
-            plan.previous_waypoint = (plan.current_x, plan.current_y)
-            plan.waypoints.plan_to_deposit(x, y, theta)
-            plan.current_waypoint = plan.waypoints.get_current_waypoint()
-            plan.update_controller_path = True
-        elif key == ord('e'): # go to high ground
-            pass
-        elif key == ord('f'): # start depositing bean
-            robot_comms.send_command("control?command=0")
+        elif key == ord('d') and ROBOT_STARTED: # return to delivery
+            plan.add_delivery()
+        elif key == ord('e') and ROBOT_STARTED: # go to high ground
+            plan.add_emergency()
+        elif key == ord('f') and ROBOT_STARTED: # start depositing bean
+            plan.signal_delivery_start()
         elif key == ord('s'): # start robot sending
             ROBOT_STARTED = True
+            plan.extractionFlag = True
+            robot_comms.send_command("control?command=7")
 
     cap.release()
     cv.destroyAllWindows()

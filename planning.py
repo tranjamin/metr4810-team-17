@@ -2,7 +2,7 @@ from __future__ import annotations
 import numpy as np
 import math
 from typing import *
-from robot import Controller
+from robot import Controller, Robot
 from abc import ABC
 from math import pi, atan2
 
@@ -28,6 +28,9 @@ class Pathplanner():
         self.previous_waypoint: tuple = (0, 0)
         self.update_controller_path = True
 
+        self.stopFlag = False
+        self.extractionFlag = False
+
     def set_waypoints(self, waypoints: WaypointSequence):
         '''
         Set the waypoint sequence the planner will be following
@@ -41,6 +44,9 @@ class Pathplanner():
         '''
         self.controller = controller
     
+    def set_robot(self, robot: Robot):
+        self.robot = robot
+
     def update_robot_position(self, current_x, current_y, current_theta):
         '''
         Update the planner's knowledge of the robot. Moves to the next waypoint if necessary
@@ -52,7 +58,18 @@ class Pathplanner():
         # if we have reached the current waypoint, move to the next one
         if self.current_waypoint is None:
             return
-        if self.controller.has_reached_goal():
+        if self.controller.has_reached_goal() and not self.stopFlag:
+            # do stuff
+            if self.current_waypoint.stopFlag:
+                print("Should be stopping now")
+                self.stopFlag = True
+            if self.current_waypoint.suspendFlag:
+                self.robot.send_command("control?command=8")
+                self.extractionFlag = False
+            if self.current_waypoint.resumeFlag:
+                self.robot.send_command("control?command=7")
+                self.extractionFlag = True
+
             self.previous_waypoint = self.current_waypoint.coords
             self.current_waypoint = self.waypoints.move_to_next_waypoint()
             self.update_controller_path = True
@@ -72,11 +89,43 @@ class Pathplanner():
             self.desired_angular = 0
         # else, get the control actions
         else:
+            # new path
             if self.update_controller_path:
                 self.controller.set_path(self.previous_waypoint, self.current_waypoint.coords, self.current_waypoint.heading)
                 self.update_controller_path = False
+                if self.extractionFlag:
+                    self.robot.send_command("control?command=7")
             
-            self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta)
+            self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta, robot=self.robot)
+            if self.stopFlag:
+                self.desired_angular = 0
+                self.desired_velocity = 0
+
+    def add_emergency(self):
+        self.previous_waypoint = (self.current_x, self.current_y)
+        self.waypoints.plan_to_emergency(self.current_x, self.current_y, self.current_theta)
+        self.current_waypoint = self.waypoints.get_current_waypoint()
+        self.update_controller_path = True
+        self.robot.send_command("control?command=8")
+        self.extractionFlag = False
+    
+    def add_delivery(self):
+        self.previous_waypoint = (self.current_x, self.current_y)
+        self.waypoints.plan_to_deposit(self.current_x, self.current_y, self.current_theta)
+        self.current_waypoint = self.waypoints.get_current_waypoint()
+        self.update_controller_path = True
+        self.robot.send_command("control?command=8")
+        self.extractionFlag = False
+
+    def signal_delivery_start(self):
+        self.robot.send_command("control?command=0")
+        self.stopFlag = False
+
+    def signal_pathplanning_stop(self):
+        self.stopFlag = True
+
+    def signal_pathplanning_start(self):
+        self.stopFlag = False
 
 class RobotGeometry():
     '''
@@ -104,7 +153,8 @@ class Waypoint():
                  heading: Optional[float] = None, 
                  vel: Optional[float] = None,
                  suspendExtraction: bool = False,
-                 resumeExtraction: bool = False, 
+                 resumeExtraction: bool = False,
+                 stopMovement: bool = False,
                  ):
         """
         Parameters
@@ -122,6 +172,7 @@ class Waypoint():
         self.vel = vel
         self.suspendFlag = suspendExtraction
         self.resumeFlag = resumeExtraction
+        self.stopFlag = stopMovement
 
         # TODO: make sure the units line up
         assert self.x <= 2000 and self.x >= 0
@@ -160,7 +211,7 @@ class DepositWaypoint(Waypoint):
             DepositWaypoint.DEPOSIT_X,
             DepositWaypoint.DEPOSIT_Y,
             DepositWaypoint.DEPOSIT_HEADING,
-            vel = 0
+            stopMovement=True
         )
 
 class DepositHelperWaypoint(Waypoint):
@@ -199,13 +250,31 @@ class WaypointSequence(ABC):
             current_y: the current y position of the robot
         '''
         return_angle = atan2(current_y - DepositHelperWaypoint.DEPOSIT_HELPER_Y, current_x - DepositHelperWaypoint.DEPOSIT_HELPER_X)
-        self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta))
+        self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
         self.waypoints.insert(0, DepositHelperWaypoint(heading = return_angle))
         self.waypoints.insert(0, DepositWaypoint())
         self.waypoints.insert(0, DepositHelperWaypoint())
     
-    def plan_to_emergency(self, current_x: float, current_y: float):
-        pass
+    def plan_to_emergency(self, current_x: float, current_y: float, current_theta: float):
+        left_emergency = current_x
+        right_emergency = 2000 - current_x
+        down_emergency = current_y
+        up_emergency = 2000 - current_y
+        
+        emergency_side = min([left_emergency, right_emergency, down_emergency, up_emergency])
+        if emergency_side == left_emergency:
+            emergency_waypoint = Waypoint(RobotGeometry.LENGTH/2, current_y, -pi)
+        elif emergency_side == right_emergency:
+            emergency_waypoint = Waypoint(2000 - RobotGeometry.LENGTH/2, current_y, 0)
+        elif emergency_side == up_emergency:
+            emergency_waypoint = Waypoint(current_x, 2000 - RobotGeometry.LENGTH/2, pi/2)
+        else:
+            emergency_waypoint = Waypoint(current_x, RobotGeometry.LENGTH/2, -pi/2)
+        
+        self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
+        self.waypoints.insert(0, emergency_waypoint)
+        
+    
     
     def get_current_waypoint(self) -> Waypoint | None:
         return self.waypoints[0] if len(self.waypoints) else None
