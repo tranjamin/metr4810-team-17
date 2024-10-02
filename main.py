@@ -1,7 +1,5 @@
 import numpy as np
 import cv2 as cv
-import time
-from math import pi
 import argparse
 import json
 
@@ -10,12 +8,14 @@ from planning import *
 from fmi import *
 from localisation import *
 
-import matplotlib.pyplot as plt
-
 import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
+ROBOT_STARTED = False
+
 def main(configfile, camera):
+    global ROBOT_STARTED
+
     CONFIG_FILE = json.load(open(configfile))
 
     cap = cv.VideoCapture(camera, cv.CAP_DSHOW) # set to 2 to select external webcam
@@ -47,8 +47,8 @@ def main(configfile, camera):
     plan.set_waypoints(pathplanner_class(**pathplanner_kwargs))
 
     robot_config = CONFIG_FILE["robot"]
-    robot_class: Robot = eval(robot_config["robot-class"])
-    robot_comms = robot_class(**robot_config["args"])
+    robot_class = eval(robot_config["robot-class"])
+    robot_comms: Robot = robot_class(**robot_config["args"])
     
     # Main loop
     while True:
@@ -73,7 +73,8 @@ def main(configfile, camera):
             v = plan.desired_velocity
             omega = plan.desired_angular
             
-            robot_comms.send_control_action(v, omega, do_print=False)
+            if ROBOT_STARTED:
+                robot_comms.send_control_action(v, omega, do_print=False)
 
             # draw control info on screen
             labels = ["x", "y"]
@@ -99,15 +100,20 @@ def main(configfile, camera):
 
         cv.imshow('frame', img)
         key = cv.waitKey(1)
-        if key == ord('q'):
+        if key == ord('q'): # stop robot and exit
             break
-        elif key == ord('d'):
+        elif key == ord('d'): # return to delivery
             print("D")
             plan.previous_waypoint = (plan.current_x, plan.current_y)
             plan.waypoints.plan_to_deposit(x, y, theta)
             plan.current_waypoint = plan.waypoints.get_current_waypoint()
             plan.update_controller_path = True
-
+        elif key == ord('e'): # go to high ground
+            pass
+        elif key == ord('f'): # start depositing bean
+            robot_comms.send_command("control?command=0")
+        elif key == ord('s'): # start robot sending
+            ROBOT_STARTED = True
 
     cap.release()
     cv.destroyAllWindows()

@@ -23,20 +23,6 @@ class Robot:
             print(f"v: {v}, omega: {omega}")
         ul, ur = np.ravel(control_vector).tolist()
         self.set_pwm(ul, ur, do_print=do_print)
-        # ul, ur = 0, 0
-        # if v > 0 and omega > 0:
-        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(4))
-        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(2))
-        # elif v < 0 and omega > 0:
-        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(3))
-        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(5))
-        # elif v > 0 and omega < 0:
-        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(1))
-        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(5))
-        # else: # v < 0 and omega < 0
-        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(6))
-        #     self.send_command(ROBOT_CONTROL_ADDRESS.format(2))
-
     
     def set_pwm(self, left: int, right: int, do_print=False):
         self.pwm_left = round(max(min(left, 100.0), -100.0), 3)
