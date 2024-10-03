@@ -64,10 +64,10 @@ class Pathplanner():
                 print("Should be stopping now")
                 self.stopFlag = True
             if self.current_waypoint.suspendFlag:
-                self.robot.send_command("control?command=8")
+                self.signal_extraction_stop()
                 self.extractionFlag = False
             if self.current_waypoint.resumeFlag:
-                self.robot.send_command("control?command=7")
+                self.signal_extraction_start()
                 self.extractionFlag = True
 
             self.previous_waypoint = self.current_waypoint.coords
@@ -94,9 +94,9 @@ class Pathplanner():
                 self.controller.set_path(self.previous_waypoint, self.current_waypoint.coords, self.current_waypoint.heading)
                 self.update_controller_path = False
                 if self.extractionFlag:
-                    self.robot.send_command("control?command=7")
+                    self.signal_extraction_start()
             
-            self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta, robot=self.robot)
+            self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta, stop_extraction=self.signal_extraction_stop)
             if self.stopFlag:
                 self.desired_angular = 0
                 self.desired_velocity = 0
@@ -106,7 +106,7 @@ class Pathplanner():
         self.waypoints.plan_to_emergency(self.current_x, self.current_y, self.current_theta)
         self.current_waypoint = self.waypoints.get_current_waypoint()
         self.update_controller_path = True
-        self.robot.send_command("control?command=8")
+        self.signal_extraction_stop()
         self.extractionFlag = False
     
     def add_delivery(self):
@@ -114,12 +114,18 @@ class Pathplanner():
         self.waypoints.plan_to_deposit(self.current_x, self.current_y, self.current_theta)
         self.current_waypoint = self.waypoints.get_current_waypoint()
         self.update_controller_path = True
-        self.robot.send_command("control?command=8")
+        self.signal_extraction_stop()
         self.extractionFlag = False
 
     def signal_delivery_start(self):
         self.robot.send_command("control?command=0")
         self.stopFlag = False
+    
+    def signal_extraction_start(self):
+        self.robot.send_command("control?command=7")
+    
+    def signal_extraction_stop(self):
+        self.robot.send_command("control?command=8")
 
     def signal_pathplanning_stop(self):
         self.stopFlag = True

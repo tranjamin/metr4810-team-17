@@ -113,7 +113,7 @@ def main(configfile, camera):
         elif key == ord('s'): # start robot sending
             ROBOT_STARTED = True
             plan.extractionFlag = True
-            robot_comms.send_command("control?command=7")
+            plan.signal_extraction_start()
 
     cap.release()
     cv.destroyAllWindows()

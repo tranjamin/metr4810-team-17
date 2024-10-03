@@ -216,7 +216,7 @@ class LineFollowerController(Controller):
         self.theta_agnostic = theta_target is None
         super().set_path(p0, p1, theta_target)
 
-    def get_control_action(self, x: float, y: float, theta: float, robot: Robot=None):
+    def get_control_action(self, x: float, y: float, theta: float, stop_extraction: callable = None):
         if not self.phase_2 and not self.forward_controller.has_reached_goal():
             # keep progressing along the foward path
             return self.forward_controller.get_control_action(x, y, theta)
@@ -226,8 +226,8 @@ class LineFollowerController(Controller):
         if not self.phase_2 and not self.theta_agnostic:
             print("SWITCHING TO SPIN CONTROLLER")
             self.phase_2 = True
-            if robot is not None:
-                robot.send_command("control/command=8")
+            if stop_extraction is not None:
+                stop_extraction()
         if self.phase_2:
             # print("DOING PHASE 2")
             return self.spin_controller.get_control_action(x, y, theta)
