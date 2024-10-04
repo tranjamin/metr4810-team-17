@@ -31,6 +31,10 @@ class Pathplanner():
         self.stopFlag = False
         self.extractionFlag = False
 
+        # parameters that can be changed by user
+
+        self.extraction_allowed = True
+
     def set_waypoints(self, waypoints: WaypointSequence):
         '''
         Set the waypoint sequence the planner will be following
@@ -122,7 +126,8 @@ class Pathplanner():
         self.stopFlag = False
     
     def signal_extraction_start(self):
-        self.robot.send_command("control?command=7")
+        if self.extraction_allowed:
+            self.robot.send_command("control?command=7")
     
     def signal_extraction_stop(self):
         self.robot.send_command("control?command=8")

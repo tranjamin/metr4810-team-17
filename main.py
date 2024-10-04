@@ -114,6 +114,13 @@ def main(configfile, camera):
             ROBOT_STARTED = True
             plan.extractionFlag = True
             plan.signal_extraction_start()
+        elif key == ord('k'): # allow extraction
+            plan.extraction_allowed = True
+            plan.signal_extraction_start()
+        elif key == ord('m'): # manually extraction
+            plan.extraction_allowed = False
+            plan.signal_extraction_stop()
+            
 
     cap.release()
     cv.destroyAllWindows()
