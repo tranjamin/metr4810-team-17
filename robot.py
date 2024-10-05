@@ -35,7 +35,8 @@ class Robot:
     def control_function(self, command):
         self.send_command(ROBOT_CONTROL_ADDRESS.format(command))
 
-    def send_command(self, command: int):
+    def send_command(self, command):
+        print("Sending TCP")
         try:
             # print("sending robot command")
             url = f"http://{self.ip}/{command}"
@@ -46,14 +47,20 @@ class Robot:
             pass
         except requests.exceptions.Timeout:
             pass
+    
+    def send_control_command(self, command):
+        self.send_command(command)        
 
 class RobotUDP(Robot):
     def __init__(self, ip: str):
         super().__init__(ip)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    def send_command(self, command: int):
-        self.sock.sendto(bytes(command, "utf-8"), (self.ip, 80))
+    def send_command(self, command):
+        self.sock.sendto(bytes("L" + command, "utf-8"), (self.ip, 80))
+    
+    def send_control_command(self, command):
+        self.sock.sendto(bytes("C" + command, "utf-8"), (self.ip, 80))
 
 class Controller:
     def __init__(self):

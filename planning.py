@@ -118,14 +118,14 @@ class Pathplanner():
         self.extractionFlag = False
 
     def signal_delivery_start(self):
-        self.robot.send_command("control?command=0")
+        self.robot.send_control_command("command=0")
         self.stopFlag = False
     
     def signal_extraction_start(self):
-        self.robot.send_command("control?command=7")
+        self.robot.send_control_command("command=7")
     
     def signal_extraction_stop(self):
-        self.robot.send_command("control?command=8")
+        self.robot.send_control_command("command=8")
 
     def signal_pathplanning_stop(self):
         self.stopFlag = True
