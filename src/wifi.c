@@ -203,41 +203,99 @@ void udp_server_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_ad
         return;
     }
     if (p->tot_len > 0) {
-        float lhs_param, rhs_param;
-        udp_count++;
+        // format is "Llhs=XXX.XXX&rhs=XXX.XXX"
+        if (*((char*) p->payload) == 'L') {
+            float lhs_param, rhs_param;
+            udp_count++;
 
-        // copy params from ROM
-        char params_copy[23];
-        strncpy(params_copy, p->payload, 23);
+            // copy params from ROM
+            char params_copy[24];
+            strncpy(params_copy, p->payload, 24);
+            
+            // split params and convert to floats
+            params_copy[12] = '\0';
+            lhs_param = strtof(params_copy + 5, NULL);
+            rhs_param = strtof(params_copy + 17, NULL);
+
+            vDebugLog("Localisation params: %d, %d'\n", lhs_param, rhs_param);
+
+            // send motor controls
+            if (lhs_param > 0) {
+                SET_TRAVERSAL_LHS_FORWARD();
+                setTraversalDuty_LHS(lhs_param);
+            } else if (lhs_param < 0) {
+                SET_TRAVERSAL_LHS_BACKWARD();
+                setTraversalDuty_LHS(-lhs_param);
+            } else {
+                SET_TRAVERSAL_LHS_STOPPED();
+                setTraversalDuty_LHS(0);
+            }
+
+            if (rhs_param > 0) {
+                SET_TRAVERSAL_RHS_FORWARD();
+                setTraversalDuty_RHS(rhs_param);
+            } else if (rhs_param < 0) {
+                SET_TRAVERSAL_RHS_BACKWARD();
+                setTraversalDuty_RHS(-rhs_param);
+            } else {
+                SET_TRAVERSAL_RHS_STOPPED();
+                setTraversalDuty_RHS(0);
+            }
+        } 
         
-        // split params and convert to floats
-        params_copy[11] = '\0';
-        lhs_param = strtof(params_copy + 4, NULL);
-        rhs_param = strtof(params_copy + 16, NULL);
+        // format is "Ccommand=X"
+        else if (*((char*) p->payload) == 'C') {
+            udp_count++;
 
-        vDebugLog("Localisation params: %d, %d'\n", lhs_param, rhs_param);
+            // copy params from ROM
+            char params_copy[12];
+            strncpy(params_copy, p->payload, 12);
+            int control_param = atoi(params_copy + 9);
 
-        // send motor controls
-        if (lhs_param > 0) {
-            SET_TRAVERSAL_LHS_FORWARD();
-            setTraversalDuty_LHS(lhs_param);
-        } else if (lhs_param < 0) {
-            SET_TRAVERSAL_LHS_BACKWARD();
-            setTraversalDuty_LHS(-lhs_param);
-        } else {
-            SET_TRAVERSAL_LHS_STOPPED();
-            setTraversalDuty_LHS(0);
-        }
+            switch (control_param) {
+                case 0:
+                    vStartDelivery();
+                    setRGB_COLOUR_RED();
+                    break;
+                case 1:
+                    SET_TRAVERSAL_LHS_FORWARD();
+                    setRGB_COLOUR_GREEN();
+                    break;
+                case 2:
+                    SET_TRAVERSAL_LHS_STOPPED();
+                    setRGB_COLOUR_BLUE();
+                    break;
+                case 3:
+                    SET_TRAVERSAL_LHS_BACKWARD();
+                    setRGB_COLOUR_PURPLE();
+                    break;
+                case 4:
+                    SET_TRAVERSAL_RHS_FORWARD();
+                    setRGB_COLOUR_CYAN();
+                    break;
+                case 5:
+                    SET_TRAVERSAL_RHS_STOPPED();
+                    setRGB_COLOUR_YELLOW();
+                    break;
+                case 6:
+                    SET_TRAVERSAL_RHS_BACKWARD();
+                    setRGB_COLOUR_WHITE();
+                    break;
+                case 7:
+                    SET_EXTRACTION_FORWARD();
+                    setRGB_COLOUR_DARK_RED();
+                    break;
+                case 8:
+                    SET_EXTRACTION_STOPPED();
+                    setRGB_COLOUR_DARK_GREEN();
+                    break;
+                case 9:
+                    SET_EXTRACTION_BACKWARD();
+                    setRGB_COLOUR_DARK_BLUE();
+                    break;
 
-        if (rhs_param > 0) {
-            SET_TRAVERSAL_RHS_FORWARD();
-            setTraversalDuty_RHS(rhs_param);
-        } else if (rhs_param < 0) {
-            SET_TRAVERSAL_RHS_BACKWARD();
-            setTraversalDuty_RHS(-rhs_param);
-        } else {
-            SET_TRAVERSAL_RHS_STOPPED();
-            setTraversalDuty_RHS(0);
+            }   
+            
         }
     }
     pbuf_free(p);
