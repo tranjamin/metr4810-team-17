@@ -31,6 +31,10 @@ class Pathplanner():
         self.stopFlag = False
         self.extractionFlag = False
 
+        # parameters that can be changed by user
+
+        self.extraction_allowed = True
+
     def set_waypoints(self, waypoints: WaypointSequence):
         '''
         Set the waypoint sequence the planner will be following
