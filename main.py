@@ -12,7 +12,7 @@ import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 ROBOT_STARTED = False
-ROBOT_EXTRACTION = True
+ROBOT_EXTRACTION = False
 
 def main(configfile, camera):
     global ROBOT_STARTED
@@ -103,6 +103,7 @@ def main(configfile, camera):
         cv.imshow('frame', img)
         key = cv.waitKey(1)
         if key == ord('q'): # stop robot and exit
+            plan.signal_extraction_stop()
             break
         elif key == ord('d') and ROBOT_STARTED: # return to delivery
             plan.add_delivery()

@@ -2,9 +2,9 @@
     "controllers": {
         "forward-controller": {
             "k_angle": 100,
-            "k_v": 80,
+            "k_v": 60,
             "w": 0.5,
-            "goal_tolerance": 5,
+            "goal_tolerance": 20,
             "reversing_allowed": true 
         },
         "spin-controller": {
@@ -26,14 +26,9 @@
         }
     },
     "pathplan": {
-        "reference-class": "RectangleWaypointSequence",
+        "reference-class": "SnakeWaypointSequence",
         "args": {
-            "length_x": 1000,
-            "length_y": 1000,
-            "origin_x": 500,
-            "origin_y": 500,
-            "num_loops": 5,
-            "angle_agnostic": false
+            "theta_agnostic": false
         }
     }
 }

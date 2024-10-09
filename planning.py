@@ -41,6 +41,8 @@ class Pathplanner():
         '''
         self.waypoints = waypoints
         self.current_waypoint = self.waypoints.get_current_waypoint()
+        print("---- FIRST WAYPOINT ----")
+        print(f"(Next waypoint is at: {self.current_waypoint.coords})")
     
     def set_controller(self, controller: Controller):
         '''
@@ -141,11 +143,12 @@ class RobotGeometry():
     '''
     A class to represent the physical bounds of the robot
     '''
-    WIDTH: float = 400
-    LENGTH: float = 200
+    WIDTH: float = 350
+    LENGTH: float = 176
+    PADDING: float = 50
     RADIUS: float = math.sqrt(WIDTH**2 + LENGTH**2)/2
 
-    DIGGER_WIDTH: float = 200
+    DIGGER_WIDTH: float = 110
     DIGGER_RADIUS: float = math.sqrt(DIGGER_WIDTH**2 + LENGTH**2)/2
 
 class Waypoint():
@@ -212,8 +215,9 @@ class DepositWaypoint(Waypoint):
     '''
 
     # parameters of waypoint
-    DEPOSIT_X: float = 1600
-    DEPOSIT_Y: float = 1900
+    DEPOSIT_SIZE: float = 200
+    DEPOSIT_X: float = 2000 - DEPOSIT_SIZE - RobotGeometry.WIDTH / 2
+    DEPOSIT_Y: float = 2000 - RobotGeometry.LENGTH / 2 - RobotGeometry.PADDING
     DEPOSIT_HEADING: float = pi/2
 
     def __init__(self):
@@ -230,8 +234,8 @@ class DepositHelperWaypoint(Waypoint):
     '''
 
     # parameters of waypoint
-    DEPOSIT_HELPER_X: float = 1600
-    DEPOSIT_HELPER_Y: float = 1600
+    DEPOSIT_HELPER_X: float = 2000 - DepositWaypoint.DEPOSIT_SIZE - RobotGeometry.WIDTH / 2
+    DEPOSIT_HELPER_Y: float = 2000 - DepositWaypoint.DEPOSIT_SIZE - RobotGeometry.RADIUS - 2*RobotGeometry.PADDING
 
     def __init__(self, heading=pi/2):
         super().__init__(
@@ -273,15 +277,15 @@ class WaypointSequence(ABC):
         
         emergency_side = min([left_emergency, right_emergency, down_emergency, up_emergency])
         if emergency_side == left_emergency:
-            emergency_waypoint = Waypoint(RobotGeometry.LENGTH/2, current_y, -pi)
+            emergency_waypoint = Waypoint(RobotGeometry.LENGTH/2 + RobotGeometry.PADDING, current_y, -pi)
         elif emergency_side == right_emergency:
-            emergency_waypoint = Waypoint(2000 - RobotGeometry.LENGTH/2, current_y, 0)
+            emergency_waypoint = Waypoint(2000 - RobotGeometry.LENGTH/2 - RobotGeometry.PADDING, current_y, 0)
         elif emergency_side == up_emergency:
-            emergency_waypoint = Waypoint(current_x, 2000 - RobotGeometry.LENGTH/2, pi/2)
+            emergency_waypoint = Waypoint(current_x, 2000 - RobotGeometry.LENGTH/2 - RobotGeometry.PADDING, pi/2)
         else:
-            emergency_waypoint = Waypoint(current_x, RobotGeometry.LENGTH/2, -pi/2)
+            emergency_waypoint = Waypoint(current_x, RobotGeometry.LENGTH/2 + RobotGeometry.PADDINGs, -pi/2)
         
-        self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
+        self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resssumeExtraction=True))
         self.waypoints.insert(0, emergency_waypoint)
         
     
@@ -300,7 +304,7 @@ class SnakeWaypointSequence(WaypointSequence):
     A sequence of waypoints based on a snake search
     '''
 
-    BORDER_PADDING: float = RobotGeometry.RADIUS
+    BORDER_PADDING: float = RobotGeometry.RADIUS + 50
     ENV_LENGTH: float = 2000
     ENV_WIDTH: float = 2000
     POINTS_PER_LINE: int = 2
