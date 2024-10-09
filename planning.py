@@ -285,7 +285,7 @@ class WaypointSequence(ABC):
         else:
             emergency_waypoint = Waypoint(current_x, RobotGeometry.LENGTH/2 + RobotGeometry.PADDINGs, -pi/2)
         
-        self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resssumeExtraction=True))
+        self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
         self.waypoints.insert(0, emergency_waypoint)
         
     
