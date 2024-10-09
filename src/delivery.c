@@ -30,8 +30,8 @@
 #define FORWARD 1
 #define BACKWARD 2
 
-#define FORWARD_TIME_MS 5000
-#define BACKWARD_TIME_MS 5000
+#define FORWARD_TIME_MS 11000
+#define BACKWARD_TIME_MS 11000
 
 SemaphoreHandle_t deliverySemaphore;
 volatile int delivery_state;
@@ -71,7 +71,7 @@ void vDeliveryInit() {
 
     // enable pwm
     pwm_set_enabled(DELIVERY_PWM_SLICE, true);
-    setDeliveryPWM(30);
+    setDeliveryPWM(70);
 
     // set up semaphore
     deliverySemaphore = xSemaphoreCreateBinary();
