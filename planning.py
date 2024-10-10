@@ -218,7 +218,7 @@ class DepositWaypoint(Waypoint):
     DEPOSIT_SIZE: float = 200
     DEPOSIT_X: float = 2000 - DEPOSIT_SIZE - RobotGeometry.WIDTH / 2
     DEPOSIT_Y: float = 2000 - RobotGeometry.LENGTH / 2 - RobotGeometry.PADDING
-    DEPOSIT_HEADING: float = pi/2
+    DEPOSIT_HEADING: float = -pi/2
 
     def __init__(self):
         super().__init__(
@@ -237,7 +237,7 @@ class DepositHelperWaypoint(Waypoint):
     DEPOSIT_HELPER_X: float = 2000 - DepositWaypoint.DEPOSIT_SIZE - RobotGeometry.WIDTH / 2
     DEPOSIT_HELPER_Y: float = 2000 - DepositWaypoint.DEPOSIT_SIZE - RobotGeometry.RADIUS - 2*RobotGeometry.PADDING
 
-    def __init__(self, heading=pi/2):
+    def __init__(self, heading=-pi/2):
         super().__init__(
             DepositHelperWaypoint.DEPOSIT_HELPER_X,
             DepositHelperWaypoint.DEPOSIT_HELPER_Y,
