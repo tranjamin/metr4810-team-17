@@ -138,4 +138,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(f"Reading file {args.filename} and camera {args.camera}")
 
-    main(args.filename, args.camera)
+    main(args.filename, int(args.camera))
