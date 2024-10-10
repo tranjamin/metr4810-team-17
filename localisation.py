@@ -14,6 +14,9 @@ CORNERS = 2
 LAST_ROBOT_COMMUNICATE = 0
 EULER_ORDER = 'ZYX' # determines conversion from angles to rotations
 
+ORIGIN_XOFFSET = 50
+ORIGIN_YOFFSET = 50
+
 class Localisation():
     def deinit(self):
         pass
@@ -232,8 +235,16 @@ def process_image(img, camera_matrix, dist_coeffs, origin: MarkerCollection, tar
     origin_found, rvec_camera_to_origin, p_origin_camera_frame = origin.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
     if not origin_found:
         return False, None, None
+    
+    # map origin 
+    
+    # p_origin_camera_frame[0][0] -= 150
+    
+    # p_origin_camera_frame[1][0] -= ORIGIN_YOFFSET
     # print(f"Origin : {p_origin_camera_frame}")
     origin.annotate(corners_list, ids, img, (0, 255, 255), 10)
+    # print(p_origin_camera_frame)
+    # print(p_origin_camera_frame)
     cv.drawFrameAxes(img, camera_matrix, dist_coeffs, rvec_camera_to_origin, p_origin_camera_frame, 50,4)
 
     target_found, rvec_camera_to_target, p_target_camera_frame = target.estimate_pose(corners_list, ids, camera_matrix, dist_coeffs)
@@ -461,10 +472,10 @@ class CameraLocalisation(Localisation):
         # origin.register_marker(5, april_inner, [-69,24,0], R.from_euler(EULER_ORDER, [0, 0, 0], degrees=True))
 
         # THESE TWO
-        origin.register_marker(4, april_inner, [0,22.5,24], R.from_euler(EULER_ORDER, [0, -90, 0], degrees=True))
+        # origin.register_marker(4, april_inner, [0,22.5,24], R.from_euler(EULER_ORDER, [0, -90, 0], degrees=True))
         #                        reference_tvec=[0,0,0],
         #                        reference_rotation=R.identity())
-        origin.register_marker(2, april_inner, [-25,0,24], R.from_euler(EULER_ORDER, [180, 0, 90], degrees=True))
+        # origin.register_marker(2, april_inner, [-25,0,24], R.from_euler(EULER_ORDER, [180, 0, 90], degrees=True))
         #                        reference_tvec=[0,0,0],
         #                        reference_rotation=R.identity())
 
@@ -473,6 +484,11 @@ class CameraLocalisation(Localisation):
         #                        reference_tvec=[0,0,0],
         #                        reference_rotation=R.identity())
         # target.register_marker(10, april_inner, [0,0,0], R.identity())
+        t_origin_to_box = [-159,-110,0]
+        r_origin_to_box = R.from_euler(EULER_ORDER, [0, 0, -90], degrees=True)
+        origin.register_marker(22, SIZE_1 * inner_size_factor, [0, 109 - border_factor * SIZE_1, 109 - border_factor * SIZE_1], R.from_euler(EULER_ORDER, [-90, 0, -90], degrees=True), t_origin_to_box, r_origin_to_box)
+        origin.register_marker(20, SIZE_1 * inner_size_factor, [27 + border_factor * SIZE_1, 0, 1.5 + border_factor * SIZE_1], R.from_euler(EULER_ORDER, [0, -90, -90], degrees=True), t_origin_to_box, r_origin_to_box)
+        origin.register_marker(21, SIZE_1 * inner_size_factor, [27 + border_factor * SIZE_1, 0 + border_factor * SIZE_1, 0], R.from_euler(EULER_ORDER, [0, 0, 0], degrees=True), t_origin_to_box, r_origin_to_box)
 
         R_dist = 0.05
         Q_dist = np.array([[1, 0], [0, 1]])
