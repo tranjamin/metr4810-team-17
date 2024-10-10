@@ -217,7 +217,7 @@ void udp_server_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_ad
             lhs_param = strtof(params_copy + 5, NULL);
             rhs_param = strtof(params_copy + 17, NULL);
 
-            vDebugLog("Localisation params: %d, %d'\n", lhs_param, rhs_param);
+            //vDebugLog("Localisation params: %d, %d'\n", lhs_param, rhs_param);
 
             // send motor controls
             if (lhs_param > 0) {
@@ -481,6 +481,8 @@ int generate_response(const char *request, const char *params, char *result, siz
         if (params) {
             // get command number
             int control_param = atoi(params + 8);
+
+            vDebugLog("At control page")
 
             // execute commands
             switch (control_param) {
