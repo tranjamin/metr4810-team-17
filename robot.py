@@ -164,7 +164,7 @@ class Controller(ABC):
         self.theta_target = theta_target
         self.reached_goal = False
 
-    def has_reahed_goal(self) -> bool:
+    def has_reached_goal(self) -> bool:
         '''
         Determines whether the controller goal has been reached
 
