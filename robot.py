@@ -40,7 +40,7 @@ class Robot(ABC):
         '''
 
         # transform the input parameters to left and right PWMs
-        mapping_matrix = np.matrix([[1, 1], [1, -1]])
+        mapping_matrix = np.matrix([[1, -1], [1, 1]])
         control_vector = mapping_matrix * np.array([[v],[omega]])
         if do_print:
             print(f"v: {v}, omega: {omega}")

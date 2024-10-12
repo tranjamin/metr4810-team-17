@@ -63,6 +63,11 @@ def main(configfile, camera):
         ### LOCALISATION FINISHED
         positions, angles = localiser.get_position(img)
 
+
+        # draw current waypoint on screen
+
+        localiser.annotate_xy(img, plan.current_waypoint.x, plan.current_waypoint.y)
+
         ### PATH PLANNING
         not_none = lambda x: x is not None
         if all([not_none(e) for e in positions]):
@@ -77,6 +82,7 @@ def main(configfile, camera):
                 omega = plan.desired_angular
                 
                 robot_comms.send_control_action(v, omega, do_print=False)
+
 
             # draw control info on screen
             labels = ["x", "y", "theta"]
@@ -133,8 +139,8 @@ def main(configfile, camera):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--filename", "-f", default="config.json")
-    parser.add_argument("--camera", "-c", default=0)
+    parser.add_argument("--filename", "-f", default="configSnake.json")
+    parser.add_argument("--camera", "-c", default=2)
     args = parser.parse_args()
     print(f"Reading file {args.filename} and camera {args.camera}")
 
