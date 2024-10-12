@@ -324,7 +324,7 @@ class SnakeWaypointSequence(WaypointSequence):
         for i, x in enumerate(x_coords):
             for j, y in enumerate(reversed_y_coords if i % 2 else y_coords): # toggle the direction of each line
                 if (j != len(y_coords) - 1): # if not at the end
-                    target_heading = pi/2 if i % 2 else -pi/2
+                    target_heading = pi/2 if not i % 2 else -pi/2
                 else:
                     target_heading = 0
                 
@@ -334,6 +334,8 @@ class SnakeWaypointSequence(WaypointSequence):
                     vel = 0 if j == 0 or j == len(y_coords) else None, # set velocity to 0 if it is the first or last in a line
                 )
                 self.waypoints.append(waypoint)
+
+        self.waypoints.pop(0)
 
 class RectangleWaypointSequence(WaypointSequence):
     '''
