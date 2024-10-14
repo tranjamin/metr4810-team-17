@@ -4,13 +4,13 @@
             "k_angle": 100,
             "k_v": 60,
             "w": 0.5,
-            "goal_tolerance": 20,
+            "goal_tolerance": 30,
             "reversing_allowed": true 
         },
         "spin-controller": {
-            "k_angle": 160,
+            "k_angle": 200,
             "k_v": 0,
-            "angle_tolerance": 0.2
+            "angle_tolerance": 0.1
         }
     },
     "localisation": {
