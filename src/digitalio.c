@@ -16,7 +16,7 @@
 #define CSENSE_EXTRACTION 28
 #define MANUAL_EXTRACTION_SPEED 50
 
-#define OPTICAL_SENSOR 18
+#define OPTICAL_SENSOR 15
 
 void vDigitalIOInit();
 
