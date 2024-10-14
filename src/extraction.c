@@ -4,6 +4,7 @@
 #include "hardware/pwm.h"
 #include "semphr.h"
 
+#include "wifi.h"
 #include "extraction.h"
 
 #define EXTRACTION_PWM_CHAN pwm_gpio_to_channel(EXTRACTION_PWM)
@@ -13,6 +14,18 @@
 
 #define CLK_DIVIDER 128
 #define PWM_TOP 8192
+
+void extractionProcedure() {
+    disableUDP();
+    SET_EXTRACTION_FORWARD();
+    SET_TRAVERSAL_LHS_STOPPED();
+    SET_TRAVERSAL_RHS_STOPPED();
+
+    // wait for a condition?
+
+    enableUDP();
+    SET_EXTRACTION_STOPPED();
+}
 
 // function prototypes
 void vExtractionTask();
@@ -41,10 +54,10 @@ void vExtractionInit() {
     SET_EXTRACTION_STOPPED();
 
     // enable pwm
-    pwm_set_enabled(EXTRACTION_PWM_SLICE, true);
-    
+    pwm_set_enabled(EXTRACTION_PWM_SLICE, true);    
 }
 
 void setExtractionPWM(float percent) {
     pwm_set_chan_level(EXTRACTION_PWM_SLICE, EXTRACTION_PWM_CHAN, (uint16_t) PWM_TOP * percent / 100);
 }
+

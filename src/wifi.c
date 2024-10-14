@@ -265,43 +265,44 @@ void udp_server_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_ad
             int control_param = atoi(params_copy + 9);
 
             switch (control_param) {
-                case 0:
+                case 0: // delivery
                     vStartDelivery();
                     setRGB_COLOUR_RED();
                     break;
-                case 1:
+                case 1: // forward
                     SET_TRAVERSAL_LHS_FORWARD();
+                    SET_TRAVERSAL_RHS_FORWARD();
+                    setTraversalDuty_LHS(100.0);
+                    setTraversalDuty_RHS(100.0);
                     setRGB_COLOUR_GREEN();
                     break;
-                case 2:
-                    SET_TRAVERSAL_LHS_STOPPED();
+                case 2: // backward
+                    SET_TRAVERSAL_LHS_BACKWARD();
+                    SET_TRAVERSAL_RHS_BACKWARD();
+                    setTraversalDuty_LHS(100.0);
+                    setTraversalDuty_RHS(100.0);
                     setRGB_COLOUR_BLUE();
                     break;
-                case 3:
-                    SET_TRAVERSAL_LHS_BACKWARD();
+                case 3: // stopped
+                    SET_TRAVERSAL_LHS_STOPPED();
+                    SET_TRAVERSAL_RHS_STOPPED();
                     setRGB_COLOUR_PURPLE();
                     break;
-                case 4:
-                    SET_TRAVERSAL_RHS_FORWARD();
-                    setRGB_COLOUR_CYAN();
+                case 4: 
                     break;
                 case 5:
-                    SET_TRAVERSAL_RHS_STOPPED();
-                    setRGB_COLOUR_YELLOW();
                     break;
                 case 6:
-                    SET_TRAVERSAL_RHS_BACKWARD();
-                    setRGB_COLOUR_WHITE();
                     break;
-                case 7:
+                case 7: // extract
                     SET_EXTRACTION_FORWARD();
                     setRGB_COLOUR_DARK_RED();
                     break;
-                case 8:
+                case 8: // stop extract
                     SET_EXTRACTION_STOPPED();
                     setRGB_COLOUR_DARK_GREEN();
                     break;
-                case 9:
+                case 9: // extract method
                     SET_EXTRACTION_BACKWARD();
                     setRGB_COLOUR_DARK_BLUE();
                     break;
