@@ -37,7 +37,7 @@ void vExtractionInit() {
     pwm_set_wrap(EXTRACTION_PWM_SLICE, PWM_TOP);
 
     // set PWM and DIR
-    setExtractionPWM(100);
+    setExtractionPWM(80);
     SET_EXTRACTION_STOPPED();
 
     // enable pwm

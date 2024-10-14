@@ -482,8 +482,6 @@ int generate_response(const char *request, const char *params, char *result, siz
             // get command number
             int control_param = atoi(params + 8);
 
-            vDebugLog("At control page")
-
             // execute commands
             switch (control_param) {
                 case 0:
