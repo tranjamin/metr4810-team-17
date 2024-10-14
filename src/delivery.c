@@ -7,6 +7,7 @@
 #include "motors.h"
 #include "extraction.h"
 #include "diagnostics.h"
+#include "wifi.h"
 
 #define DELIVERY_INA 10
 #define DELIVERY_INB 9
@@ -87,6 +88,7 @@ void transition_to_idle() {
     alarm_pool_cancel_alarm(delivery_alarm_pool, current_alarm);
     delivery_state = IDLE;
     SET_DELIVERY_STOPPED();
+    enableUDP();
 }
 
 void transition_to_backward() {
@@ -108,6 +110,7 @@ void vDeliveryTask() {
                     delivery_state = FORWARD;
                     
                     // suspend other tasks
+                    disableUDP();
                     SET_TRAVERSAL_RHS_STOPPED();
                     SET_TRAVERSAL_LHS_STOPPED();
                     SET_EXTRACTION_STOPPED();

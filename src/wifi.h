@@ -11,4 +11,7 @@
 void vWifiTask();
 void vWifiInit();
 
+void enableUDP();
+void disableUDP();
+
 #endif

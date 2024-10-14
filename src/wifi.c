@@ -120,6 +120,16 @@ int generate_response(const char*, const char*, char*, size_t);
 void vWifiInit();
 void vWifiTask();
 
+static volatile bool enable_udp = true;
+
+void enableUDP() {
+    enable_udp = true;
+}
+
+void disableUDP() {
+    enable_udp = false;
+}
+
 // Handle request from client
 err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T*)arg;
@@ -202,7 +212,7 @@ void udp_server_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_ad
     if (!p) {
         return;
     }
-    if (p->tot_len > 0) {
+    if (p->tot_len > 0 && enable_udp) {
         // format is "Llhs=XXX.XXX&rhs=XXX.XXX"
         if (*((char*) p->payload) == 'L') {
             float lhs_param, rhs_param;
@@ -220,29 +230,31 @@ void udp_server_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_ad
             //vDebugLog("Localisation params: %d, %d'\n", lhs_param, rhs_param);
 
             // send motor controls
-            if (lhs_param > 0) {
-                SET_TRAVERSAL_LHS_FORWARD();
-                setTraversalDuty_LHS(lhs_param);
-            } else if (lhs_param < 0) {
-                SET_TRAVERSAL_LHS_BACKWARD();
-                setTraversalDuty_LHS(-lhs_param);
-            } else {
-                SET_TRAVERSAL_LHS_STOPPED();
-                setTraversalDuty_LHS(0);
-            }
+            if (enable_udp) {
+                if (lhs_param > 0) {
+                    SET_TRAVERSAL_LHS_FORWARD();
+                    setTraversalDuty_LHS(lhs_param);
+                } else if (lhs_param < 0) {
+                    SET_TRAVERSAL_LHS_BACKWARD();
+                    setTraversalDuty_LHS(-lhs_param);
+                } else {
+                    SET_TRAVERSAL_LHS_STOPPED();
+                    setTraversalDuty_LHS(0);
+                }
 
-            if (rhs_param > 0) {
-                SET_TRAVERSAL_RHS_FORWARD();
-                setTraversalDuty_RHS(rhs_param);
-            } else if (rhs_param < 0) {
-                SET_TRAVERSAL_RHS_BACKWARD();
-                setTraversalDuty_RHS(-rhs_param);
-            } else {
-                SET_TRAVERSAL_RHS_STOPPED();
-                setTraversalDuty_RHS(0);
-            }
-        } 
-        
+                if (rhs_param > 0) {
+                    SET_TRAVERSAL_RHS_FORWARD();
+                    setTraversalDuty_RHS(rhs_param);
+                } else if (rhs_param < 0) {
+                    SET_TRAVERSAL_RHS_BACKWARD();
+                    setTraversalDuty_RHS(-rhs_param);
+                } else {
+                    SET_TRAVERSAL_RHS_STOPPED();
+                    setTraversalDuty_RHS(0);
+                }
+            }    
+        }
+
         // format is "Ccommand=X"
         else if (*((char*) p->payload) == 'C') {
             udp_count++;
@@ -293,11 +305,11 @@ void udp_server_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_ad
                     SET_EXTRACTION_BACKWARD();
                     setRGB_COLOUR_DARK_BLUE();
                     break;
-
+                }
             }   
-            
-        }
-    }
+    }            
+
+    
     pbuf_free(p);
     return;
 }
