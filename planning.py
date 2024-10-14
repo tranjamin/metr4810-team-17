@@ -6,11 +6,21 @@ from robot import Controller, Robot
 from abc import ABC
 from math import pi, atan2
 from enum import Enum
+import time
 
 class ExtractionStrategies(Enum):
     NONE = 1 # does not run extraction
     CONTINUOUS = 2 # always runs extraction (on forward controllers)
     PERIODIC = 3 # only runs extraction at each waypoint
+
+class DeboggingStrategies(Enum):
+    NONE = 1 # does not debog
+    ENABLED = 2 # debogs
+
+DEBOG_EPISLON_X = 1000 # in mm
+DEBOG_EPSILON_THETA = 4.4 # in rad
+DEBOG_PATIENCE = 5 # in seconds
+DEBOG_DISTANCE = 200 # in mm, how far to go
 
 class Pathplanner():
     '''
@@ -39,12 +49,23 @@ class Pathplanner():
         self.extraction_allowed = True
 
         self.extraction_strategy: ExtractionStrategies = None
+        self.debog_strategy: DeboggingStrategies = None
+        self.last_debog_position: tuple[float, float, float] = None
+        self.last_debog_time: float = None
+        self.debogger_enabled: bool = True
+        self.debogger_pause_time: float = None
 
     def set_extraction_strategy(self, strategy: ExtractionStrategies):
         '''
         Sets the extraction strategy to be used
         '''
         self.extraction_strategy = strategy
+    
+    def set_debogging_strategy(self, strategy: DeboggingStrategies):
+        '''
+        Sets the debog strategy to be used
+        '''
+        self.debog_strategy = strategy
 
     def set_waypoints(self, waypoints: WaypointSequence):
         '''
@@ -72,6 +93,45 @@ class Pathplanner():
         self.current_y = current_y
         self.current_theta = current_theta
 
+        if self.debog_strategy == DeboggingStrategies.ENABLED and self.debogger_enabled:
+            if self.last_debog_position is None:
+                self.last_debog_position = (self.current_x, self.current_y, self.current_theta)
+            if self.last_debog_time is None:
+                self.last_debog_time = time.time()
+
+            debog_x, debog_y, debog_theta = self.last_debog_position
+            x_deviation = math.sqrt((current_x - debog_x)**2 + (current_y - debog_y)**2)
+            theta_deviation = abs(current_theta - debog_theta)
+            
+            if (x_deviation > DEBOG_EPISLON_X or theta_deviation > DEBOG_EPSILON_THETA):
+                # we have not bogged
+                self.last_debog_time = time.time()
+                self.last_debog_position = (self.current_x, self.current_y, self.current_theta)
+            elif time.time() - self.last_debog_time > DEBOG_PATIENCE:
+                # we have bogged
+                print("Bogging Detected")
+
+                # TODO: set waypoint as directly behind or ahead, not sure if this will be enough
+                reverse = -1 if self.desired_velocity > 0 else 1
+                print("Reversing: ", reverse)
+
+                new_waypoint = Waypoint(
+                    min(max(self.current_x + reverse*math.cos(self.current_theta)*DEBOG_DISTANCE, 0), 2000),
+                    min(max(self.current_y + reverse*math.sin(self.current_theta)*DEBOG_DISTANCE, 0), 2000),
+                    heading=self.current_theta
+                )
+
+                self.waypoints.waypoints.insert(0, new_waypoint)
+                self.current_waypoint = new_waypoint
+                self.previous_waypoint = (self.current_x, self.current_y)
+
+                print("Current position: ", (self.current_x, self.current_y))
+                print("New waypoint: ", self.current_waypoint.coords)
+
+                # update debog parameters
+                self.last_debog_time = time.time()
+                self.last_debog_position = (self.current_x, self.current_y, self.current_theta)
+
         # if we have reached the current waypoint, move to the next one
         if self.current_waypoint is None:
             return
@@ -79,13 +139,13 @@ class Pathplanner():
             # do stuff
             if self.current_waypoint.stopFlag:
                 print("Should be stopping now")
-                self.stopFlag = True
+                self.signal_pathplanning_stop()
             if self.current_waypoint.suspendFlag:
                 self.signal_extraction_stop()
                 self.extractionFlag = False
             if self.current_waypoint.resumeFlag:
                 self.signal_extraction_start()
-                self.extractionFlag = True
+                self.signal_pathplanning_start()
 
             self.previous_waypoint = self.current_waypoint.coords
             self.current_waypoint = self.waypoints.move_to_next_waypoint()
@@ -153,9 +213,11 @@ class Pathplanner():
 
     def signal_pathplanning_stop(self):
         self.stopFlag = True
+        self.pause_debogger()
 
     def signal_pathplanning_start(self):
         self.stopFlag = False
+        self.unpause_debogger()
 
     def signal_extraction_execute(self):
         self.robot.send_control_command("command=9")
@@ -168,6 +230,16 @@ class Pathplanner():
 
     def signal_robot_stopped(self):
         self.robot.send_control_command("command=3")
+    
+    def pause_debogger(self):
+        self.debogger_enabled = False
+        self.debogger_pause_time = time.time()
+    
+    def unpause_debogger(self):
+        self.debogger_enabled = True
+
+        if self.debogger_pause_time is not None and self.last_debog_time is not None:
+            self.last_debog_time = time.time() - (self.debogger_pause_time - self.last_debog_time)
 
 class RobotGeometry():
     '''
