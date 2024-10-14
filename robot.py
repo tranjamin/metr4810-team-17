@@ -337,7 +337,8 @@ class LineFollowerController(Controller):
         super().set_path(p0, p1, theta_target)
 
     def get_control_action(self, x: float, y: float, theta: float, 
-                           stop_extraction: Optional[Callable] = None) -> tuple[float, float]:
+                           on_spin_start: Optional[Callable] = None,
+                           on_spin_end: Optional[Callable] = None) -> tuple[float, float]:
         '''
         Calculates the required linear and angular velocity to move along the controller path
 
@@ -345,7 +346,8 @@ class LineFollowerController(Controller):
             x (float): the current x position
             y (float): the current y position
             theta (float): the current angle, counterclockwise from positive x
-            stop_extraction (Callable): an optional function to stop extraction on spining
+            on_spin_start (Callable): an optional function to call when starting to spin
+            on_spin_end (Callable): an optional function to call when finishing the spin
 
         Returns:
             (v, omega) (tuple[float, float]): the desired linear and angular velocity
@@ -359,14 +361,16 @@ class LineFollowerController(Controller):
             # goal has been reached
             print("CONTROLLER REACHED GOAL")
             self.reached_goal = True
+
+            if on_spin_end is not None:
+                on_spin_end()
         if not self.phase_2 and not self.theta_agnostic:
             # move to spin controller
             print("SWITCHING TO SPIN CONTROLLER")
             self.phase_2 = True
 
-            # stop extraction on spinning
-            if stop_extraction is not None:
-                stop_extraction()
+            if on_spin_start is not None:
+                on_spin_start()
 
         if self.phase_2:
             # progress along spin controller

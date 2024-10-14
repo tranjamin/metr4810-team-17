@@ -12,7 +12,6 @@ import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 ROBOT_STARTED = False
-ROBOT_EXTRACTION = False
 
 def main(configfile, camera):
     global ROBOT_STARTED
@@ -42,6 +41,7 @@ def main(configfile, camera):
 
     plan = Pathplanner()
     plan.set_controller(controller)
+    plan.set_extraction_strategy(ExtractionStrategies.PERIODIC)
 
     pathplanner_class: WaypointSequence = eval(CONFIG_FILE["pathplan"]["reference-class"])
     pathplanner_kwargs = CONFIG_FILE["pathplan"]["args"]

@@ -104,6 +104,9 @@ class RobotSim(Robot, Localisation):
             print(f"v: {v}, omega: {omega}")
         
         self.fmu.setReal([self.vrs["v"], self.vrs["omega"]], [v, omega])
+    
+    def send_control_command(self, command: str):
+        print(f"Would send command {command}")
 
     def send_command(self, command):
         print(f"Would send command {command}")

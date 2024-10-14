@@ -5,6 +5,12 @@ from typing import *
 from robot import Controller, Robot
 from abc import ABC
 from math import pi, atan2
+from enum import Enum
+
+class ExtractionStrategies(Enum):
+    NONE = 1 # does not run extraction
+    CONTINUOUS = 2 # always runs extraction (on forward controllers)
+    PERIODIC = 3 # only runs extraction at each waypoint
 
 class Pathplanner():
     '''
@@ -31,6 +37,14 @@ class Pathplanner():
         self.stopFlag = False
         self.extractionFlag = False
         self.extraction_allowed = True
+
+        self.extraction_strategy: ExtractionStrategies = None
+
+    def set_extraction_strategy(self, strategy: ExtractionStrategies):
+        '''
+        Sets the extraction strategy to be used
+        '''
+        self.extraction_strategy = strategy
 
     def set_waypoints(self, waypoints: WaypointSequence):
         '''
@@ -96,10 +110,17 @@ class Pathplanner():
             if self.update_controller_path:
                 self.controller.set_path(self.previous_waypoint, self.current_waypoint.coords, self.current_waypoint.heading)
                 self.update_controller_path = False
-                if self.extractionFlag:
+                if self.extractionFlag and self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
                     self.signal_extraction_start()
             
-            self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta, stop_extraction=self.signal_extraction_stop)
+            if self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
+                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta, on_spin_start=self.signal_extraction_stop)
+            elif self.extraction_strategy == ExtractionStrategies.PERIODIC and self.extraction_strategy:
+                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta, on_spin_end=self.signal_extraction_execute)
+            else:
+                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta)
+
+
             if self.stopFlag:
                 self.desired_angular = 0
                 self.desired_velocity = 0
@@ -135,6 +156,18 @@ class Pathplanner():
 
     def signal_pathplanning_start(self):
         self.stopFlag = False
+
+    def signal_extraction_execute(self):
+        self.robot.send_control_command("command=9")
+
+    def signal_robot_forward(self):
+        self.robot.send_control_command("command=1")
+
+    def signal_robot_backward(self):
+        self.robot.send_control_command("command=2")
+
+    def signal_robot_stopped(self):
+        self.robot.send_control_command("command=3")
 
 class RobotGeometry():
     '''
