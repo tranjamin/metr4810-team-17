@@ -18,6 +18,9 @@
 #define SET_EXTRACTION_BRAKED() (gpio_put(EXTRACTION_INA, 1), gpio_put(EXTRACTION_INB, 1))
 
 void vExtractionInit();
+void vExtractionTask();
+void extractionProcedureSignalStop();
+void extractionProcedureSignalStart();
 void setExtractionPWM(float);
 
 #endif

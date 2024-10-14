@@ -6,25 +6,30 @@
 
 #include "wifi.h"
 #include "extraction.h"
+#include "motors.h"
 
 #define EXTRACTION_PWM_CHAN pwm_gpio_to_channel(EXTRACTION_PWM)
 #define EXTRACTION_PWM_SLICE pwm_gpio_to_slice_num(EXTRACTION_PWM)
 
 #define VDELAY 3
+#define SEMPH_TICKS 1000
 
 #define CLK_DIVIDER 128
 #define PWM_TOP 8192
 
-void extractionProcedure() {
-    disableUDP();
-    SET_EXTRACTION_FORWARD();
-    SET_TRAVERSAL_LHS_STOPPED();
-    SET_TRAVERSAL_RHS_STOPPED();
+#define EXTRACTION_IDLE 0
+#define EXTRACTION_RUNNING 1
 
-    // wait for a condition?
+volatile int extraction_state;
+SemaphoreHandle_t extractionSemaphoreStart;
+SemaphoreHandle_t extractionSemaphoreStop;
 
-    enableUDP();
-    SET_EXTRACTION_STOPPED();
+void extractionProcedureSignalStop() {
+    xSemaphoreGiveFromISR(extractionSemaphoreStart, NULL);
+}
+
+void extractionProcedureSignalStart() {
+    xSemaphoreGiveFromISR(extractionSemaphoreStop, NULL);
 }
 
 // function prototypes
@@ -55,6 +60,33 @@ void vExtractionInit() {
 
     // enable pwm
     pwm_set_enabled(EXTRACTION_PWM_SLICE, true);    
+
+    extractionSemaphoreStart = xSemaphoreCreateBinary();
+    extractionSemaphoreStop = xSemaphoreCreateBinary();
+    extraction_state = EXTRACTION_IDLE;
+}
+
+void vExtractionTask() {
+    for (;;) {
+        switch (extraction_state) {
+            case EXTRACTION_IDLE:
+                if (xSemaphoreTake(extractionSemaphoreStart, SEMPH_TICKS) == pdTRUE) {
+                    disableUDP();
+                    SET_EXTRACTION_FORWARD();
+                    SET_TRAVERSAL_LHS_STOPPED();
+                    SET_TRAVERSAL_RHS_STOPPED();
+                    extraction_state = EXTRACTION_RUNNING;
+                }
+                break;
+            case EXTRACTION_RUNNING:
+                if (xSemaphoreTake(extractionSemaphoreStop, SEMPH_TICKS) == pdTRUE) {   
+                    enableUDP();
+                    SET_EXTRACTION_STOPPED();
+                    extraction_state = EXTRACTION_IDLE;
+                }
+                break;
+        }
+    }
 }
 
 void setExtractionPWM(float percent) {

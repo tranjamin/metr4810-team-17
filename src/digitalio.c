@@ -16,6 +16,8 @@
 #define CSENSE_EXTRACTION 28
 #define MANUAL_EXTRACTION_SPEED 50
 
+#define OPTICAL_SENSOR 18
+
 void vDigitalIOInit();
 
 void gpioCallback();
@@ -34,30 +36,35 @@ void vDigitalIOInit() {
     gpio_init(CSENSE_LHS);
     gpio_init(CSENSE_RHS);
     gpio_init(CSENSE_EXTRACTION);
+    gpio_init(OPTICAL_SENSOR);
     
     gpio_set_dir(PUSHBUTTON_PIN, GPIO_IN);
     gpio_set_dir(SWITCH_PIN, GPIO_IN);
     gpio_set_dir(CSENSE_LHS, GPIO_IN);
     gpio_set_dir(CSENSE_RHS, GPIO_IN);
     gpio_set_dir(CSENSE_EXTRACTION, GPIO_IN);
+    gpio_set_dir(OPTICAL_SENSOR, GPIO_IN);
 
     gpio_pull_down(PUSHBUTTON_PIN);
     gpio_pull_down(SWITCH_PIN);
     gpio_pull_down(CSENSE_LHS);
     gpio_pull_down(CSENSE_RHS);
     gpio_pull_down(CSENSE_EXTRACTION);
+    gpio_pull_down(OPTICAL_SENSOR);
 
     gpio_set_input_enabled(PUSHBUTTON_PIN, true);
     gpio_set_input_enabled(SWITCH_PIN, true);
     gpio_set_input_enabled(CSENSE_LHS, true);
     gpio_set_input_enabled(CSENSE_RHS, true);
     gpio_set_input_enabled(CSENSE_EXTRACTION, true);
+    gpio_set_input_enabled(OPTICAL_SENSOR, true);
 
     gpio_set_irq_enabled(PUSHBUTTON_PIN, GPIO_IRQ_EDGE_RISE, true);
     gpio_set_irq_enabled(SWITCH_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(CSENSE_LHS, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(CSENSE_RHS, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(CSENSE_EXTRACTION, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(OPTICAL_SENSOR, GPIO_IRQ_EDGE_RISE, true);
 
     gpio_set_irq_callback(&gpioCallback);
 }
@@ -131,5 +138,13 @@ void gpioCallback(uint gpio_number, uint32_t events) {
                     setRGB_COLOUR_BLACK();
                 }
             }
+            break;
+        case OPTICAL_SENSOR:
+            if (events & GPIO_IRQ_EDGE_RISE) {
+                vDebugLog("Sensed on Optical Sensor\n");
+                setRGB_COLOUR_DARK_BLUE();
+                extractionProcedureSignalStop();
+            }
+            break;
     }
 }

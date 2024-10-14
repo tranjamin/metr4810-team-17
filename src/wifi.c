@@ -303,7 +303,7 @@ void udp_server_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_ad
                     setRGB_COLOUR_DARK_GREEN();
                     break;
                 case 9: // extract method
-                    SET_EXTRACTION_BACKWARD();
+                    extractionProcedureSignalStart();
                     setRGB_COLOUR_DARK_BLUE();
                     break;
                 }
