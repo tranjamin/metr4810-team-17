@@ -143,7 +143,7 @@ class RobotGeometry():
     '''
     A class to represent the physical bounds of the robot
     '''
-    WIDTH: float = 350
+    WIDTH: float = 400
     LENGTH: float = 176
     PADDING: float = 50
     RADIUS: float = math.sqrt(WIDTH**2 + LENGTH**2)/2
@@ -304,7 +304,7 @@ class SnakeWaypointSequence(WaypointSequence):
     A sequence of waypoints based on a snake search
     '''
 
-    BORDER_PADDING: float = RobotGeometry.RADIUS + 50
+    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING 
     ENV_LENGTH: float = 2000
     ENV_WIDTH: float = 2000
     POINTS_PER_LINE: int = 2
