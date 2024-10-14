@@ -30,9 +30,6 @@ class Pathplanner():
 
         self.stopFlag = False
         self.extractionFlag = False
-
-        # parameters that can be changed by user
-
         self.extraction_allowed = True
 
     def set_waypoints(self, waypoints: WaypointSequence):
@@ -156,10 +153,6 @@ class Waypoint():
     A coordinate and heading which the robot will move through. Coordinates are measured through the geometric centre of the robot.
     '''
 
-    # tolerances for how close we need to get to the waypoints
-    LINEAR_EPS = 50 # units are in mm
-    ANGULAR_EPS = 0.2 # units are in rad
-
     def __init__(self, 
                  x: float, 
                  y: float, 
@@ -167,16 +160,15 @@ class Waypoint():
                  vel: Optional[float] = None,
                  suspendExtraction: bool = False,
                  resumeExtraction: bool = False,
-                 stopMovement: bool = False,
-                 ):
+                 stopMovement: bool = False):
         """
         Parameters
-            x: the x-coordinate of the waypoint in millimetres
-            y: the y-coordinate of the waypoint in millimetres
-            heading: the angle the robot should reach the waypoint at, in degrees CW of positive y [-180 to 180] or None if the heading is unimportant
-            vel: the target velocity the robot should reach the waypoint at, in metres per second, or None if unimportant
-            suspendExtraction: stops extraction when reaching this waypoint
-            resumeExtraction: starts extraction when reaching this waypoint
+            x (float): the x-coordinate of the waypoint in millimetres
+            y (float): the y-coordinate of the waypoint in millimetres
+            heading (float): the angle the robot should reach the waypoint at, in radians CCW of positive x [-pi/2 to pi/2] or None if the heading is unimportant
+            vel (float): the target velocity the robot should reach the waypoint at, in metres per second, or None if unimportant
+            suspendExtraction (bool): stops extraction when reaching this waypoint
+            resumeExtraction (bool): starts extraction when reaching this waypoint
         """
         self.x = x
         self.y = y
@@ -187,27 +179,9 @@ class Waypoint():
         self.resumeFlag = resumeExtraction
         self.stopFlag = stopMovement
 
-        # TODO: make sure the units line up
         assert self.x <= 2000 and self.x >= 0
         assert self.y <= 2000 and self.y >= 0
-        assert self.heading is None or (self.heading >= -180 and self.heading <= 180)
-    
-    def is_reached(self, current_x: float, current_y: float, current_heading: float) -> bool:
-        '''
-        determines whether the waypoint has been reached wrt the current position
-        '''
-
-        delta_x = abs(current_x - self.x)
-        delta_y = abs(current_y - self.y)
-
-        if math.sqrt(delta_x**2 + delta_y**2) > Waypoint.LINEAR_EPS:
-            return False
-        if self.heading is None:
-            return True
-        else:  
-            delta_theta = abs(current_heading - self.heading) # ??
-            return delta_theta < Waypoint.ANGULAR_EPS
-    
+        assert self.heading is None or (self.heading >= -180 and self.heading <= 180)    
 
 class DepositWaypoint(Waypoint):
     '''
@@ -250,7 +224,7 @@ class WaypointSequence(ABC):
     A sequence of waypoints
     '''
     def __init__(self):
-        self.waypoints: list[float] = list()
+        self.waypoints: list[float] = list() # the list of waypoints
     
     def plan_to_deposit(self, current_x: float, current_y: float, current_theta: float):
         '''
@@ -260,22 +234,44 @@ class WaypointSequence(ABC):
             3. Adds a waypoint to the current position
         
         Parameters:
-            current_x: the current x position of the robot
-            current_y: the current y position of the robot
+            current_x (float): the current x position of the robot
+            current_y (float): the current y position of the robot
+            current_that (float): the current angle of the robot
         '''
-        return_angle = atan2(current_y - DepositHelperWaypoint.DEPOSIT_HELPER_Y, current_x - DepositHelperWaypoint.DEPOSIT_HELPER_X)
+
+        # calculate the return angle after going to thewaypoint
+        return_angle = atan2(
+            current_y - DepositHelperWaypoint.DEPOSIT_HELPER_Y, 
+            current_x - DepositHelperWaypoint.DEPOSIT_HELPER_X)
+
+        # insert the return waypoint
         self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
-        self.waypoints.insert(0, DepositHelperWaypoint(heading = return_angle))
+
+        # insert the deposit waypoint, sandwiched by the helpers
+        self.waypoints.insert(0, DepositHelperWaypoint(heading=return_angle))
         self.waypoints.insert(0, DepositWaypoint())
         self.waypoints.insert(0, DepositHelperWaypoint())
     
     def plan_to_emergency(self, current_x: float, current_y: float, current_theta: float):
+        '''
+        Plans to the emergency high ground (the edges of the arena)
+
+        Parameters:
+            current_x (float): the robot's current x position
+            current_y (float): the robot's current y position
+            current_theta (float): the robot's current angle
+        '''
+
+        # all four possible emergency points
         left_emergency = current_x
         right_emergency = 2000 - current_x
         down_emergency = current_y
         up_emergency = 2000 - current_y
         
+        # calculate closest point
         emergency_side = min([left_emergency, right_emergency, down_emergency, up_emergency])
+
+        # generate relevant waypoint
         if emergency_side == left_emergency:
             emergency_waypoint = Waypoint(RobotGeometry.LENGTH/2 + RobotGeometry.PADDING, current_y, -pi)
         elif emergency_side == right_emergency:
@@ -285,15 +281,26 @@ class WaypointSequence(ABC):
         else:
             emergency_waypoint = Waypoint(current_x, RobotGeometry.LENGTH/2 + RobotGeometry.PADDINGs, -pi/2)
         
+        # add waypoint
         self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
         self.waypoints.insert(0, emergency_waypoint)
-        
-    
     
     def get_current_waypoint(self) -> Waypoint | None:
+        '''
+        Gets the current waypoint being tracked.
+
+        Returns:
+            (Waypoint | None): the current waypoint being tracked, or None if there are no waypoints left.
+        '''
         return self.waypoints[0] if len(self.waypoints) else None
     
     def move_to_next_waypoint(self) -> Waypoint | None:
+        '''
+        Transitions tracking to the next waypoint.
+
+        Returns:
+            (Waypoint | None): the next waypoint to track to, or None if there are no waypoints left.
+        '''
         if len(self.waypoints) == 0:
             return None
         self.waypoints.pop(0)
@@ -301,7 +308,7 @@ class WaypointSequence(ABC):
 
 class SnakeWaypointSequence(WaypointSequence):
     '''
-    A sequence of waypoints based on a snake search
+    A sequence of waypoints based on a snake search.
     '''
 
     BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING 
