@@ -17,10 +17,10 @@ class DeboggingStrategies(Enum):
     NONE = 1 # does not debog
     ENABLED = 2 # debogs
 
-DEBOG_EPISLON_X = 1000 # in mm
+DEBOG_EPISLON_X = 100 # in mm
 DEBOG_EPSILON_THETA = 4.4 # in rad
 DEBOG_PATIENCE = 5 # in seconds
-DEBOG_DISTANCE = 200 # in mm, how far to go
+DEBOG_DISTANCE = 100 # in mm, how far to go
 
 class Pathplanner():
     '''
@@ -132,6 +132,8 @@ class Pathplanner():
                 self.last_debog_time = time.time()
                 self.last_debog_position = (self.current_x, self.current_y, self.current_theta)
 
+                self.update_controller_path = True
+
         # if we have reached the current waypoint, move to the next one
         if self.current_waypoint is None:
             return
@@ -212,10 +214,12 @@ class Pathplanner():
             self.last_debog_time = time.time() + 23
     
     def signal_extraction_start(self):
-        self.robot.send_control_command("command=7")
+        if self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
+            self.robot.send_control_command("command=7")
     
     def signal_extraction_stop(self):
-        self.robot.send_control_command("command=8")
+        if self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
+            self.robot.send_control_command("command=8")
 
     def signal_pathplanning_stop(self):
         self.stopFlag = True
@@ -226,6 +230,7 @@ class Pathplanner():
         self.unpause_debogger()
 
     def signal_extraction_execute(self):
+        print("sending commands")
         self.robot.send_control_command("command=9")
 
     def signal_robot_forward(self):
@@ -253,7 +258,7 @@ class RobotGeometry():
     '''
     WIDTH: float = 400
     LENGTH: float = 176
-    PADDING: float = 50
+    PADDING: float = 70
     RADIUS: float = math.sqrt(WIDTH**2 + LENGTH**2)/2
 
     DIGGER_WIDTH: float = 110
@@ -300,10 +305,10 @@ class DepositWaypoint(Waypoint):
     '''
 
     # parameters of waypoint
-    DEPOSIT_SIZE: float = 200
-    DEPOSIT_X: float = 2000 - DEPOSIT_SIZE - RobotGeometry.WIDTH / 2
-    DEPOSIT_Y: float = 2000 - RobotGeometry.LENGTH / 2 - RobotGeometry.PADDING
-    DEPOSIT_HEADING: float = -pi/2
+    DEPOSIT_SIZE: float = 165
+    DEPOSIT_X: float = DEPOSIT_SIZE + RobotGeometry.WIDTH / 2
+    DEPOSIT_Y: float = RobotGeometry.LENGTH / 2 + RobotGeometry.PADDING
+    DEPOSIT_HEADING: float = pi/2
 
     def __init__(self):
         super().__init__(
@@ -319,10 +324,10 @@ class DepositHelperWaypoint(Waypoint):
     '''
 
     # parameters of waypoint
-    DEPOSIT_HELPER_X: float = 2000 - DepositWaypoint.DEPOSIT_SIZE - RobotGeometry.WIDTH / 2
-    DEPOSIT_HELPER_Y: float = 2000 - DepositWaypoint.DEPOSIT_SIZE - RobotGeometry.RADIUS - 2*RobotGeometry.PADDING
+    DEPOSIT_HELPER_X: float = DepositWaypoint.DEPOSIT_SIZE + RobotGeometry.WIDTH / 2
+    DEPOSIT_HELPER_Y: float = DepositWaypoint.DEPOSIT_SIZE + RobotGeometry.RADIUS + 2*RobotGeometry.PADDING
 
-    def __init__(self, heading=-pi/2):
+    def __init__(self, heading=pi/2):
         super().__init__(
             DepositHelperWaypoint.DEPOSIT_HELPER_X,
             DepositHelperWaypoint.DEPOSIT_HELPER_Y,
@@ -390,7 +395,7 @@ class WaypointSequence(ABC):
         elif emergency_side == up_emergency:
             emergency_waypoint = Waypoint(current_x, 2000 - RobotGeometry.LENGTH/2 - RobotGeometry.PADDING, pi/2)
         else:
-            emergency_waypoint = Waypoint(current_x, RobotGeometry.LENGTH/2 + RobotGeometry.PADDINGs, -pi/2)
+            emergency_waypoint = Waypoint(current_x, RobotGeometry.LENGTH/2 + RobotGeometry.PADDING, -pi/2)
         
         # add waypoint
         self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))

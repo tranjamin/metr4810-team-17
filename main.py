@@ -41,8 +41,8 @@ def main(configfile, camera):
 
     plan = Pathplanner()
     plan.set_controller(controller)
-    plan.set_extraction_strategy(ExtractionStrategies.PERIODIC)
-    plan.set_debogging_strategy(DeboggingStrategies.ENABLED)
+    plan.set_extraction_strategy(ExtractionStrategies.NONE)
+    plan.set_debogging_strategy(DeboggingStrategies.NONE)
 
     pathplanner_class: WaypointSequence = eval(CONFIG_FILE["pathplan"]["reference-class"])
     pathplanner_kwargs = CONFIG_FILE["pathplan"]["args"]
@@ -124,7 +124,7 @@ def main(configfile, camera):
             plan.signal_extraction_start()
         elif key == ord('k'): # allow extraction
             plan.extraction_allowed = True
-            plan.signal_extraction_start()
+            plan.signal_extraction_execute()
         elif key == ord('m'): # manually extraction
             plan.extraction_allowed = False
             plan.signal_extraction_stop()
