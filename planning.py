@@ -116,8 +116,8 @@ class Pathplanner():
                 print("Reversing: ", reverse)
 
                 new_waypoint = Waypoint(
-                    min(max(self.current_x + reverse*math.cos(self.current_theta)*DEBOG_DISTANCE, 0), 2000),
-                    min(max(self.current_y + reverse*math.sin(self.current_theta)*DEBOG_DISTANCE, 0), 2000),
+                    min(max(self.current_x + reverse*math.cos(self.current_theta)*DEBOG_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS),
+                    min(max(self.current_y + reverse*math.sin(self.current_theta)*DEBOG_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS),
                     heading=self.current_theta
                 )
 
