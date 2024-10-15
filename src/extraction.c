@@ -7,6 +7,7 @@
 #include "wifi.h"
 #include "extraction.h"
 #include "motors.h"
+#include "diagnostics.h"
 
 #define EXTRACTION_PWM_CHAN pwm_gpio_to_channel(EXTRACTION_PWM)
 #define EXTRACTION_PWM_SLICE pwm_gpio_to_slice_num(EXTRACTION_PWM)
@@ -25,11 +26,11 @@ SemaphoreHandle_t extractionSemaphoreStart;
 SemaphoreHandle_t extractionSemaphoreStop;
 
 void extractionProcedureSignalStop() {
-    xSemaphoreGiveFromISR(extractionSemaphoreStart, NULL);
+    xSemaphoreGiveFromISR(extractionSemaphoreStop, NULL);
 }
 
 void extractionProcedureSignalStart() {
-    xSemaphoreGiveFromISR(extractionSemaphoreStop, NULL);
+    xSemaphoreGiveFromISR(extractionSemaphoreStart, NULL);
 }
 
 // function prototypes
@@ -71,6 +72,7 @@ void vExtractionTask() {
         switch (extraction_state) {
             case EXTRACTION_IDLE:
                 if (xSemaphoreTake(extractionSemaphoreStart, SEMPH_TICKS) == pdTRUE) {
+                    vDebugLog("Disabling UDP and Starting Extraction");
                     disableUDP();
                     SET_EXTRACTION_FORWARD();
                     SET_TRAVERSAL_LHS_STOPPED();

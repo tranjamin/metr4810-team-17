@@ -10,6 +10,7 @@
 #define PUSHBUTTON_PIN  17
 #define SWITCH_PIN 16
 #define DEBOUNCE_INTERVAL_MS 50
+#define OPTICAL_DEBOUNCE_INTERVAL_MS 250
 
 #define CSENSE_LHS 26
 #define CSENSE_RHS 27
@@ -27,6 +28,7 @@ volatile uint32_t switch_debounce_timer = 0;
 volatile uint32_t csense_lhs_debounce_timer = 0;
 volatile uint32_t csense_rhs_debounce_timer = 0;
 volatile uint32_t csense_extraction_debounce_timer = 0;
+volatile uint32_t optical_sensor_debounce_timer = 0;
 
 volatile bool pushbutton_is_blue = false;
 
@@ -140,10 +142,13 @@ void gpioCallback(uint gpio_number, uint32_t events) {
             }
             break;
         case OPTICAL_SENSOR:
-            if (events & GPIO_IRQ_EDGE_RISE) {
-                vDebugLog("Sensed on Optical Sensor\n");
-                setRGB_COLOUR_DARK_BLUE();
-                extractionProcedureSignalStop();
+            if (current_time - optical_sensor_debounce_timer > OPTICAL_DEBOUNCE_INTERVAL_MS) {
+                if (events & GPIO_IRQ_EDGE_RISE) {
+                    vDebugLog("Sensed on Optical Sensor\n");
+                    optical_sensor_debounce_timer = current_time;
+                    setRGB_COLOUR_DARK_BLUE();
+                    extractionProcedureSignalStop();
+                }
             }
             break;
     }

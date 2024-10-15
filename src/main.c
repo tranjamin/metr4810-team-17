@@ -41,6 +41,7 @@ void main() {
     xTaskCreate(vMotorsTask, MOTORS_TASK_NAME, MOTORS_TASK_STACK_SIZE, NULL, MOTORS_TASK_PRIORITY, &xMotorsHandle);
     xTaskCreate(vWifiTask, WIFI_TASK_NAME, WIFI_TASK_STACK_SIZE, NULL, WIFI_TASK_PRIORITY, &xWifiHandle);
     xTaskCreate(vWatchdogTask, WATCHDOG_TASK_NAME, WATCHDOG_TASK_STACK_SIZE, NULL, WATCHDOG_TASK_PRIORITY, &xWatchdogHandle);
+    xTaskCreate(vExtractionTask, EXTRACTION_TASK_NAME, EXTRACTION_TASK_STACK_SIZE, NULL, EXTRACTION_TASK_PRIORITY, &xExtractionHandle);
 
     // set core affinities
     vTaskCoreAffinitySet(xDeliveryHandle, (UBaseType_t) DELIVERY_TASK_COREMASK);
@@ -49,6 +50,7 @@ void main() {
     vTaskCoreAffinitySet(xMotorsHandle, (UBaseType_t) MOTORS_TASK_COREMASK);
     vTaskCoreAffinitySet(xWifiHandle, (UBaseType_t) WIFI_TASK_COREMASK);
     vTaskCoreAffinitySet(xWatchdogHandle, (UBaseType_t) WATCHDOG_TASK_COREMASK);
+    vTaskCoreAffinitySet(xExtractionHandle, (UBaseType_t) EXTRACTION_TASK_COREMASK);
 
     // start the scheduling of tasks
     vTaskStartScheduler();
