@@ -1,7 +1,5 @@
 import numpy as np
 import cv2 as cv
-import time
-from math import pi
 import argparse
 import json
 
@@ -10,12 +8,14 @@ from planning import *
 from fmi import *
 from localisation import *
 
-import matplotlib.pyplot as plt
-
 import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
+ROBOT_STARTED = False
+
 def main(configfile, camera):
+    global ROBOT_STARTED
+
     CONFIG_FILE = json.load(open(configfile))
 
     cap = cv.VideoCapture(camera, cv.CAP_DSHOW) # set to 2 to select external webcam
@@ -41,14 +41,18 @@ def main(configfile, camera):
 
     plan = Pathplanner()
     plan.set_controller(controller)
+    plan.set_extraction_strategy(ExtractionStrategies.PERIODIC)
+    plan.set_debogging_strategy(DeboggingStrategies.ENABLED)
 
     pathplanner_class: WaypointSequence = eval(CONFIG_FILE["pathplan"]["reference-class"])
     pathplanner_kwargs = CONFIG_FILE["pathplan"]["args"]
     plan.set_waypoints(pathplanner_class(**pathplanner_kwargs))
 
     robot_config = CONFIG_FILE["robot"]
-    robot_class: Robot = eval(robot_config["robot-class"])
-    robot_comms = robot_class(**robot_config["args"])
+    robot_class = eval(robot_config["robot-class"])
+    robot_comms: Robot = robot_class(**robot_config["args"])
+
+    plan.set_robot(robot_comms)
     
     # Main loop
     while True:
@@ -56,28 +60,34 @@ def main(configfile, camera):
         if not ret:
             break
 
-        
+        v, omega = 0, 0
         ### LOCALISATION FINISHED
         positions, angles = localiser.get_position(img)
 
+
+        # draw current waypoint on screen
+
+        localiser.annotate_xy(img, plan.current_waypoint.x, plan.current_waypoint.y)
+
         ### PATH PLANNING
-        v, omega = 0, 0
         not_none = lambda x: x is not None
         if all([not_none(e) for e in positions]):
             x, _, y, _, _, _ = np.ravel(positions).tolist()
             theta, _, _, _, _, _ = np.ravel(angles).tolist()
 
             plan.update_robot_position(x, y, theta)
-            plan.controller_step()
+            if ROBOT_STARTED:
+                plan.controller_step()
 
-            v = plan.desired_velocity
-            omega = plan.desired_angular
-            
-            robot_comms.send_control_action(v, omega, do_print=False)
+                v = plan.desired_velocity
+                omega = plan.desired_angular
+                
+                robot_comms.send_control_action(v, omega, do_print=False)
+
 
             # draw control info on screen
-            labels = ["x", "y"]
-            for index, val in enumerate([x, y]):
+            labels = ["x", "y", "theta"]
+            for index, val in enumerate([x, y, theta*180/pi]):
                 cv.putText(img, '{}: {:.3f}'.format(labels[index], val),
                             (500, 50 + 50*index),
                             cv.FONT_HERSHEY_PLAIN,
@@ -99,15 +109,26 @@ def main(configfile, camera):
 
         cv.imshow('frame', img)
         key = cv.waitKey(1)
-        if key == ord('q'):
+        if key == ord('q'): # stop robot and exit
+            plan.signal_extraction_stop()
             break
-        elif key == ord('d'):
-            print("D")
-            plan.previous_waypoint = (plan.current_x, plan.current_y)
-            plan.waypoints.plan_to_deposit(x, y, theta)
-            plan.current_waypoint = plan.waypoints.get_current_waypoint()
-            plan.update_controller_path = True
-
+        elif key == ord('d') and ROBOT_STARTED: # return to delivery
+            plan.add_delivery()
+        elif key == ord('e') and ROBOT_STARTED: # go to high ground
+            plan.add_emergency()
+        elif key == ord('f') and ROBOT_STARTED: # start depositing bean
+            plan.signal_delivery_start()
+        elif key == ord('s'): # start robot sending
+            ROBOT_STARTED = True
+            plan.extractionFlag = True
+            plan.signal_extraction_start()
+        elif key == ord('k'): # allow extraction
+            plan.extraction_allowed = True
+            plan.signal_extraction_start()
+        elif key == ord('m'): # manually extraction
+            plan.extraction_allowed = False
+            plan.signal_extraction_stop()
+            
 
     cap.release()
     cv.destroyAllWindows()
@@ -119,9 +140,9 @@ def main(configfile, camera):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--filename", "-f", default="config.json")
-    parser.add_argument("--camera", "-c", default=0)
+    parser.add_argument("--filename", "-f", default="config/configSnake.json")
+    parser.add_argument("--camera", "-c", default=2)
     args = parser.parse_args()
     print(f"Reading file {args.filename} and camera {args.camera}")
 
-    main(args.filename, args.camera)
+    main(args.filename, int(args.camera))

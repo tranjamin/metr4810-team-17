@@ -2,9 +2,25 @@ from __future__ import annotations
 import numpy as np
 import math
 from typing import *
-from robot import Controller
+from robot import Controller, Robot
 from abc import ABC
 from math import pi, atan2
+from enum import Enum
+import time
+
+class ExtractionStrategies(Enum):
+    NONE = 1 # does not run extraction
+    CONTINUOUS = 2 # always runs extraction (on forward controllers)
+    PERIODIC = 3 # only runs extraction at each waypoint
+
+class DeboggingStrategies(Enum):
+    NONE = 1 # does not debog
+    ENABLED = 2 # debogs
+
+DEBOG_EPISLON_X = 1000 # in mm
+DEBOG_EPSILON_THETA = 4.4 # in rad
+DEBOG_PATIENCE = 5 # in seconds
+DEBOG_DISTANCE = 200 # in mm, how far to go
 
 class Pathplanner():
     '''
@@ -28,12 +44,37 @@ class Pathplanner():
         self.previous_waypoint: tuple = (0, 0)
         self.update_controller_path = True
 
+        self.stopFlag = False
+        self.extractionFlag = False
+        self.extraction_allowed = True
+
+        self.extraction_strategy: ExtractionStrategies = None
+        self.debog_strategy: DeboggingStrategies = None
+        self.last_debog_position: tuple[float, float, float] = None
+        self.last_debog_time: float = None
+        self.debogger_enabled: bool = True
+        self.debogger_pause_time: float = None
+
+    def set_extraction_strategy(self, strategy: ExtractionStrategies):
+        '''
+        Sets the extraction strategy to be used
+        '''
+        self.extraction_strategy = strategy
+    
+    def set_debogging_strategy(self, strategy: DeboggingStrategies):
+        '''
+        Sets the debog strategy to be used
+        '''
+        self.debog_strategy = strategy
+
     def set_waypoints(self, waypoints: WaypointSequence):
         '''
         Set the waypoint sequence the planner will be following
         '''
         self.waypoints = waypoints
         self.current_waypoint = self.waypoints.get_current_waypoint()
+        print("---- FIRST WAYPOINT ----")
+        print(f"(Next waypoint is at: {self.current_waypoint.coords})")
     
     def set_controller(self, controller: Controller):
         '''
@@ -41,6 +82,9 @@ class Pathplanner():
         '''
         self.controller = controller
     
+    def set_robot(self, robot: Robot):
+        self.robot = robot
+
     def update_robot_position(self, current_x, current_y, current_theta):
         '''
         Update the planner's knowledge of the robot. Moves to the next waypoint if necessary
@@ -49,10 +93,60 @@ class Pathplanner():
         self.current_y = current_y
         self.current_theta = current_theta
 
+        if self.debog_strategy == DeboggingStrategies.ENABLED and self.debogger_enabled:
+            if self.last_debog_position is None:
+                self.last_debog_position = (self.current_x, self.current_y, self.current_theta)
+            if self.last_debog_time is None:
+                self.last_debog_time = time.time()
+
+            debog_x, debog_y, debog_theta = self.last_debog_position
+            x_deviation = math.sqrt((current_x - debog_x)**2 + (current_y - debog_y)**2)
+            theta_deviation = abs(current_theta - debog_theta)
+            
+            if (x_deviation > DEBOG_EPISLON_X or theta_deviation > DEBOG_EPSILON_THETA):
+                # we have not bogged
+                self.last_debog_time = time.time()
+                self.last_debog_position = (self.current_x, self.current_y, self.current_theta)
+            elif time.time() - self.last_debog_time > DEBOG_PATIENCE:
+                # we have bogged
+                print("Bogging Detected")
+
+                # TODO: set waypoint as directly behind or ahead, not sure if this will be enough
+                reverse = -1 if self.desired_velocity > 0 else 1
+                print("Reversing: ", reverse)
+
+                new_waypoint = Waypoint(
+                    min(max(self.current_x + reverse*math.cos(self.current_theta)*DEBOG_DISTANCE, 0), 2000),
+                    min(max(self.current_y + reverse*math.sin(self.current_theta)*DEBOG_DISTANCE, 0), 2000),
+                    heading=self.current_theta
+                )
+
+                self.waypoints.waypoints.insert(0, new_waypoint)
+                self.current_waypoint = new_waypoint
+                self.previous_waypoint = (self.current_x, self.current_y)
+
+                print("Current position: ", (self.current_x, self.current_y))
+                print("New waypoint: ", self.current_waypoint.coords)
+
+                # update debog parameters
+                self.last_debog_time = time.time()
+                self.last_debog_position = (self.current_x, self.current_y, self.current_theta)
+
         # if we have reached the current waypoint, move to the next one
         if self.current_waypoint is None:
             return
-        if self.controller.has_reached_goal():
+        if self.controller.has_reached_goal() and not self.stopFlag:
+            # do stuff
+            if self.current_waypoint.stopFlag:
+                print("Should be stopping now")
+                self.signal_pathplanning_stop()
+            if self.current_waypoint.suspendFlag:
+                self.signal_extraction_stop()
+                self.extractionFlag = False
+            if self.current_waypoint.resumeFlag:
+                self.signal_extraction_start()
+                self.signal_pathplanning_start()
+
             self.previous_waypoint = self.current_waypoint.coords
             self.current_waypoint = self.waypoints.move_to_next_waypoint()
             self.update_controller_path = True
@@ -72,21 +166,91 @@ class Pathplanner():
             self.desired_angular = 0
         # else, get the control actions
         else:
+            # new path
             if self.update_controller_path:
                 self.controller.set_path(self.previous_waypoint, self.current_waypoint.coords, self.current_waypoint.heading)
                 self.update_controller_path = False
+                if self.extractionFlag and self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
+                    self.signal_extraction_start()
             
-            self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta)
+            if self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
+                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta, on_spin_start=self.signal_extraction_stop)
+            elif self.extraction_strategy == ExtractionStrategies.PERIODIC and self.extraction_strategy:
+                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta, on_spin_end=self.signal_extraction_execute)
+            else:
+                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta)
+
+
+            if self.stopFlag:
+                self.desired_angular = 0
+                self.desired_velocity = 0
+
+    def add_emergency(self):
+        self.previous_waypoint = (self.current_x, self.current_y)
+        self.waypoints.plan_to_emergency(self.current_x, self.current_y, self.current_theta)
+        self.current_waypoint = self.waypoints.get_current_waypoint()
+        self.update_controller_path = True
+        self.signal_extraction_stop()
+        self.extractionFlag = False
+    
+    def add_delivery(self):
+        self.previous_waypoint = (self.current_x, self.current_y)
+        self.waypoints.plan_to_deposit(self.current_x, self.current_y, self.current_theta)
+        self.current_waypoint = self.waypoints.get_current_waypoint()
+        self.update_controller_path = True
+        self.signal_extraction_stop()
+        self.extractionFlag = False
+
+    def signal_delivery_start(self):
+        self.robot.send_control_command("command=0")
+        self.stopFlag = False
+    
+    def signal_extraction_start(self):
+        self.robot.send_control_command("command=7")
+    
+    def signal_extraction_stop(self):
+        self.robot.send_control_command("command=8")
+
+    def signal_pathplanning_stop(self):
+        self.stopFlag = True
+        self.pause_debogger()
+
+    def signal_pathplanning_start(self):
+        self.stopFlag = False
+        self.unpause_debogger()
+
+    def signal_extraction_execute(self):
+        self.robot.send_control_command("command=9")
+
+    def signal_robot_forward(self):
+        self.robot.send_control_command("command=1")
+
+    def signal_robot_backward(self):
+        self.robot.send_control_command("command=2")
+
+    def signal_robot_stopped(self):
+        self.robot.send_control_command("command=3")
+    
+    def pause_debogger(self):
+        self.debogger_enabled = False
+        self.debogger_pause_time = time.time()
+    
+    def unpause_debogger(self):
+        self.debogger_enabled = True
+
+        if self.debogger_pause_time is not None and self.last_debog_time is not None:
+            self.last_debog_time = time.time() - (self.debogger_pause_time - self.last_debog_time)
 
 class RobotGeometry():
     '''
     A class to represent the physical bounds of the robot
     '''
     WIDTH: float = 400
-    LENGTH: float = 200
+    LENGTH: float = 176
+    PADDING: float = 50
     RADIUS: float = math.sqrt(WIDTH**2 + LENGTH**2)/2
 
-    DIGGER_WIDTH: float = 200
+    DIGGER_WIDTH: float = 110
     DIGGER_RADIUS: float = math.sqrt(DIGGER_WIDTH**2 + LENGTH**2)/2
 
 class Waypoint():
@@ -94,26 +258,22 @@ class Waypoint():
     A coordinate and heading which the robot will move through. Coordinates are measured through the geometric centre of the robot.
     '''
 
-    # tolerances for how close we need to get to the waypoints
-    LINEAR_EPS = 50 # units are in mm
-    ANGULAR_EPS = 0.2 # units are in rad
-
     def __init__(self, 
                  x: float, 
                  y: float, 
                  heading: Optional[float] = None, 
                  vel: Optional[float] = None,
                  suspendExtraction: bool = False,
-                 resumeExtraction: bool = False, 
-                 ):
+                 resumeExtraction: bool = False,
+                 stopMovement: bool = False):
         """
         Parameters
-            x: the x-coordinate of the waypoint in millimetres
-            y: the y-coordinate of the waypoint in millimetres
-            heading: the angle the robot should reach the waypoint at, in degrees CW of positive y [-180 to 180] or None if the heading is unimportant
-            vel: the target velocity the robot should reach the waypoint at, in metres per second, or None if unimportant
-            suspendExtraction: stops extraction when reaching this waypoint
-            resumeExtraction: starts extraction when reaching this waypoint
+            x (float): the x-coordinate of the waypoint in millimetres
+            y (float): the y-coordinate of the waypoint in millimetres
+            heading (float): the angle the robot should reach the waypoint at, in radians CCW of positive x [-pi/2 to pi/2] or None if the heading is unimportant
+            vel (float): the target velocity the robot should reach the waypoint at, in metres per second, or None if unimportant
+            suspendExtraction (bool): stops extraction when reaching this waypoint
+            resumeExtraction (bool): starts extraction when reaching this waypoint
         """
         self.x = x
         self.y = y
@@ -122,28 +282,11 @@ class Waypoint():
         self.vel = vel
         self.suspendFlag = suspendExtraction
         self.resumeFlag = resumeExtraction
+        self.stopFlag = stopMovement
 
-        # TODO: make sure the units line up
         assert self.x <= 2000 and self.x >= 0
         assert self.y <= 2000 and self.y >= 0
-        assert self.heading is None or (self.heading >= -180 and self.heading <= 180)
-    
-    def is_reached(self, current_x: float, current_y: float, current_heading: float) -> bool:
-        '''
-        determines whether the waypoint has been reached wrt the current position
-        '''
-
-        delta_x = abs(current_x - self.x)
-        delta_y = abs(current_y - self.y)
-
-        if math.sqrt(delta_x**2 + delta_y**2) > Waypoint.LINEAR_EPS:
-            return False
-        if self.heading is None:
-            return True
-        else:  
-            delta_theta = abs(current_heading - self.heading) # ??
-            return delta_theta < Waypoint.ANGULAR_EPS
-    
+        assert self.heading is None or (self.heading >= -180 and self.heading <= 180)    
 
 class DepositWaypoint(Waypoint):
     '''
@@ -151,16 +294,17 @@ class DepositWaypoint(Waypoint):
     '''
 
     # parameters of waypoint
-    DEPOSIT_X: float = 1600
-    DEPOSIT_Y: float = 1900
-    DEPOSIT_HEADING: float = pi/2
+    DEPOSIT_SIZE: float = 200
+    DEPOSIT_X: float = 2000 - DEPOSIT_SIZE - RobotGeometry.WIDTH / 2
+    DEPOSIT_Y: float = 2000 - RobotGeometry.LENGTH / 2 - RobotGeometry.PADDING
+    DEPOSIT_HEADING: float = -pi/2
 
     def __init__(self):
         super().__init__(
             DepositWaypoint.DEPOSIT_X,
             DepositWaypoint.DEPOSIT_Y,
             DepositWaypoint.DEPOSIT_HEADING,
-            vel = 0
+            stopMovement=True
         )
 
 class DepositHelperWaypoint(Waypoint):
@@ -169,10 +313,10 @@ class DepositHelperWaypoint(Waypoint):
     '''
 
     # parameters of waypoint
-    DEPOSIT_HELPER_X: float = 1600
-    DEPOSIT_HELPER_Y: float = 1600
+    DEPOSIT_HELPER_X: float = 2000 - DepositWaypoint.DEPOSIT_SIZE - RobotGeometry.WIDTH / 2
+    DEPOSIT_HELPER_Y: float = 2000 - DepositWaypoint.DEPOSIT_SIZE - RobotGeometry.RADIUS - 2*RobotGeometry.PADDING
 
-    def __init__(self, heading=pi/2):
+    def __init__(self, heading=-pi/2):
         super().__init__(
             DepositHelperWaypoint.DEPOSIT_HELPER_X,
             DepositHelperWaypoint.DEPOSIT_HELPER_Y,
@@ -185,7 +329,7 @@ class WaypointSequence(ABC):
     A sequence of waypoints
     '''
     def __init__(self):
-        self.waypoints: list[float] = list()
+        self.waypoints: list[float] = list() # the list of waypoints
     
     def plan_to_deposit(self, current_x: float, current_y: float, current_theta: float):
         '''
@@ -195,22 +339,73 @@ class WaypointSequence(ABC):
             3. Adds a waypoint to the current position
         
         Parameters:
-            current_x: the current x position of the robot
-            current_y: the current y position of the robot
+            current_x (float): the current x position of the robot
+            current_y (float): the current y position of the robot
+            current_that (float): the current angle of the robot
         '''
-        return_angle = atan2(current_y - DepositHelperWaypoint.DEPOSIT_HELPER_Y, current_x - DepositHelperWaypoint.DEPOSIT_HELPER_X)
-        self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta))
-        self.waypoints.insert(0, DepositHelperWaypoint(heading = return_angle))
+
+        # calculate the return angle after going to thewaypoint
+        return_angle = atan2(
+            current_y - DepositHelperWaypoint.DEPOSIT_HELPER_Y, 
+            current_x - DepositHelperWaypoint.DEPOSIT_HELPER_X)
+
+        # insert the return waypoint
+        self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
+
+        # insert the deposit waypoint, sandwiched by the helpers
+        self.waypoints.insert(0, DepositHelperWaypoint(heading=return_angle))
         self.waypoints.insert(0, DepositWaypoint())
         self.waypoints.insert(0, DepositHelperWaypoint())
     
-    def plan_to_emergency(self, current_x: float, current_y: float):
-        pass
+    def plan_to_emergency(self, current_x: float, current_y: float, current_theta: float):
+        '''
+        Plans to the emergency high ground (the edges of the arena)
+
+        Parameters:
+            current_x (float): the robot's current x position
+            current_y (float): the robot's current y position
+            current_theta (float): the robot's current angle
+        '''
+
+        # all four possible emergency points
+        left_emergency = current_x
+        right_emergency = 2000 - current_x
+        down_emergency = current_y
+        up_emergency = 2000 - current_y
+        
+        # calculate closest point
+        emergency_side = min([left_emergency, right_emergency, down_emergency, up_emergency])
+
+        # generate relevant waypoint
+        if emergency_side == left_emergency:
+            emergency_waypoint = Waypoint(RobotGeometry.LENGTH/2 + RobotGeometry.PADDING, current_y, -pi)
+        elif emergency_side == right_emergency:
+            emergency_waypoint = Waypoint(2000 - RobotGeometry.LENGTH/2 - RobotGeometry.PADDING, current_y, 0)
+        elif emergency_side == up_emergency:
+            emergency_waypoint = Waypoint(current_x, 2000 - RobotGeometry.LENGTH/2 - RobotGeometry.PADDING, pi/2)
+        else:
+            emergency_waypoint = Waypoint(current_x, RobotGeometry.LENGTH/2 + RobotGeometry.PADDINGs, -pi/2)
+        
+        # add waypoint
+        self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
+        self.waypoints.insert(0, emergency_waypoint)
     
     def get_current_waypoint(self) -> Waypoint | None:
+        '''
+        Gets the current waypoint being tracked.
+
+        Returns:
+            (Waypoint | None): the current waypoint being tracked, or None if there are no waypoints left.
+        '''
         return self.waypoints[0] if len(self.waypoints) else None
     
     def move_to_next_waypoint(self) -> Waypoint | None:
+        '''
+        Transitions tracking to the next waypoint.
+
+        Returns:
+            (Waypoint | None): the next waypoint to track to, or None if there are no waypoints left.
+        '''
         if len(self.waypoints) == 0:
             return None
         self.waypoints.pop(0)
@@ -218,10 +413,10 @@ class WaypointSequence(ABC):
 
 class SnakeWaypointSequence(WaypointSequence):
     '''
-    A sequence of waypoints based on a snake search
+    A sequence of waypoints based on a snake search.
     '''
 
-    BORDER_PADDING: float = RobotGeometry.RADIUS
+    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING 
     ENV_LENGTH: float = 2000
     ENV_WIDTH: float = 2000
     POINTS_PER_LINE: int = 2
@@ -241,7 +436,7 @@ class SnakeWaypointSequence(WaypointSequence):
         for i, x in enumerate(x_coords):
             for j, y in enumerate(reversed_y_coords if i % 2 else y_coords): # toggle the direction of each line
                 if (j != len(y_coords) - 1): # if not at the end
-                    target_heading = pi/2 if i % 2 else -pi/2
+                    target_heading = pi/2 if not i % 2 else -pi/2
                 else:
                     target_heading = 0
                 
@@ -251,6 +446,8 @@ class SnakeWaypointSequence(WaypointSequence):
                     vel = 0 if j == 0 or j == len(y_coords) else None, # set velocity to 0 if it is the first or last in a line
                 )
                 self.waypoints.append(waypoint)
+
+        self.waypoints.pop(0)
 
 class RectangleWaypointSequence(WaypointSequence):
     '''

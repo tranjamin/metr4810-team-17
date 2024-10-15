@@ -4,7 +4,7 @@
 
 The `main` branch of the git repo is used for all production-ready releases of both the firmware and the client-side software.
 
-Use the `dev` branch for development relating to firmware, and the `aruco-localise` branch for development relating to the client side.
+Use the `dev` branch for development relating to firmware, and the `dev-python` branch for development relating to the client side.
 
 ## Robot Usage
 
@@ -12,14 +12,19 @@ Use the `dev` branch for development relating to firmware, and the `aruco-locali
 
 The robot should be powered with either the battery pack connected on MH20 or via USB through the RPi Pico W, but **not both** (as this will fry the board). 
 
-### Motor Connections
+### Molex Connections
 
-The motor connections are routed as MH21-MH24 on the top left of the PCB. Connections are as follows:
+The motor connections are routed as MH22-MH25 on the top left of the PCB. Connections are as follows:
 
-- MH21: *unknown*
-- MH22: *unknown*
-- MH23: Extraction
-- MH24: Deposit
+- MH22: Motor-Side Tracks
+- MH23: PCB-Side Tracks
+- MH24: Extraction
+- MH25: Deposit
+
+The limit switches are routed as MH32-MH33 on the bottom left of the PCB. Connections are as follows:
+
+- MH32: Drilled-Hole Switch
+- MH33: Cut-Hole Switch
 
 ### Onboard LED
 
@@ -108,6 +113,8 @@ In a linux shell (either native linux or git bash), run:
 - `cd src; ./make.sh` to build the `main.c` file
 - `cp build/main.uf2 /d/` to flash, assuming you have connected your Pico in bootsel mode and it registers as drive D (hold down the bootsel button and connect the Pico).
 
+Alternatively, connect the Pico in bootsel mode and drag one of the `uf2` files in `/load` to the Pico drive.
+
 ### Development
 
 For development, see the guide in `Development.md`.
@@ -136,12 +143,10 @@ pip install -r requirements.txt
 
 To run the client-side application, run `python main.py`. Depending on what you want to do, you have the following options (eventually these will probably go into config files):
 
-(You need to be on `add-pathplanning` branch to do this, but `aruco-localise` will have the latest localisation code)
-
 - Choose which camera to use:
   - Run `python main.py -c <camera-number>`
 
-- Set up configuration:
+- Choose which configuration to run:
   - Run `python main.py -f <config-file>`.
 
 ### Simulating
