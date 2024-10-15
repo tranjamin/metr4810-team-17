@@ -2,6 +2,8 @@ import numpy as np
 import cv2 as cv
 import argparse
 import json
+from sys import platform
+import subprocess
 
 from robot import *
 from planning import *
@@ -11,7 +13,21 @@ from localisation import *
 import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
+ROBOT_WIFI_SSID = "METR4810 Team 17"
+ROBOT_WIFI_PASSWORD = ""
+WIFI_CONNECT_CMD = "netsh wlan connect name={0} ssid={0}"
+
 ROBOT_STARTED = False
+
+
+
+def connect_wifi():
+    if platform == "win32":
+        k = subprocess.run(WIFI_CONNECT_CMD.format(ROBOT_WIFI_SSID),
+                           capture_output=True, text=True).stdout
+        print("Connecting to Wifi:")
+        print(k)
+
 
 def main(configfile, camera):
     global ROBOT_STARTED
@@ -136,6 +152,8 @@ def main(configfile, camera):
         elif key == ord('m'): # manually extraction
             plan.extraction_allowed = False
             plan.signal_extraction_stop()
+        elif key == ord('w'):
+            connect_wifi()
             
 
     cap.release()
