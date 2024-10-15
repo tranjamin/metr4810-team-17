@@ -151,7 +151,11 @@ class Pathplanner():
             self.current_waypoint = self.waypoints.move_to_next_waypoint()
             self.update_controller_path = True
             if self.current_waypoint is None:
-                print("---- FINISHED PATH ----")
+                if isinstance(self.waypoints, SnakeWaypointSequence):
+                    print("---- FINISHED PATH. RESTARTING ----")
+                    self.set_waypoints(SnakeWaypointSequence(repeat_run=True))
+                else:
+                    print("---- FINISHED PATH. Terminating ----")
                 return
             print("---- MOVE TO NEXT WAYPOINT ----")
             print(f"(Next waypoint is at: {self.current_waypoint.coords})")
@@ -204,6 +208,8 @@ class Pathplanner():
     def signal_delivery_start(self):
         self.robot.send_control_command("command=0")
         self.stopFlag = False
+        if self.debog_strategy == DeboggingStrategies.ENABLED:
+            self.last_debog_time = time.time() + 23
     
     def signal_extraction_start(self):
         self.robot.send_control_command("command=7")
@@ -421,7 +427,7 @@ class SnakeWaypointSequence(WaypointSequence):
     ENV_WIDTH: float = 2000
     POINTS_PER_LINE: int = 2
 
-    def __init__(self, theta_agnostic=False):
+    def __init__(self, theta_agnostic=False, repeat_run = False):
         super().__init__()
         
         # calculate the y coordinates
@@ -447,7 +453,8 @@ class SnakeWaypointSequence(WaypointSequence):
                 )
                 self.waypoints.append(waypoint)
 
-        self.waypoints.pop(0)
+        if not repeat_run:
+            self.waypoints.pop(0)
 
 class RectangleWaypointSequence(WaypointSequence):
     '''
@@ -456,7 +463,7 @@ class RectangleWaypointSequence(WaypointSequence):
 
     STOPPING = True
 
-    def __init__(self, length_x, length_y, origin_x, origin_y, num_loops, angle_agnostic=False):
+    def __init__(self, length_x, length_y, origin_x, origin_y, num_loops, angle_agnostic=False, repeat_run = False):
         super().__init__()
 
         for i in range(num_loops):
@@ -485,7 +492,7 @@ class MockLocalisationWaypointSequence(WaypointSequence):
     '''
     A waypoint to force the robot into a circle if using mock localisation
     '''
-    def __init__(self):
+    def __init__(self, repeat_run = False):
         super().__init__()
 
         self.waypoints.append(Waypoint(500, 500, heading=None))
