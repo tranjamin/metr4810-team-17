@@ -41,8 +41,16 @@ def main(configfile, camera):
 
     plan = Pathplanner()
     plan.set_controller(controller)
-    plan.set_extraction_strategy(ExtractionStrategies.NONE)
-    plan.set_debogging_strategy(DeboggingStrategies.NONE)
+
+    ### set up extraction type
+    extraction_mode: str = CONFIG_FILE["extraction"]["type"]
+    plan.set_extraction_strategy(eval(f"ExtractionStrategies.{extraction_mode.upper()}"))
+
+    ### set up debogger
+    if CONFIG_FILE["debogger"]["enabled"]:
+        plan.set_debogging_strategy(DeboggingStrategies.ENABLED)
+    else:
+        plan.set_debogging_strategy(DeboggingStrategies.NONE)
 
     pathplanner_class: WaypointSequence = eval(CONFIG_FILE["pathplan"]["reference-class"])
     pathplanner_kwargs = CONFIG_FILE["pathplan"]["args"]

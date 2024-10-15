@@ -35,5 +35,11 @@
             "num_loops": 5,
             "angle_agnostic": false
         }
+    },
+    "debogger": {
+        "enabled": true
+    },
+    "extraction": {
+        "type": "PERIODIC"
     }
 }

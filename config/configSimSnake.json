@@ -28,7 +28,14 @@
     "pathplan": {
         "reference-class": "SnakeWaypointSequence",
         "args": {
+            "points_per_line": 2,
             "theta_agnostic": false
         }
+    },
+    "debogger": {
+        "enabled": false
+    },
+    "extraction": {
+        "type": "NONE"
     }
 }

@@ -430,14 +430,15 @@ class SnakeWaypointSequence(WaypointSequence):
     BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING 
     ENV_LENGTH: float = 2000
     ENV_WIDTH: float = 2000
-    POINTS_PER_LINE: int = 2
 
-    def __init__(self, theta_agnostic=False, repeat_run = False):
+    def __init__(self, 
+                 points_per_line: int,
+                 theta_agnostic=False, repeat_run = False):
         super().__init__()
         
         # calculate the y coordinates
-        y_spacing: float = (SnakeWaypointSequence.ENV_LENGTH - 2*SnakeWaypointSequence.BORDER_PADDING)/(SnakeWaypointSequence.POINTS_PER_LINE - 1)
-        y_coords: list[float] = [SnakeWaypointSequence.BORDER_PADDING + i*y_spacing for i in range(SnakeWaypointSequence.POINTS_PER_LINE)]
+        y_spacing: float = (SnakeWaypointSequence.ENV_LENGTH - 2*SnakeWaypointSequence.BORDER_PADDING)/(points_per_line - 1)
+        y_coords: list[float] = [SnakeWaypointSequence.BORDER_PADDING + i*y_spacing for i in range(points_per_line)]
         reversed_y_coords: list[float] = y_coords[::-1]
 
         # calculate the x coordinates
