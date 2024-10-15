@@ -140,7 +140,7 @@ def main(configfile, camera):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--filename", "-f", default="configSnake.json")
+    parser.add_argument("--filename", "-f", default="config/configSnake.json")
     parser.add_argument("--camera", "-c", default=2)
     args = parser.parse_args()
     print(f"Reading file {args.filename} and camera {args.camera}")
