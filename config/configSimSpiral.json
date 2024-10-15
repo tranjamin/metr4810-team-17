@@ -1,0 +1,41 @@
+{
+    "controllers": {
+        "forward-controller": {
+            "k_angle": 5,
+            "k_v": 100,
+            "w": 0.8,
+            "goal_tolerance": 5,
+            "reversing_allowed": true 
+        },
+        "spin-controller": {
+            "k_angle": 5,
+            "k_v": 2,
+            "angle_tolerance": 0.05
+        }
+    },
+    "localisation": {
+        "localisation-class": "RobotSim",
+        "args": {
+            "filename": "sim/tank_sim.fmu"
+        }
+    },
+    "robot": {
+        "robot-class": "RobotSim",
+        "args": {
+            "filename": "sim/tank_sim.fmu" 
+        }
+    },
+    "pathplan": {
+        "reference-class": "SpiralWaypointSequence",
+        "args": {
+            "points_per_line": 10,
+            "theta_agnostic": false
+        }
+    },
+    "debogger": {
+        "enabled": false
+    },
+    "extraction": {
+        "type": "NONE"
+    }
+}

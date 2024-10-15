@@ -153,12 +153,9 @@ class Pathplanner():
             self.current_waypoint = self.waypoints.move_to_next_waypoint()
             self.update_controller_path = True
             if self.current_waypoint is None:
-                if isinstance(self.waypoints, SnakeWaypointSequence):
-                    print("---- FINISHED PATH. RESTARTING ----")
-                    self.set_waypoints(SnakeWaypointSequence(repeat_run=True))
-                else:
-                    print("---- FINISHED PATH. Terminating ----")
-                return
+                print("---- FINISHED PATH. RESTARTING ----")
+                self.waypoints.reset_waypoints()
+                self.current_waypoint = self.waypoints.get_current_waypoint()
             print("---- MOVE TO NEXT WAYPOINT ----")
             print(f"(Next waypoint is at: {self.current_waypoint.coords})")
     
@@ -341,6 +338,7 @@ class WaypointSequence(ABC):
     '''
     def __init__(self):
         self.waypoints: list[float] = list() # the list of waypoints
+        self.repeat_waypoints: list[float] = list()
     
     def plan_to_deposit(self, current_x: float, current_y: float, current_theta: float):
         '''
@@ -422,6 +420,9 @@ class WaypointSequence(ABC):
         self.waypoints.pop(0)
         return self.get_current_waypoint()
 
+    def reset_waypoints(self):
+        self.waypoints = self.repeat_waypoints.copy()
+
 class SnakeWaypointSequence(WaypointSequence):
     '''
     A sequence of waypoints based on a snake search.
@@ -433,7 +434,7 @@ class SnakeWaypointSequence(WaypointSequence):
 
     def __init__(self, 
                  points_per_line: int,
-                 theta_agnostic=False, repeat_run = False):
+                 theta_agnostic=False):
         super().__init__()
         
         # calculate the y coordinates
@@ -459,8 +460,85 @@ class SnakeWaypointSequence(WaypointSequence):
                 )
                 self.waypoints.append(waypoint)
 
-        if not repeat_run:
-            self.waypoints.pop(0)
+        self.repeat_waypoints = self.waypoints.copy()
+        self.waypoints.pop(0)
+
+class SpiralWaypointSequence(WaypointSequence):
+    '''
+    A sequence of waypoints based on a snake search.
+    '''
+
+    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING 
+    ENV_LENGTH: float = 2000
+    ENV_WIDTH: float = 2000
+
+    def __init__(self, 
+                 points_per_line: int,
+                 theta_agnostic=False):
+        super().__init__()
+        
+        # calculate the y coordinates
+        y_spacing: float = (SpiralWaypointSequence.ENV_LENGTH - 2*SpiralWaypointSequence.BORDER_PADDING)/(points_per_line - 1)
+        y_coords: list[float] = [SpiralWaypointSequence.BORDER_PADDING + i*y_spacing for i in range(points_per_line)]
+
+        # calculate the x coordinates
+        x_coords: list[float] = y_coords.copy()
+
+        while len(x_coords) and len(y_coords):
+            for j, y in enumerate(y_coords):
+                target_heading = pi/2 if j != (len(y_coords) - 1) else 0
+                waypoint = Waypoint(
+                    x_coords[0], y,
+                    heading = None if theta_agnostic else target_heading,
+                    vel = 0 if j == 0 or j == len(y_coords) else None
+                )
+                self.waypoints.append(waypoint)
+            x_coords.pop(0)
+
+            if not len(x_coords):
+                break
+            
+            for i, x in enumerate(x_coords):
+                target_heading = 0 if i != (len(x_coords) - 1) else -pi/2
+                waypoint = Waypoint(
+                    x, y_coords[-1],
+                    heading = None if theta_agnostic else target_heading,
+                    vel = 0 if i == 0 or i == len(y_coords) else None
+                )
+                self.waypoints.append(waypoint)
+            y_coords.pop(-1)
+
+            if not len(y_coords):
+                break
+
+            for j, y in enumerate(y_coords[::-1]):
+                target_heading = -pi/2 if j != (len(y_coords) - 1) else pi
+                waypoint = Waypoint(
+                    x_coords[-1], y,
+                    heading = None if theta_agnostic else target_heading,
+                    vel = 0 if j == 0 or j == len(y_coords) else None
+                )
+                self.waypoints.append(waypoint)
+            x_coords.pop(-1)
+
+            if not len(x_coords):
+                break
+            
+            for i, x in enumerate(x_coords[::-1]):
+                target_heading = pi if i != (len(x_coords) - 1) else pi/2
+                waypoint = Waypoint(
+                    x, y_coords[0],
+                    heading = None if theta_agnostic else target_heading,
+                    vel = 0 if i == 0 or i == len(y_coords) else None
+                )
+                self.waypoints.append(waypoint)
+            y_coords.pop(0)
+
+            if not len(y_coords):
+                break
+
+        self.repeat_waypoints = self.waypoints.copy()
+        self.waypoints.pop(0)
 
 class RectangleWaypointSequence(WaypointSequence):
     '''
@@ -469,7 +547,7 @@ class RectangleWaypointSequence(WaypointSequence):
 
     STOPPING = True
 
-    def __init__(self, length_x, length_y, origin_x, origin_y, num_loops, angle_agnostic=False, repeat_run = False):
+    def __init__(self, length_x, length_y, origin_x, origin_y, num_loops, angle_agnostic=False):
         super().__init__()
 
         for i in range(num_loops):
@@ -493,12 +571,15 @@ class RectangleWaypointSequence(WaypointSequence):
                 origin_y, 
                 heading=None if angle_agnostic else pi/2, 
                 vel=0 if RectangleWaypointSequence.STOPPING else None))
+        
+        self.repeat_waypoints = self.waypoints.copy()
 
 class MockLocalisationWaypointSequence(WaypointSequence):
     '''
     A waypoint to force the robot into a circle if using mock localisation
     '''
-    def __init__(self, repeat_run = False):
+    def __init__(self):
         super().__init__()
 
         self.waypoints.append(Waypoint(500, 500, heading=None))
+        self.repeat_waypoints = self.waypoints.copy()
