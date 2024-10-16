@@ -6,7 +6,6 @@
 
 #include "pico/stdlib.h"
 #include "lwip/pbuf.h"
-#include "lwip/tcp.h"
 #include "lwip/udp.h"
 #include "dhcpserver.h"
 #include "FreeRTOS.h"
