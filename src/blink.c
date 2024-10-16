@@ -14,7 +14,8 @@ int pico_led_init(void) {
         gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
         return PICO_OK;
     #elif defined(CYW43_WL_GPIO_LED_PIN)
-        return cyw43_arch_init();
+        if (cyw43_arch_init()) return 1;
+        cyw43_wifi_pm(&cyw43_state, CYW43_PERFORMANCE_PM);
     #endif
 }
 
