@@ -15,7 +15,7 @@ ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 ROBOT_WIFI_SSID = "METR4810 Team 17"
 ROBOT_WIFI_PASSWORD = ""
-WIFI_CONNECT_CMD = "netsh wlan connect name={0} ssid={0}"
+WIFI_CONNECT_CMD = 'netsh wlan connect name="{0}" ssid="{0}"'
 
 ROBOT_STARTED = False
 
@@ -160,7 +160,7 @@ def main(configfile, camera):
     cv.destroyAllWindows()
 
     # stop the robot
-    robot_comms.send_control_action(0,0, True)
+    robot_comms.send_control_action(0, 0, True)
     localiser.deinit()
 
 
