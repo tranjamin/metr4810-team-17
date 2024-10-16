@@ -6,7 +6,7 @@ from math import pi, atan2
 from enum import Enum
 import time
 
-from robot import Controller, Robot
+from robot import Controller, Robot, LineFollowerController
 
 class ExtractionStrategies(Enum):
     '''
@@ -34,7 +34,7 @@ class Pathplanner():
     '''
     def __init__(self):
         self.waypoints: WaypointSequence
-        self.controller: Controller
+        self.controller: LineFollowerController
 
         # desired signals derived from the controller
         self.desired_velocity: float = 0

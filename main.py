@@ -138,14 +138,17 @@ def main(configfile, camera):
     plan.set_robot(robot_comms)
 
     old_extraction_time = None
-    extraction_interval = 2
+    extraction_interval = 1
     
     # Main loop
     while True:
-        # if old_extraction_time is not None and time.time() - old_extraction_time > extraction_interval:
-        #     old_extraction_time = time.time()
-        #     # plan.signal_extraction_execute()
-        #     robot_tcp.send_control_command("command=9")
+        if old_extraction_time is not None and time.time() - old_extraction_time > extraction_interval and not plan.controller.phase_2 :
+            # plan.signal_extraction_execute()
+            robot_tcp.send_control_command("command=9")
+            time.sleep(3)
+            old_extraction_time = time.time()
+        elif plan.controller.phase_2:
+            old_extraction_time = time.time() - 1
 
         # read in image
         ret, img = cap.read()
