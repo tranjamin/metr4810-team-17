@@ -81,10 +81,10 @@ void vExtractionTask() {
                 }
                 break;
             case EXTRACTION_RUNNING:
-                if (xSemaphoreTake(extractionSemaphoreStop, SEMPH_TICKS) == pdTRUE) {   
-                    enableUDP();
+                if (xSemaphoreTake(extractionSemaphoreStop, SEMPH_TICKS) == pdTRUE) {  
                     SET_EXTRACTION_STOPPED();
-                    extraction_state = EXTRACTION_IDLE;
+                    extraction_state = EXTRACTION_IDLE; 
+                    enableUDP();
                 }
                 break;
         }
