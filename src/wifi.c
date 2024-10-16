@@ -119,6 +119,7 @@ int generate_response(const char*, const char*, char*, size_t);
 // Function prototypes
 void vWifiInit();
 void vWifiTask();
+void vWifiUDPTask();
 
 static volatile bool enable_udp = true;
 
@@ -601,7 +602,6 @@ void vWifiTask() {
     for (;;) {
         // Enable server
         TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
-        UDP_SERVER_T *udp_state = calloc(1, sizeof(UDP_SERVER_T));
         
         const char *ap_name = "METR4810 Team 17";
         const char *password = "password";
@@ -621,9 +621,6 @@ void vWifiTask() {
             // vDebugLog("failed to open server\n");
             continue;
         }
-        if (!udp_server_open(udp_state, ap_name)) {
-            continue;
-        }
         
         // Wait for completion (in background)
         while(true) {
@@ -637,6 +634,29 @@ void vWifiTask() {
         tcp_server_close(state);
         dhcp_server_deinit(&dhcp_server);
         // cyw43_arch_deinit();
+    }
+    return;
+}
+
+void vWifiUDPTask() {
+    for (;;) {
+        // Enable server
+        UDP_SERVER_T *udp_state = calloc(1, sizeof(UDP_SERVER_T));        
+        
+        const char *ap_name = "METR4810 Team 17";
+        const char *password = "password";
+        
+        if (!udp_server_open(udp_state, ap_name)) {
+            continue;
+        }
+        
+        // Wait for completion (in background)
+        while(true) {
+            // cyw43_arch_poll();
+            vTaskDelay(VDELAY);
+        }
+
+        setRGB_COLOUR_PURPLE();
     }
     return;
 }
