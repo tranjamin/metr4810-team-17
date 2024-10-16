@@ -1,4 +1,4 @@
-from math import sin, cos, atan2, pi
+from math import sin, cos, atan2, pi, copysign
 import socket
 import requests
 import numpy as np
@@ -112,7 +112,7 @@ class RobotTCP(Robot):
     def send_control_command(self, command: str):
         try:
             url = f"http://{self.ip}/{RobotTCP.CONTROL_ENDPOINT}?{command}"
-            requests.get(url, timeout=(0.005, 0.001))
+            requests.get(url, timeout=(0.8, 0.8))
         except requests.exceptions.ReadTimeout: 
             pass
         except requests.exceptions.Timeout:
@@ -135,10 +135,16 @@ class RobotUDP(Robot):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def send_command(self, command: str):
-        self.sock.sendto(bytes(RobotUDP.LOCALISATION_PREFIX + command, RobotUDP.ENCODING), (self.ip, RobotUDP.UDP_PORT))
+        try:
+            self.sock.sendto(bytes(RobotUDP.LOCALISATION_PREFIX + command, RobotUDP.ENCODING), (self.ip, RobotUDP.UDP_PORT))
+        except OSError:
+            print("Failed to send command")
     
     def send_control_command(self, command: str):
-        self.sock.sendto(bytes(RobotUDP.CONTROL_PREFIX + command, RobotUDP.ENCODING), (self.ip, RobotUDP.UDP_PORT))
+        try:
+            self.sock.sendto(bytes(RobotUDP.CONTROL_PREFIX + command, RobotUDP.ENCODING), (self.ip, RobotUDP.UDP_PORT))
+        except OSError:
+            print("Failed to send command")
 
 class Controller(ABC):
     '''
@@ -220,7 +226,7 @@ class SpinController(Controller):
         # calculate the wrapped angle
         angle_error = atan2(sin_angle_error, cos_angle_error)
         
-        omega = self.k_angle * angle_error
+        omega = copysign(self.k_angle, angle_error)
 
         # ensure we move in the correct direction
         r_to_goal = self.p1 - r

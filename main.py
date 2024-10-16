@@ -19,7 +19,89 @@ WIFI_CONNECT_CMD = 'netsh wlan connect name="{0}" ssid="{0}"'
 
 ROBOT_STARTED = False
 
+class Config():
+    '''
+    A class to hold all methods related to loading in configuration files.
 
+    Config files must be structured in the standard JSON format with the following fields:
+        - controllers: a superobject with the following fields
+            - forward-controller: an object with the following fields
+                - k_angle:
+                - k_v:
+                - w:
+                - goal_tolerance:
+                - reversing_allowed:
+            - spin-controller: an object with the following fields
+                - k_angle:
+                - k_v:
+                - angle_tolerance:
+        - localisation: an object with the following fields
+            - localisation-class:
+            - args:
+        - robot: an object with the following fields
+            - robot-class:
+            - args:
+        - pathplan: an object with the following fields
+            - reference-class:
+            - args:
+        - debogger: an object with the following fields
+
+
+    '''
+
+    def __init__(self, filename: str):
+        '''
+        Parameters:
+            filename (str): the filename and path of the config file
+        '''
+        self.config_file = json.load(open(filename))
+
+    def load_localiser(self):
+        # load in localiser from config file
+        config_localiser: str = self.config_file["localisation"]
+        config_localiser_args: dict = config_localiser["args"]
+        localiser: Localisation =  eval(config_localiser["localisation-class"])(**config_localiser_args)
+        assert isinstance(localiser, Localisation)
+
+        return localiser
+    
+    def load_pathplanning(self):
+        # load in controllers from config file
+        controller_config = self.config_file["controllers"]
+        forward_controller = FowardController(**controller_config["forward-controller"])
+        spin_controller = SpinController(**controller_config["spin-controller"])
+        controller = LineFollowerController(forward_controller, spin_controller)
+
+        # load in pathplanner from config file
+        plan = Pathplanner()
+        plan.set_controller(controller)
+
+        # load in extraction mode from config file
+        extraction_mode: str = self.config_file["extraction"]["type"]
+        plan.set_extraction_strategy(eval(f"ExtractionStrategies.{extraction_mode.upper()}"))
+
+        # load in debogger
+        if self.config_file["debogger"]["enabled"]:
+            plan.set_debogging_strategy(DeboggingStrategies.ENABLED)
+        else:
+            plan.set_debogging_strategy(DeboggingStrategies.NONE)
+        
+        # pause debogger until started
+        plan.pause_debogger()
+
+        # load in extraction mode from config file
+        pathplanner_class: WaypointSequence = eval(self.config_file["pathplan"]["reference-class"])
+        pathplanner_kwargs = self.config_file["pathplan"]["args"]
+        plan.set_waypoints(pathplanner_class(**pathplanner_kwargs))
+
+        return plan
+
+    def load_robot(self):
+        robot_config = self.config_file["robot"]
+        robot_class = eval(robot_config["robot-class"])
+        robot_comms: Robot = robot_class(**robot_config["args"])
+
+        return robot_comms
 
 def connect_wifi():
     if platform == "win32":
@@ -32,65 +114,49 @@ def connect_wifi():
 def main(configfile, camera):
     global ROBOT_STARTED
 
-    CONFIG_FILE = json.load(open(configfile))
+    # open config file
+    cfg = Config(configfile)
 
-    cap = cv.VideoCapture(camera, cv.CAP_DSHOW) # set to 2 to select external webcam
-    cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
-    cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280)) # seems locked to 720p
+    # configure camera input and window size
+    cap = cv.VideoCapture(camera, cv.CAP_DSHOW)
+    cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720))
+    cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280))
 
+    # exit if camera cannot be opened
     if not cap.isOpened():
         print("Cannot open camera")
-        exit()
+        exit(1)
 
-    config_localiser = CONFIG_FILE["localisation"]
-    config_localiser_args = config_localiser["args"]
-    config_localiser_class = eval(config_localiser["localisation-class"])
-    localiser: Localisation = config_localiser_class(**config_localiser_args)
-
+    # set up localisation
+    localiser = cfg.load_localiser()
     localiser.setup()
 
-    ### Set up controllers
-    controller_config = CONFIG_FILE["controllers"]
-    forward_controller = FowardController(**controller_config["forward-controller"])
-    spin_controller = SpinController(**controller_config["spin-controller"])
-    controller = LineFollowerController(forward_controller, spin_controller)
-
-    plan = Pathplanner()
-    plan.set_controller(controller)
-
-    ### set up extraction type
-    extraction_mode: str = CONFIG_FILE["extraction"]["type"]
-    plan.set_extraction_strategy(eval(f"ExtractionStrategies.{extraction_mode.upper()}"))
-
-    ### set up debogger
-    if CONFIG_FILE["debogger"]["enabled"]:
-        plan.set_debogging_strategy(DeboggingStrategies.ENABLED)
-    else:
-        plan.set_debogging_strategy(DeboggingStrategies.NONE)
-
-    pathplanner_class: WaypointSequence = eval(CONFIG_FILE["pathplan"]["reference-class"])
-    pathplanner_kwargs = CONFIG_FILE["pathplan"]["args"]
-    plan.set_waypoints(pathplanner_class(**pathplanner_kwargs))
-
-    robot_config = CONFIG_FILE["robot"]
-    robot_class = eval(robot_config["robot-class"])
-    robot_comms: Robot = robot_class(**robot_config["args"])
+    plan = cfg.load_pathplanning()
+    robot_comms = cfg.load_robot()
+    robot_tcp = RobotTCP("192.168.4.1")
 
     plan.set_robot(robot_comms)
+
+    old_extraction_time = None
+    extraction_interval = 2
     
     # Main loop
     while True:
+        # if old_extraction_time is not None and time.time() - old_extraction_time > extraction_interval:
+        #     old_extraction_time = time.time()
+        #     # plan.signal_extraction_execute()
+        #     robot_tcp.send_control_command("command=9")
+
+        # read in image
         ret, img = cap.read()
         if not ret:
             break
 
         v, omega = 0, 0
-        ### LOCALISATION FINISHED
+
         positions, angles = localiser.get_position(img)
 
-
         # draw current waypoint on screen
-
         localiser.annotate_xy(img, plan.current_waypoint.x, plan.current_waypoint.y)
 
         ### PATH PLANNING
@@ -106,7 +172,7 @@ def main(configfile, camera):
                 v = plan.desired_velocity
                 omega = plan.desired_angular
                 
-                robot_comms.send_control_action(v, omega, do_print=False)
+                robot_comms.send_control_action(v, omega, do_print=True)
 
 
             # draw control info on screen
@@ -143,8 +209,40 @@ def main(configfile, camera):
         elif key == ord('f') and ROBOT_STARTED: # start depositing bean
             plan.signal_delivery_start()
         elif key == ord('s'): # start robot sending
+            positions, angles = localiser.get_position(img)
+            x, _, y, _, _, _ = np.ravel(positions).tolist()
+            theta, _, _, _, _, _ = np.ravel(angles).tolist()
+
+            plan.unpause_debogger()
+
+            if all([not_none(e) for e in positions]):
+                print("Dynamically setting the delivery waypoint...")
+                new_deposit_x = x
+                new_deposit_y = y
+                new_deposit_theta = theta
+
+                backwards_length = DepositWaypoint.DEPOSIT_SIZE/2 + RobotGeometry.RADIUS
+
+                new_helper_x = x - backwards_length*math.cos(theta)
+                new_helper_y = y - backwards_length*math.sin(theta)
+
+                try:
+                    assert new_helper_x <= 2000 and new_helper_x >= 0
+                    assert new_helper_y <= 2000 and new_helper_y >= 0
+
+                    new_helper_x = max(new_helper_x, RobotGeometry.RADIUS + 10)
+                    new_helper_y = max(new_helper_y, RobotGeometry.RADIUS + 10)
+                    DepositWaypoint.DEPOSIT_HEADING = new_deposit_theta
+                    DepositWaypoint.DEPOSIT_X = new_deposit_x
+                    DepositWaypoint.DEPOSIT_Y = new_deposit_y
+                    DepositHelperWaypoint.DEPOSIT_HELPER_X = new_helper_x
+                    DepositHelperWaypoint.DEPOSIT_HELPER_Y = new_helper_y
+                except AssertionError:
+                    print("Dynamic setting failed... reverting")
+
             ROBOT_STARTED = True
             plan.extractionFlag = True
+            old_extraction_time = time.time()
             plan.signal_extraction_start()
         elif key == ord('k'): # allow extraction
             plan.extraction_allowed = True
@@ -155,20 +253,22 @@ def main(configfile, camera):
         elif key == ord('w'):
             connect_wifi()
             
-
+    # deinit camera and cv
     cap.release()
     cv.destroyAllWindows()
 
-    # stop the robot
-    robot_comms.send_control_action(0, 0, True)
+    # stop the robot and localisation
+    robot_comms.send_control_action(0,0, True)
     localiser.deinit()
 
 
 if __name__ == "__main__":
+    # load in command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--filename", "-f", default="config/configSnake.json")
     parser.add_argument("--camera", "-c", default=2)
     args = parser.parse_args()
     print(f"Reading file {args.filename} and camera {args.camera}")
 
+    # run main function
     main(args.filename, int(args.camera))
