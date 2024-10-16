@@ -1,4 +1,4 @@
-from math import sin, cos, atan2, pi
+from math import sin, cos, atan2, pi, copysign
 import socket
 import requests
 import numpy as np
@@ -220,7 +220,7 @@ class SpinController(Controller):
         # calculate the wrapped angle
         angle_error = atan2(sin_angle_error, cos_angle_error)
         
-        omega = self.k_angle * angle_error
+        omega = copysign(self.k_angle, angle_error)
 
         # ensure we move in the correct direction
         r_to_goal = self.p1 - r

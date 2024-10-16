@@ -255,7 +255,7 @@ class RobotGeometry():
     '''
     WIDTH: float = 400
     LENGTH: float = 176
-    PADDING: float = 70
+    PADDING: float = 80
     RADIUS: float = math.sqrt(WIDTH**2 + LENGTH**2)/2
 
     DIGGER_WIDTH: float = 110
@@ -294,7 +294,7 @@ class Waypoint():
 
         assert self.x <= 2000 and self.x >= 0
         assert self.y <= 2000 and self.y >= 0
-        assert self.heading is None or (self.heading >= -180 and self.heading <= 180)    
+        assert self.heading is None or (self.heading >= -pi and self.heading <= pi)    
 
 class DepositWaypoint(Waypoint):
     '''
@@ -303,9 +303,9 @@ class DepositWaypoint(Waypoint):
 
     # parameters of waypoint
     DEPOSIT_SIZE: float = 165
-    DEPOSIT_X: float = DEPOSIT_SIZE + RobotGeometry.WIDTH / 2
-    DEPOSIT_Y: float = RobotGeometry.LENGTH / 2 + RobotGeometry.PADDING
-    DEPOSIT_HEADING: float = pi/2
+    DEPOSIT_X: float = 350
+    DEPOSIT_Y: float = 350
+    DEPOSIT_HEADING: float = 3*pi/4
 
     def __init__(self):
         super().__init__(
@@ -321,10 +321,10 @@ class DepositHelperWaypoint(Waypoint):
     '''
 
     # parameters of waypoint
-    DEPOSIT_HELPER_X: float = DepositWaypoint.DEPOSIT_SIZE + RobotGeometry.WIDTH / 2
-    DEPOSIT_HELPER_Y: float = DepositWaypoint.DEPOSIT_SIZE + RobotGeometry.RADIUS + 2*RobotGeometry.PADDING
+    DEPOSIT_HELPER_X: float = DepositWaypoint.DEPOSIT_X - (DepositWaypoint.DEPOSIT_SIZE/2 + RobotGeometry.RADIUS)*math.cos(DepositWaypoint.DEPOSIT_HEADING)
+    DEPOSIT_HELPER_Y: float = DepositWaypoint.DEPOSIT_Y - (DepositWaypoint.DEPOSIT_SIZE/2 + RobotGeometry.RADIUS)*math.sin(DepositWaypoint.DEPOSIT_HEADING)
 
-    def __init__(self, heading=pi/2):
+    def __init__(self, heading=DepositWaypoint.DEPOSIT_HEADING):
         super().__init__(
             DepositHelperWaypoint.DEPOSIT_HELPER_X,
             DepositHelperWaypoint.DEPOSIT_HELPER_Y,
@@ -474,6 +474,7 @@ class SpiralWaypointSequence(WaypointSequence):
 
     def __init__(self, 
                  points_per_line: int,
+                 chamfered: bool,
                  theta_agnostic=False):
         super().__init__()
         
@@ -487,12 +488,13 @@ class SpiralWaypointSequence(WaypointSequence):
         while len(x_coords) and len(y_coords):
             for j, y in enumerate(y_coords):
                 target_heading = pi/2 if j != (len(y_coords) - 1) else 0
-                waypoint = Waypoint(
+                waypoint: Waypoint = Waypoint(
                     x_coords[0], y,
                     heading = None if theta_agnostic else target_heading,
                     vel = 0 if j == 0 or j == len(y_coords) else None
                 )
-                self.waypoints.append(waypoint)
+                if j != len(y_coords) - 1 or not chamfered:
+                    self.waypoints.append(waypoint)
             x_coords.pop(0)
 
             if not len(x_coords):
@@ -500,12 +502,13 @@ class SpiralWaypointSequence(WaypointSequence):
             
             for i, x in enumerate(x_coords):
                 target_heading = 0 if i != (len(x_coords) - 1) else -pi/2
-                waypoint = Waypoint(
+                waypoint: Waypoint = Waypoint(
                     x, y_coords[-1],
                     heading = None if theta_agnostic else target_heading,
                     vel = 0 if i == 0 or i == len(y_coords) else None
                 )
-                self.waypoints.append(waypoint)
+                if i != len(x_coords) - 1 or not chamfered:
+                    self.waypoints.append(waypoint)
             y_coords.pop(-1)
 
             if not len(y_coords):
@@ -513,12 +516,13 @@ class SpiralWaypointSequence(WaypointSequence):
 
             for j, y in enumerate(y_coords[::-1]):
                 target_heading = -pi/2 if j != (len(y_coords) - 1) else pi
-                waypoint = Waypoint(
+                waypoint: Waypoint = Waypoint(
                     x_coords[-1], y,
                     heading = None if theta_agnostic else target_heading,
                     vel = 0 if j == 0 or j == len(y_coords) else None
                 )
-                self.waypoints.append(waypoint)
+                if j != len(y_coords) - 1 or not chamfered:
+                    self.waypoints.append(waypoint)
             x_coords.pop(-1)
 
             if not len(x_coords):
@@ -526,19 +530,22 @@ class SpiralWaypointSequence(WaypointSequence):
             
             for i, x in enumerate(x_coords[::-1]):
                 target_heading = pi if i != (len(x_coords) - 1) else pi/2
-                waypoint = Waypoint(
+                waypoint: Waypoint = Waypoint(
                     x, y_coords[0],
                     heading = None if theta_agnostic else target_heading,
                     vel = 0 if i == 0 or i == len(y_coords) else None
                 )
-                self.waypoints.append(waypoint)
+                if i != len(x_coords) - 1 or not chamfered:
+                    self.waypoints.append(waypoint)
             y_coords.pop(0)
 
             if not len(y_coords):
                 break
 
+        while self.waypoints[0].y < 700:
+            self.waypoints.pop(0)
+
         self.repeat_waypoints = self.waypoints.copy()
-        self.waypoints.pop(0)
 
 class SpiralWaypointSequenceChamfered(WaypointSequence):
     '''
@@ -619,6 +626,7 @@ class SpiralWaypointSequenceChamfered(WaypointSequence):
                 break
 
         self.repeat_waypoints = self.waypoints.copy()
+        self.waypoints.pop(0)
         self.waypoints.pop(0)
 
 class RectangleWaypointSequence(WaypointSequence):

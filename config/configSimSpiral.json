@@ -28,7 +28,8 @@
     "pathplan": {
         "reference-class": "SpiralWaypointSequence",
         "args": {
-            "points_per_line": 10,
+            "points_per_line": 2,
+            "chamfered": false,
             "theta_agnostic": false
         }
     },

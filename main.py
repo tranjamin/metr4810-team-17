@@ -65,6 +65,7 @@ def main(configfile, camera):
     ### set up debogger
     if CONFIG_FILE["debogger"]["enabled"]:
         plan.set_debogging_strategy(DeboggingStrategies.ENABLED)
+        plan.pause_debogger()
     else:
         plan.set_debogging_strategy(DeboggingStrategies.NONE)
 
@@ -106,7 +107,7 @@ def main(configfile, camera):
                 v = plan.desired_velocity
                 omega = plan.desired_angular
                 
-                robot_comms.send_control_action(v, omega, do_print=False)
+                robot_comms.send_control_action(v, omega, do_print=True)
 
 
             # draw control info on screen
@@ -143,6 +144,37 @@ def main(configfile, camera):
         elif key == ord('f') and ROBOT_STARTED: # start depositing bean
             plan.signal_delivery_start()
         elif key == ord('s'): # start robot sending
+            positions, angles = localiser.get_position(img)
+            x, _, y, _, _, _ = np.ravel(positions).tolist()
+            theta, _, _, _, _, _ = np.ravel(angles).tolist()
+
+            plan.unpause_debogger()
+
+            if all([not_none(e) for e in positions]):
+                print("Dynamically setting the delivery waypoint...")
+                new_deposit_x = x
+                new_deposit_y = y
+                new_deposit_theta = theta
+
+                backwards_length = DepositWaypoint.DEPOSIT_SIZE/2 + RobotGeometry.RADIUS
+
+                new_helper_x = x - backwards_length*math.cos(theta)
+                new_helper_y = y - backwards_length*math.sin(theta)
+
+                try:
+                    assert new_helper_x <= 2000 and new_helper_x >= 0
+                    assert new_helper_y <= 2000 and new_helper_y >= 0
+
+                    new_helper_x = max(new_helper_x, RobotGeometry.RADIUS + 10)
+                    new_helper_y = max(new_helper_y, RobotGeometry.RADIUS + 10)
+                    DepositWaypoint.DEPOSIT_HEADING = new_deposit_theta
+                    DepositWaypoint.DEPOSIT_X = new_deposit_x
+                    DepositWaypoint.DEPOSIT_Y = new_deposit_y
+                    DepositHelperWaypoint.DEPOSIT_HELPER_X = new_helper_x
+                    DepositHelperWaypoint.DEPOSIT_HELPER_Y = new_helper_y
+                except AssertionError:
+                    print("Dynamic setting failed... reverting")
+
             ROBOT_STARTED = True
             plan.extractionFlag = True
             plan.signal_extraction_start()
