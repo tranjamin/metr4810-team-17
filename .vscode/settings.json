@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "btstack.h": "c",
+        "adc.h": "c"
+    }
+}

@@ -12,6 +12,7 @@
 #include "rgb.h"
 #include "digitalio.h"
 #include "watchdog.h"
+#include "bluetooth.h"
 
 void main() {
     // set up all hardware
@@ -33,15 +34,17 @@ void main() {
     TaskHandle_t xWifiHandle;
     TaskHandle_t xDigitalIOHandle;
     TaskHandle_t xWatchdogHandle;
+    TaskHandle_t xBluetoothHandle;
 
     // create all tasks
     xTaskCreate(vDeliveryTask, DELIVERY_TASK_NAME, DELIVERY_TASK_STACK_SIZE, NULL, DELIVERY_TASK_PRIORITY, &xDeliveryHandle);
     xTaskCreate(vDiagnosticsTask, DIAGNOSTICS_TASK_NAME, DIAGNOSTICS_TASK_STACK_SIZE, NULL, DIAGNOSTICS_TASK_PRIORITY, &xDiagnosticsHandle);
     xTaskCreate(vBlinkTask, BLINK_TASK_NAME, BLINK_TASK_STACK_SIZE, NULL, BLINK_TASK_PRIORITY, &xBlinkHandle);
     xTaskCreate(vMotorsTask, MOTORS_TASK_NAME, MOTORS_TASK_STACK_SIZE, NULL, MOTORS_TASK_PRIORITY, &xMotorsHandle);
-    xTaskCreate(vWifiTask, WIFI_TASK_NAME, WIFI_TASK_STACK_SIZE, NULL, WIFI_TASK_PRIORITY, &xWifiHandle);
+    // xTaskCreate(vWifiTask, WIFI_TASK_NAME, WIFI_TASK_STACK_SIZE, NULL, WIFI_TASK_PRIORITY, &xWifiHandle);
     xTaskCreate(vWatchdogTask, WATCHDOG_TASK_NAME, WATCHDOG_TASK_STACK_SIZE, NULL, WATCHDOG_TASK_PRIORITY, &xWatchdogHandle);
     xTaskCreate(vExtractionTask, EXTRACTION_TASK_NAME, EXTRACTION_TASK_STACK_SIZE, NULL, EXTRACTION_TASK_PRIORITY, &xExtractionHandle);
+    xTaskCreate(vBluetoothTask, BLUETOOTH_TASK_NAME, BLUETOOTH_TASK_STACK_SIZE, NULL, BLUETOOTH_TASK_PRIORITY, &xBluetoothHandle);
 
     // set core affinities
     vTaskCoreAffinitySet(xDeliveryHandle, (UBaseType_t) DELIVERY_TASK_COREMASK);

@@ -24,6 +24,8 @@ add_executable( main
     rgb.c
     digitalio.c
     watchdog.c
+    bluetooth.c
+    bluetooth_common.c
 
     dhcpserver/dhcpserver.c
     ../FreeRTOS-Kernel/portable/MemMang/heap_4.c
@@ -46,6 +48,9 @@ target_link_libraries(
     hardware_watchdog
     FreeRTOS-Kernel 
     FreeRTOS-Kernel-Heap4
+    pico_btstack_ble
+    pico_btstack_cyw43
+    hardware_adc
     # pico_cyw43_arch_lwip_poll
     pico_cyw43_arch_lwip_threadsafe_background
     # pico_cyw43_arch_lwip_sys_freertos
