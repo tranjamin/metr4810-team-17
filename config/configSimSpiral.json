@@ -2,7 +2,7 @@
     "controllers": {
         "forward-controller": {
             "k_angle": 5,
-            "k_v": 100,
+            "k_v": 200,
             "w": 0.8,
             "goal_tolerance": 5,
             "reversing_allowed": true 
@@ -26,10 +26,10 @@
         }
     },
     "pathplan": {
-        "reference-class": "SpiralWaypointSequence",
+        "reference-class": "SpiralWaypointSequenceChamfered",
         "args": {
-            "points_per_line": 2,
-            "chamfered": false,
+            "point_spacing": 10000,
+            "line_spacing": 100,
             "theta_agnostic": false
         }
     },

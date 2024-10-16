@@ -1,25 +1,31 @@
 from __future__ import annotations
-import numpy as np
 import math
 from typing import *
-from robot import Controller, Robot
 from abc import ABC
 from math import pi, atan2
 from enum import Enum
 import time
 
+from robot import Controller, Robot
+
 class ExtractionStrategies(Enum):
+    '''
+    A choice of extraction strategies the robot can be configured to.
+    '''
     NONE = 1 # does not run extraction
     CONTINUOUS = 2 # always runs extraction (on forward controllers)
     PERIODIC = 3 # only runs extraction at each waypoint
 
 class DeboggingStrategies(Enum):
+    '''
+    A choice of debogging strategies the robot can be configured to.
+    '''
     NONE = 1 # does not debog
     ENABLED = 2 # debogs
 
-DEBOG_EPISLON_X = 100 # in mm
+DEBOG_EPISLON_X = 30 # in mm
 DEBOG_EPSILON_THETA = 4.4 # in rad
-DEBOG_PATIENCE = 5 # in seconds
+DEBOG_PATIENCE = 3 # in seconds
 DEBOG_DISTANCE = 100 # in mm, how far to go
 
 class Pathplanner():
@@ -228,7 +234,8 @@ class Pathplanner():
 
     def signal_extraction_execute(self):
         print("sending commands")
-        self.robot.send_control_command("command=9")
+        for _ in range(20):
+            self.robot.send_control_command("command=9")
 
     def signal_robot_forward(self):
         self.robot.send_control_command("command=1")

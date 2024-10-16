@@ -2,13 +2,13 @@
     "controllers": {
         "forward-controller": {
             "k_angle": 100,
-            "k_v": 56,
+            "k_v": 52,
             "w": 0.8,
             "goal_tolerance": 30,
             "reversing_allowed": true 
         },
         "spin-controller": {
-            "k_angle": 60,
+            "k_angle": 52,
             "k_v": 2,
             "angle_tolerance": 0.1
         }
@@ -26,10 +26,10 @@
         }
     },
     "pathplan": {
-        "reference-class": "SpiralWaypointSequence",
+        "reference-class": "SpiralWaypointSequenceChamfered",
         "args": {
-            "points_per_line": 2,
-            "chamfered": false,
+            "point_spacing": 20000,
+            "line_spacing": 300,
             "theta_agnostic": false
         }
     },

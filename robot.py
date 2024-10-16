@@ -112,7 +112,7 @@ class RobotTCP(Robot):
     def send_control_command(self, command: str):
         try:
             url = f"http://{self.ip}/{RobotTCP.CONTROL_ENDPOINT}?{command}"
-            requests.get(url, timeout=(0.005, 0.001))
+            requests.get(url, timeout=(0.8, 0.8))
         except requests.exceptions.ReadTimeout: 
             pass
         except requests.exceptions.Timeout:

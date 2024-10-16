@@ -22,6 +22,31 @@ ROBOT_STARTED = False
 class Config():
     '''
     A class to hold all methods related to loading in configuration files.
+
+    Config files must be structured in the standard JSON format with the following fields:
+        - controllers: a superobject with the following fields
+            - forward-controller: an object with the following fields
+                - k_angle:
+                - k_v:
+                - w:
+                - goal_tolerance:
+                - reversing_allowed:
+            - spin-controller: an object with the following fields
+                - k_angle:
+                - k_v:
+                - angle_tolerance:
+        - localisation: an object with the following fields
+            - localisation-class:
+            - args:
+        - robot: an object with the following fields
+            - robot-class:
+            - args:
+        - pathplan: an object with the following fields
+            - reference-class:
+            - args:
+        - debogger: an object with the following fields
+
+
     '''
 
     def __init__(self, filename: str):
@@ -108,11 +133,21 @@ def main(configfile, camera):
 
     plan = cfg.load_pathplanning()
     robot_comms = cfg.load_robot()
+    robot_tcp = RobotTCP("192.168.4.1")
 
     plan.set_robot(robot_comms)
+
+    old_extraction_time = None
+    extraction_interval = 2
     
     # Main loop
     while True:
+        # if old_extraction_time is not None and time.time() - old_extraction_time > extraction_interval:
+        #     old_extraction_time = time.time()
+        #     # plan.signal_extraction_execute()
+        #     robot_tcp.send_control_command("command=9")
+
+        # read in image
         ret, img = cap.read()
         if not ret:
             break
@@ -207,6 +242,7 @@ def main(configfile, camera):
 
             ROBOT_STARTED = True
             plan.extractionFlag = True
+            old_extraction_time = time.time()
             plan.signal_extraction_start()
         elif key == ord('k'): # allow extraction
             plan.extraction_allowed = True
@@ -217,20 +253,22 @@ def main(configfile, camera):
         elif key == ord('w'):
             connect_wifi()
             
-
+    # deinit camera and cv
     cap.release()
     cv.destroyAllWindows()
 
-    # stop the robot
+    # stop the robot and localisation
     robot_comms.send_control_action(0,0, True)
     localiser.deinit()
 
 
 if __name__ == "__main__":
+    # load in command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--filename", "-f", default="config/configSnake.json")
     parser.add_argument("--camera", "-c", default=2)
     args = parser.parse_args()
     print(f"Reading file {args.filename} and camera {args.camera}")
 
+    # run main function
     main(args.filename, int(args.camera))
