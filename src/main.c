@@ -22,7 +22,7 @@ void main() {
     vMotorsInit();
     vWifiInit();
     vDigitalIOInit();
-    vWatchdogInit();
+    // vWatchdogInit();
 
     // store references to each task for diagnostics
     TaskHandle_t xDeliveryHandle;
@@ -43,14 +43,14 @@ void main() {
     xTaskCreate(vWifiTask, WIFI_TASK_NAME, WIFI_TASK_STACK_SIZE, NULL, WIFI_TASK_PRIORITY, &xWifiHandle);
     xTaskCreate(vWifiUDPTask, WIFIUDP_TASK_NAME, WIFIUDP_TASK_STACK_SIZE, NULL, WIFIUDP_TASK_PRIORITY, &xWifiUDPHandle);
     xTaskCreate(vWatchdogTask, WATCHDOG_TASK_NAME, WATCHDOG_TASK_STACK_SIZE, NULL, WATCHDOG_TASK_PRIORITY, &xWatchdogHandle);
-    xTaskCreate(vExtractionTask, EXTRACTION_TASK_NAME, EXTRACTION_TASK_STACK_SIZE, NULL, EXTRACTION_TASK_PRIORITY, &xExtractionHandle);
+    // xTaskCreate(vExtractionTask, EXTRACTION_TASK_NAME, EXTRACTION_TASK_STACK_SIZE, NULL, EXTRACTION_TASK_PRIORITY, &xExtractionHandle);
 
     // set core affinities
     vTaskCoreAffinitySet(xDeliveryHandle, (UBaseType_t) DELIVERY_TASK_COREMASK);
     vTaskCoreAffinitySet(xDiagnosticsHandle, (UBaseType_t) DIAGNOSTICS_TASK_COREMASK);
     vTaskCoreAffinitySet(xBlinkHandle, (UBaseType_t) BLINK_TASK_COREMASK);
     vTaskCoreAffinitySet(xMotorsHandle, (UBaseType_t) MOTORS_TASK_COREMASK);
-    vTaskCoreAffinitySet(xWifiHandle, (UBaseType_t) WIFI_TASK_COREMASK);
+    vTaskCoreAffinitySet(xWifiHandle, (UBaseType_t) WIFI_TASK_COREMASK);    
     vTaskCoreAffinitySet(xWifiUDPHandle, (UBaseType_t) WIFI_TASK_COREMASK);
     vTaskCoreAffinitySet(xWatchdogHandle, (UBaseType_t) WATCHDOG_TASK_COREMASK);
     vTaskCoreAffinitySet(xExtractionHandle, (UBaseType_t) EXTRACTION_TASK_COREMASK);
