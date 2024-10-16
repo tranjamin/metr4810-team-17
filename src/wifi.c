@@ -119,6 +119,7 @@ int generate_response(const char*, const char*, char*, size_t);
 // Function prototypes
 void vWifiInit();
 void vWifiTask();
+void vWifiUDPTask();
 
 static volatile bool enable_udp = true;
 
@@ -595,28 +596,31 @@ int generate_response(const char *request, const char *params, char *result, siz
 
 void vWifiInit() {
     // stdio_init_all();
+    const char *ap_name = "METR4810 Team 17";
+    const char *password = "password";
+
+    // cyw43_init(&cyw43_state);
+    // cyw43_wifi_set_up(&cyw43_state, CYW43_ITF_AP, true, CYW43_COUNTRY_AUSTRALIA);
+    // cyw43_wifi_pm(&cyw43_state, CYW43_PERFORMANCE_PM);
+    // cyw43_wifi_ap_set_channel(&cyw43_state, 13);
+    // cyw43_wifi_ap_set_ssid(&cyw43_state, strlen(ap_name), ap_name);
+    // cyw43_wifi_ap_set_password(&cyw43_state, strlen(password), password);
+    // cyw43_wifi_ap_set_auth(&cyw43_state, CYW43_AUTH_WPA2_AES_PSK);
+
+
+    cyw43_wifi_ap_set_channel(&cyw43_state, 11);
+    cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
+    cyw43_wifi_pm(&cyw43_state, CYW43_PERFORMANCE_PM);
 }
 
 void vWifiTask() {
     for (;;) {
         // Enable server
         TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
-        UDP_SERVER_T *udp_state = calloc(1, sizeof(UDP_SERVER_T));
         
         const char *ap_name = "METR4810 Team 17";
         const char *password = "password";
-        
-        // cyw43_init(&cyw43_state);
-        // cyw43_wifi_set_up(&cyw43_state, CYW43_ITF_AP, true, CYW43_COUNTRY_AUSTRALIA);
-        // cyw43_wifi_pm(&cyw43_state, CYW43_PERFORMANCE_PM);
-        // cyw43_wifi_ap_set_channel(&cyw43_state, 13);
-        // cyw43_wifi_ap_set_ssid(&cyw43_state, strlen(ap_name), ap_name);
-        // cyw43_wifi_ap_set_password(&cyw43_state, strlen(password), password);
-        // cyw43_wifi_ap_set_auth(&cyw43_state, CYW43_AUTH_WPA2_AES_PSK);
-
-        cyw43_wifi_ap_set_channel(&cyw43_state, 11);
-        cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
-        cyw43_wifi_pm(&cyw43_state, CYW43_PERFORMANCE_PM);
+    
         // Set address
         ip4_addr_t mask;
         IP4_ADDR(ip_2_ip4(&state->gw), 192, 168, 4, 1);
@@ -629,9 +633,6 @@ void vWifiTask() {
         // Open server
         if (!tcp_server_open(state, ap_name)) {
             // vDebugLog("failed to open server\n");
-            continue;
-        }
-        if (!udp_server_open(udp_state, ap_name)) {
             continue;
         }
         
@@ -647,6 +648,28 @@ void vWifiTask() {
         tcp_server_close(state);
         dhcp_server_deinit(&dhcp_server);
         // cyw43_arch_deinit();
+    }
+    return;
+}
+
+void vWifiUDPTask() {
+    for (;;) {
+        // Enable server
+        UDP_SERVER_T *udp_state = calloc(1, sizeof(UDP_SERVER_T));        
+        
+        const char *ap_name = "METR4810 Team 17";
+        const char *password = "password";
+        
+        if (!udp_server_open(udp_state, ap_name)) {
+            continue;
+        }
+        
+        // Wait for completion (in background)
+        while(true) {
+            // cyw43_arch_poll();
+            vTaskDelay(VDELAY);
+        }
+        setRGB_COLOUR_PURPLE();
     }
     return;
 }
