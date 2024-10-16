@@ -557,76 +557,100 @@ class SpiralWaypointSequenceChamfered(WaypointSequence):
     ENV_WIDTH: float = 2000
 
     def __init__(self, 
-                 points_per_line: int,
+                 point_spacing: float,
+                 line_spacing: float,
                  theta_agnostic=False):
         super().__init__()
         
-        # calculate the y coordinates
-        y_spacing: float = (SpiralWaypointSequence.ENV_LENGTH - 2*SpiralWaypointSequence.BORDER_PADDING)/(points_per_line - 1)
-        y_coords: list[float] = [SpiralWaypointSequence.BORDER_PADDING + i*y_spacing for i in range(points_per_line)]
+        y_initial = SpiralWaypointSequence.BORDER_PADDING
+        x_initial = SpiralWaypointSequence.BORDER_PADDING
 
-        # calculate the x coordinates
-        x_coords: list[float] = y_coords.copy()
+        y_min = y_initial
+        y_max = SpiralWaypointSequence.ENV_LENGTH - SpiralWaypointSequence.BORDER_PADDING
+        x_min = x_initial
+        x_max = SpiralWaypointSequence.ENV_WIDTH - SpiralWaypointSequence.BORDER_PADDING
 
-        while len(x_coords) and len(y_coords):
-            for j, y in enumerate(y_coords):
-                target_heading = pi/2 if j != (len(y_coords) - 1) else 0
+        chamfer = 200
+
+        i = 0
+        j = 0
+        while True:
+            while True:
+                x = x_min
+                y = min(y_min + chamfer + point_spacing*j, y_max - chamfer)
+                target_heading = pi/2
+
                 waypoint = Waypoint(
-                    x_coords[0], y,
-                    heading = None if theta_agnostic else target_heading,
-                    vel = 0 if j == 0 or j == len(y_coords) else None
+                    x, y, heading=target_heading
                 )
-                if j != len(y_coords) - 1:
-                    self.waypoints.append(waypoint)
-            x_coords.pop(0)
+                self.waypoints.append(waypoint)
 
-            if not len(x_coords):
-                break
+                if y == y_max - chamfer:
+                    break
+
+                j += 1
+
+            y_min = y_min + line_spacing
             
-            for i, x in enumerate(x_coords):
-                target_heading = 0 if i != (len(x_coords) - 1) else -pi/2
+            while True:
+                x = min(x_min + chamfer + point_spacing*i, x_max - chamfer)
+                y = y_max
+                target_heading = 0
+
                 waypoint = Waypoint(
-                    x, y_coords[-1],
-                    heading = None if theta_agnostic else target_heading,
-                    vel = 0 if i == 0 or i == len(y_coords) else None
+                    x, y, heading=target_heading
                 )
-                if i != len(x_coords) - 1:
-                    self.waypoints.append(waypoint)
-            y_coords.pop(-1)
+                self.waypoints.append(waypoint)
 
-            if not len(y_coords):
-                break
-
-            for j, y in enumerate(y_coords[::-1]):
-                target_heading = -pi/2 if j != (len(y_coords) - 1) else pi
-                waypoint = Waypoint(
-                    x_coords[-1], y,
-                    heading = None if theta_agnostic else target_heading,
-                    vel = 0 if j == 0 or j == len(y_coords) else None
-                )
-                if j != len(y_coords) - 1:
-                    self.waypoints.append(waypoint)
-            x_coords.pop(-1)
-
-            if not len(x_coords):
-                break
+                if x == x_max - chamfer:
+                    break
             
-            for i, x in enumerate(x_coords[::-1]):
-                target_heading = pi if i != (len(x_coords) - 1) else pi/2
+                i += 1
+    
+            x_min = x_min + line_spacing
+            i = 0
+            j = 0
+
+            while True:
+                x = x_max
+                y = max(y_max - chamfer - point_spacing*j, y_min + chamfer)
+                target_heading = -pi/2
+
                 waypoint = Waypoint(
-                    x, y_coords[0],
-                    heading = None if theta_agnostic else target_heading,
-                    vel = 0 if i == 0 or i == len(y_coords) else None
+                    x, y, heading=target_heading
                 )
-                if i != len(x_coords) - 1:
-                    self.waypoints.append(waypoint)
-            y_coords.pop(0)
+                self.waypoints.append(waypoint)
 
-            if not len(y_coords):
+                if y == y_min + chamfer:
+                    break
+
+                j += 1
+            
+            y_max = y_max - line_spacing
+            
+            while True:
+                x = max(x_max - chamfer - point_spacing*i, x_min + chamfer)
+                y = y_min
+                target_heading = pi
+
+                waypoint = Waypoint(
+                    x, y, heading=target_heading
+                )
+                self.waypoints.append(waypoint)
+
+                if x == x_min + chamfer:
+                    break
+            
+                i += 1
+
+            x_max = x_max - line_spacing
+            i = 0
+            j = 0
+
+            if (x_max - x_min) < line_spacing or (y_max - y_min) < line_spacing:
                 break
-
+    
         self.repeat_waypoints = self.waypoints.copy()
-        self.waypoints.pop(0)
         self.waypoints.pop(0)
 
 class RectangleWaypointSequence(WaypointSequence):
