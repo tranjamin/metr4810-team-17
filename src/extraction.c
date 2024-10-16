@@ -26,12 +26,10 @@ SemaphoreHandle_t extractionSemaphoreStart;
 SemaphoreHandle_t extractionSemaphoreStop;
 
 void extractionProcedureSignalStop() {
-    vDebugLog("Releasting Stop Semaphore");
     xSemaphoreGiveFromISR(extractionSemaphoreStop, NULL);
 }
 
 void extractionProcedureSignalStart() {
-    vDebugLog("Releasing Start Semaphore");
     xSemaphoreGiveFromISR(extractionSemaphoreStart, NULL);
 }
 
@@ -84,7 +82,6 @@ void vExtractionTask() {
                 break;
             case EXTRACTION_RUNNING:
                 if (xSemaphoreTake(extractionSemaphoreStop, SEMPH_TICKS) == pdTRUE) {  
-                    vDebugLog("Resuming UDP");
                     SET_EXTRACTION_STOPPED();
                     extraction_state = EXTRACTION_IDLE; 
                     enableUDP();
