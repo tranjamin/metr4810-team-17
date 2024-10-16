@@ -50,7 +50,7 @@
 <a href=\"?command=6\">Set Right Back</a><br>\
 <a href=\"?command=7\">Set Extraction Forward</a><br>\
 <a href=\"?command=8\">Set Extraction Stopped</a><br>\
-<a href=\"?command=9\">Set Extraction Back</a><br>\
+<a href=\"?command=9\">Set Extraction Procedure</a><br>\
 </body></html>"
 
 #define HTTP_RESPONSE_HEADERS "HTTP/1.1 %d OK\nContent-Length: %d\nContent-Type: text/html; charset=utf-8\nConnection: close\n\n"
@@ -534,7 +534,7 @@ int generate_response(const char *request, const char *params, char *result, siz
                     setRGB_COLOUR_DARK_GREEN();
                     break;
                 case 9:
-                    SET_EXTRACTION_BACKWARD();
+                    extractionProcedureSignalStart();
                     setRGB_COLOUR_DARK_BLUE();
                     break;
 
