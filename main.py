@@ -4,6 +4,7 @@ import argparse
 import json
 from sys import platform
 import subprocess
+from enum import Enum
 
 from robot import *
 from planning import *
@@ -18,6 +19,7 @@ ROBOT_WIFI_PASSWORD = ""
 WIFI_CONNECT_CMD = 'netsh wlan connect name="{0}" ssid="{0}"'
 
 ROBOT_STARTED = False
+SCOOP_DURATION = 3 # seconds to finish scooping
 
 class Config():
     '''
@@ -103,6 +105,12 @@ class Config():
 
         return robot_comms
 
+class State(Enum):
+    WAIT = 0
+    TRAVERSAL =  1
+    SCOOPING = 2
+    INITIATE_SCOOP = 3
+
 def connect_wifi():
     if platform == "win32":
         k = subprocess.run(WIFI_CONNECT_CMD.format(ROBOT_WIFI_SSID),
@@ -136,20 +144,17 @@ def main(configfile, camera):
     robot_tcp = RobotTCP("192.168.4.1")
 
     plan.set_robot(robot_comms)
+    robot_state = State.WAIT
 
     old_extraction_time = None
     extraction_interval = 1
+
+    scoop_entry_time = 0
     
     # Main loop
     while True:
-        if old_extraction_time is not None and time.time() - old_extraction_time > extraction_interval and not plan.controller.phase_2 :
-            # plan.signal_extraction_execute()
-            robot_tcp.send_control_command("command=9")
-            time.sleep(3)
-            old_extraction_time = time.time()
-        elif plan.controller.phase_2:
-            old_extraction_time = time.time() - 1
-
+        # LOCALISE THE ROBOT
+        # (this always runs regardless of state)
         # read in image
         ret, img = cap.read()
         if not ret:
@@ -161,32 +166,66 @@ def main(configfile, camera):
 
         # draw current waypoint on screen
         localiser.annotate_xy(img, plan.current_waypoint.x, plan.current_waypoint.y)
-
+        
         ### PATH PLANNING
+        # set to zero so printouts will work even if nothing has been sent
+        x, y, theta = 0, 0, 0
+        v, omega = 0, 0
         not_none = lambda x: x is not None
-        if all([not_none(e) for e in positions]):
-            x, _, y, _, _, _ = np.ravel(positions).tolist()
-            theta, _, _, _, _, _ = np.ravel(angles).tolist()
+        
+        # STATE MACHINE
+        match robot_state:
+            case State.WAIT:
+                pass
+            case State.TRAVERSAL:
+                # ACTIONS
+                if all([not_none(e) for e in positions]):
+                    x, _, y, _, _, _ = np.ravel(positions).tolist()
+                    theta, _, _, _, _, _ = np.ravel(angles).tolist()
 
-            plan.update_robot_position(x, y, theta)
-            if ROBOT_STARTED:
-                plan.controller_step()
+                    plan.update_robot_position(x, y, theta)
+                    if ROBOT_STARTED:
+                        plan.controller_step()
 
-                v = plan.desired_velocity
-                omega = plan.desired_angular
+                        v = plan.desired_velocity
+                        omega = plan.desired_angular
+                        
+                        robot_comms.send_control_action(v, omega, do_print=True)
                 
-                robot_comms.send_control_action(v, omega, do_print=True)
+                # TRANSITIONS
+                if old_extraction_time is not None and time.time() - old_extraction_time > extraction_interval and not plan.controller.phase_2 :
+                    robot_state = State.INITIATE_SCOOP
 
+            case State.INITIATE_SCOOP:
+                # if old_extraction_time is not None and time.time() - old_extraction_time > extraction_interval and not plan.controller.phase_2 :
+                    # plan.signal_extraction_execute()
+                robot_comms.send_control_action(0, 0, do_print=True)
+                robot_tcp.send_control_command("command=9")
+                scoop_entry_time = time.time()
+            case State.SCOOPING:
+                # display message on image
+                cv.putText(img, "SCOOPING",
+                           (1000, 600),
+                           cv.FONT_HERSHEY_PLAIN,
+                           2,
+                           (0, 0, 255),
+                           4)
 
-            # draw control info on screen
-            labels = ["x", "y", "theta"]
-            for index, val in enumerate([x, y, theta*180/pi]):
-                cv.putText(img, '{}: {:.3f}'.format(labels[index], val),
-                            (500, 50 + 50*index),
-                            cv.FONT_HERSHEY_PLAIN,
-                            2,
-                            (0, 0, 255),
-                            4)
+                if time.time() - scoop_entry_time > SCOOP_DURATION:
+                    old_extraction_time = time.time()
+                    robot_state = State.TRAVERSAL
+
+       
+
+        # draw position info on screen
+        labels = ["x", "y", "theta"]
+        for index, val in enumerate([x, y, theta*180/pi]):
+            cv.putText(img, '{}: {:.3f}'.format(labels[index], val),
+                        (500, 50 + 50*index),
+                        cv.FONT_HERSHEY_PLAIN,
+                        2,
+                        (0, 0, 255),
+                        4)
 
         # draw control info on screen
         labels = ["v", "omega"]
@@ -197,8 +236,6 @@ def main(configfile, camera):
                         2,
                         (0, 0, 255),
                         4)
-    
-
 
         cv.imshow('frame', img)
         key = cv.waitKey(1)
@@ -246,6 +283,7 @@ def main(configfile, camera):
             ROBOT_STARTED = True
             plan.extractionFlag = True
             old_extraction_time = time.time()
+            robot_state = State.TRAVERSAL
             plan.signal_extraction_start()
         elif key == ord('k'): # allow extraction
             plan.extraction_allowed = True
@@ -261,7 +299,7 @@ def main(configfile, camera):
     cv.destroyAllWindows()
 
     # stop the robot and localisation
-    robot_comms.send_control_action(0,0, True)
+    robot_comms.send_control_action(0, 0, True)
     localiser.deinit()
 
 
