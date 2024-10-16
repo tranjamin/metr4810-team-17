@@ -6,7 +6,6 @@
 
 #include "pico/stdlib.h"
 #include "lwip/pbuf.h"
-#include "lwip/tcp.h"
 #include "lwip/udp.h"
 #include "dhcpserver.h"
 #include "FreeRTOS.h"
@@ -659,6 +658,18 @@ void vWifiUDPTask() {
         
         const char *ap_name = "METR4810 Team 17";
         const char *password = "password";
+
+        // cyw43_init(&cyw43_state);
+        // cyw43_wifi_set_up(&cyw43_state, CYW43_ITF_AP, true, CYW43_COUNTRY_AUSTRALIA);
+        // cyw43_wifi_pm(&cyw43_state, CYW43_PERFORMANCE_PM);
+        // cyw43_wifi_ap_set_channel(&cyw43_state, 13);
+        // cyw43_wifi_ap_set_ssid(&cyw43_state, strlen(ap_name), ap_name);
+        // cyw43_wifi_ap_set_password(&cyw43_state, strlen(password), password);
+        // cyw43_wifi_ap_set_auth(&cyw43_state, CYW43_AUTH_WPA2_AES_PSK);
+
+        cyw43_wifi_ap_set_channel(&cyw43_state, 11);
+        cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
+        cyw43_wifi_pm(&cyw43_state, CYW43_PERFORMANCE_PM);
         
         if (!udp_server_open(udp_state, ap_name)) {
             continue;
