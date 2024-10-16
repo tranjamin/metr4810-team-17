@@ -19,7 +19,64 @@ WIFI_CONNECT_CMD = "netsh wlan connect name={0} ssid={0}"
 
 ROBOT_STARTED = False
 
+class Config():
+    '''
+    A class to hold all methods related to loading in configuration files.
+    '''
 
+    def __init__(self, filename: str):
+        '''
+        Parameters:
+            filename (str): the filename and path of the config file
+        '''
+        self.config_file = json.load(open(filename))
+
+    def load_localiser(self):
+        # load in localiser from config file
+        config_localiser: str = self.config_file["localisation"]
+        config_localiser_args: dict = config_localiser["args"]
+        localiser: Localisation =  eval(config_localiser["localisation-class"])(**config_localiser_args)
+        assert isinstance(localiser, Localisation)
+
+        return localiser
+    
+    def load_pathplanning(self):
+        # load in controllers from config file
+        controller_config = self.config_file["controllers"]
+        forward_controller = FowardController(**controller_config["forward-controller"])
+        spin_controller = SpinController(**controller_config["spin-controller"])
+        controller = LineFollowerController(forward_controller, spin_controller)
+
+        # load in pathplanner from config file
+        plan = Pathplanner()
+        plan.set_controller(controller)
+
+        # load in extraction mode from config file
+        extraction_mode: str = self.config_file["extraction"]["type"]
+        plan.set_extraction_strategy(eval(f"ExtractionStrategies.{extraction_mode.upper()}"))
+
+        # load in debogger
+        if self.config_file["debogger"]["enabled"]:
+            plan.set_debogging_strategy(DeboggingStrategies.ENABLED)
+        else:
+            plan.set_debogging_strategy(DeboggingStrategies.NONE)
+        
+        # pause debogger until started
+        plan.pause_debogger()
+
+        # load in extraction mode from config file
+        pathplanner_class: WaypointSequence = eval(self.config_file["pathplan"]["reference-class"])
+        pathplanner_kwargs = self.config_file["pathplan"]["args"]
+        plan.set_waypoints(pathplanner_class(**pathplanner_kwargs))
+
+        return plan
+
+    def load_robot(self):
+        robot_config = self.config_file["robot"]
+        robot_class = eval(robot_config["robot-class"])
+        robot_comms: Robot = robot_class(**robot_config["args"])
+
+        return robot_comms
 
 def connect_wifi():
     if platform == "win32":
@@ -32,50 +89,25 @@ def connect_wifi():
 def main(configfile, camera):
     global ROBOT_STARTED
 
-    CONFIG_FILE = json.load(open(configfile))
+    # open config file
+    cfg = Config(configfile)
 
-    cap = cv.VideoCapture(camera, cv.CAP_DSHOW) # set to 2 to select external webcam
-    cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720)) # seems locked to 720p
-    cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280)) # seems locked to 720p
+    # configure camera input and window size
+    cap = cv.VideoCapture(camera, cv.CAP_DSHOW)
+    cap.set(cv.CAP_PROP_FRAME_HEIGHT, int(720))
+    cap.set(cv.CAP_PROP_FRAME_WIDTH, int(1280))
 
+    # exit if camera cannot be opened
     if not cap.isOpened():
         print("Cannot open camera")
-        exit()
+        exit(1)
 
-    config_localiser = CONFIG_FILE["localisation"]
-    config_localiser_args = config_localiser["args"]
-    config_localiser_class = eval(config_localiser["localisation-class"])
-    localiser: Localisation = config_localiser_class(**config_localiser_args)
-
+    # set up localisation
+    localiser = cfg.load_localiser()
     localiser.setup()
 
-    ### Set up controllers
-    controller_config = CONFIG_FILE["controllers"]
-    forward_controller = FowardController(**controller_config["forward-controller"])
-    spin_controller = SpinController(**controller_config["spin-controller"])
-    controller = LineFollowerController(forward_controller, spin_controller)
-
-    plan = Pathplanner()
-    plan.set_controller(controller)
-
-    ### set up extraction type
-    extraction_mode: str = CONFIG_FILE["extraction"]["type"]
-    plan.set_extraction_strategy(eval(f"ExtractionStrategies.{extraction_mode.upper()}"))
-
-    ### set up debogger
-    if CONFIG_FILE["debogger"]["enabled"]:
-        plan.set_debogging_strategy(DeboggingStrategies.ENABLED)
-        plan.pause_debogger()
-    else:
-        plan.set_debogging_strategy(DeboggingStrategies.NONE)
-
-    pathplanner_class: WaypointSequence = eval(CONFIG_FILE["pathplan"]["reference-class"])
-    pathplanner_kwargs = CONFIG_FILE["pathplan"]["args"]
-    plan.set_waypoints(pathplanner_class(**pathplanner_kwargs))
-
-    robot_config = CONFIG_FILE["robot"]
-    robot_class = eval(robot_config["robot-class"])
-    robot_comms: Robot = robot_class(**robot_config["args"])
+    plan = cfg.load_pathplanning()
+    robot_comms = cfg.load_robot()
 
     plan.set_robot(robot_comms)
     
@@ -86,12 +118,10 @@ def main(configfile, camera):
             break
 
         v, omega = 0, 0
-        ### LOCALISATION FINISHED
+
         positions, angles = localiser.get_position(img)
 
-
         # draw current waypoint on screen
-
         localiser.annotate_xy(img, plan.current_waypoint.x, plan.current_waypoint.y)
 
         ### PATH PLANNING
