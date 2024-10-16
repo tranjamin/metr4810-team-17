@@ -540,6 +540,87 @@ class SpiralWaypointSequence(WaypointSequence):
         self.repeat_waypoints = self.waypoints.copy()
         self.waypoints.pop(0)
 
+class SpiralWaypointSequenceChamfered(WaypointSequence):
+    '''
+    A sequence of waypoints based on a snake search.
+    '''
+
+    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING 
+    ENV_LENGTH: float = 2000
+    ENV_WIDTH: float = 2000
+
+    def __init__(self, 
+                 points_per_line: int,
+                 theta_agnostic=False):
+        super().__init__()
+        
+        # calculate the y coordinates
+        y_spacing: float = (SpiralWaypointSequence.ENV_LENGTH - 2*SpiralWaypointSequence.BORDER_PADDING)/(points_per_line - 1)
+        y_coords: list[float] = [SpiralWaypointSequence.BORDER_PADDING + i*y_spacing for i in range(points_per_line)]
+
+        # calculate the x coordinates
+        x_coords: list[float] = y_coords.copy()
+
+        while len(x_coords) and len(y_coords):
+            for j, y in enumerate(y_coords):
+                target_heading = pi/2 if j != (len(y_coords) - 1) else 0
+                waypoint = Waypoint(
+                    x_coords[0], y,
+                    heading = None if theta_agnostic else target_heading,
+                    vel = 0 if j == 0 or j == len(y_coords) else None
+                )
+                if j != len(y_coords) - 1:
+                    self.waypoints.append(waypoint)
+            x_coords.pop(0)
+
+            if not len(x_coords):
+                break
+            
+            for i, x in enumerate(x_coords):
+                target_heading = 0 if i != (len(x_coords) - 1) else -pi/2
+                waypoint = Waypoint(
+                    x, y_coords[-1],
+                    heading = None if theta_agnostic else target_heading,
+                    vel = 0 if i == 0 or i == len(y_coords) else None
+                )
+                if i != len(x_coords) - 1:
+                    self.waypoints.append(waypoint)
+            y_coords.pop(-1)
+
+            if not len(y_coords):
+                break
+
+            for j, y in enumerate(y_coords[::-1]):
+                target_heading = -pi/2 if j != (len(y_coords) - 1) else pi
+                waypoint = Waypoint(
+                    x_coords[-1], y,
+                    heading = None if theta_agnostic else target_heading,
+                    vel = 0 if j == 0 or j == len(y_coords) else None
+                )
+                if j != len(y_coords) - 1:
+                    self.waypoints.append(waypoint)
+            x_coords.pop(-1)
+
+            if not len(x_coords):
+                break
+            
+            for i, x in enumerate(x_coords[::-1]):
+                target_heading = pi if i != (len(x_coords) - 1) else pi/2
+                waypoint = Waypoint(
+                    x, y_coords[0],
+                    heading = None if theta_agnostic else target_heading,
+                    vel = 0 if i == 0 or i == len(y_coords) else None
+                )
+                if i != len(x_coords) - 1:
+                    self.waypoints.append(waypoint)
+            y_coords.pop(0)
+
+            if not len(y_coords):
+                break
+
+        self.repeat_waypoints = self.waypoints.copy()
+        self.waypoints.pop(0)
+
 class RectangleWaypointSequence(WaypointSequence):
     '''
     A sequence of waypoints which is just a rectangle
