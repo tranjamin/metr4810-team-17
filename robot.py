@@ -135,10 +135,16 @@ class RobotUDP(Robot):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def send_command(self, command: str):
-        self.sock.sendto(bytes(RobotUDP.LOCALISATION_PREFIX + command, RobotUDP.ENCODING), (self.ip, RobotUDP.UDP_PORT))
+        try:
+            self.sock.sendto(bytes(RobotUDP.LOCALISATION_PREFIX + command, RobotUDP.ENCODING), (self.ip, RobotUDP.UDP_PORT))
+        except OSError:
+            print("Failed to send command")
     
     def send_control_command(self, command: str):
-        self.sock.sendto(bytes(RobotUDP.CONTROL_PREFIX + command, RobotUDP.ENCODING), (self.ip, RobotUDP.UDP_PORT))
+        try:
+            self.sock.sendto(bytes(RobotUDP.CONTROL_PREFIX + command, RobotUDP.ENCODING), (self.ip, RobotUDP.UDP_PORT))
+        except OSError:
+            print("Failed to send command")
 
 class Controller(ABC):
     '''
