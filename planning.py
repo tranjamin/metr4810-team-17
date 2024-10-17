@@ -389,6 +389,16 @@ class WaypointSequence(ABC):
         down_emergency = current_y
         up_emergency = 2000 - current_y
         
+        # disregard orthogonal directions
+        if ((current_theta < pi/4) and (current_theta > -pi/4)) or ((current_theta > 3*pi/4) and (current_theta < -3*pi/4)):
+            # disregard vertical
+            up_emergency = math.inf
+            down_emergency = math.inf
+        else:
+            # disregard horiontal
+            left_emergency = math.inf
+            right_emergency = math.inf
+
         # calculate closest point
         emergency_side = min([left_emergency, right_emergency, down_emergency, up_emergency])
 
