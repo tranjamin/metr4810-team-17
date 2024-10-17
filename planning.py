@@ -4,6 +4,7 @@ from typing import *
 from abc import ABC, abstractmethod
 from math import pi, atan2
 from enum import Enum
+from robot import wrapToPi
 import time
 
 from robot import Controller, Robot, LineFollowerController
@@ -94,12 +95,12 @@ class ActiveDebogger(Debogger):
         x_deviation = math.sqrt((current_x - debog_x)**2 + (current_y - debog_y)**2)
         theta_deviation = abs(current_theta - debog_theta)
 
-        if (x_deviation > DEBOG_EPISLON_X or theta_deviation > DEBOG_EPSILON_THETA):
+        if (x_deviation > ActiveDebogger.EPSILON_X or theta_deviation > ActiveDebogger.EPSILON_THETA):
                 # we have not bogged
                 self.last_debog_time = time.time()
                 self.last_debog_position = (current_x, current_y, current_theta)
                 return False
-        elif time.time() - self.last_debog_time > DEBOG_PATIENCE:
+        elif time.time() - self.last_debog_time > ActiveDebogger.PATIENCE:
                 return True
         return False
 
@@ -108,11 +109,18 @@ class ActiveDebogger(Debogger):
         reverse = -1 if planner.desired_velocity > 0 else 1
         print("Reversing: ", reverse)
 
-        new_waypoint = Waypoint(
-            min(max(planner.current_x + reverse*math.cos(planner.current_theta)*DEBOG_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS),
-            min(max(planner.current_y + reverse*math.sin(planner.current_theta)*DEBOG_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS),
-            heading=planner.current_theta
-        )
+        new_x = min(max(planner.current_x + reverse*math.cos(planner.current_theta)*ActiveDebogger.REVERSE_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS)
+        new_y = min(max(planner.current_y + reverse*math.sin(planner.current_theta)*ActiveDebogger.REVERSE_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS)
+
+        theta_option_one = wrapToPi(planner.current_theta + ActiveDebogger.ANGLE_DEVIATION)
+        theta_option_two = wrapToPi(planner.current_theta - ActiveDebogger.ANGLE_DEVIATION)
+
+        distance_option_one = (abs(1000 - (new_x + math.cos(theta_option_one))))**2 + (abs(1000 - (new_y + math.ain(theta_option_one))))**2
+        distance_option_two = (abs(1000 - (new_x + math.cos(theta_option_two))))**2 + (abs(1000 - (new_y + math.ain(theta_option_two))))**2
+
+        new_heading = theta_option_one if distance_option_one < distance_option_two else theta_option_two
+
+        new_waypoint = Waypoint(new_x, new_y, heading=new_heading)
 
         planner.waypoints.waypoints.insert(0, new_waypoint)
         planner.current_waypoint = new_waypoint
