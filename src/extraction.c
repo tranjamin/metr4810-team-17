@@ -14,6 +14,7 @@
 
 #define VDELAY 3
 #define SEMPH_TICKS 1000
+#define EXRACTION_TIMEOUT 3500
 
 #define CLK_DIVIDER 128
 #define PWM_TOP 8192
@@ -81,9 +82,13 @@ void vExtractionTask() {
                 }
                 break;
             case EXTRACTION_RUNNING:
-                if (xSemaphoreTake(extractionSemaphoreStop, SEMPH_TICKS) == pdTRUE) {  
+                if (xSemaphoreTake(extractionSemaphoreStop, EXRACTION_TIMEOUT) == pdTRUE) {  
                     SET_EXTRACTION_STOPPED();
                     extraction_state = EXTRACTION_IDLE; 
+                    vDebugLog("Re-enabling UDP");
+                    enableUDP();
+                } else { // we have timed out
+                    SET_EXTRACTION_BACKWARD();
                     vDebugLog("Re-enabling UDP");
                     enableUDP();
                 }
