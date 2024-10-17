@@ -2,15 +2,16 @@
     "controllers": {
         "forward-controller": {
             "k_angle": 100,
-            "k_v": 80,
-            "w": 0.5,
-            "goal_tolerance": 5,
+            "k_v": 48,
+            "w": 0.8,
+            "goal_tolerance": 40,
+            "angle_deadzone": 0,
             "reversing_allowed": true 
         },
         "spin-controller": {
-            "k_angle": 160,
-            "k_v": 0,
-            "angle_tolerance": 0.2
+            "k_angle": 50,
+            "k_v": 2,
+            "angle_tolerance": 0.1
         }
     },
     "localisation": {
@@ -37,9 +38,9 @@
         }
     },
     "debogger": {
-        "enabled": true
+        "enabled": false
     },
     "extraction": {
-        "type": "PERIODIC"
+        "type": "NONE"
     }
 }

@@ -4,12 +4,12 @@
             "k_angle": 100,
             "k_v": 48,
             "w": 0.8,
-            "goal_tolerance": 30,
-            "angle_deadzone": 80,
+            "goal_tolerance": 40,
+            "angle_deadzone": 0,
             "reversing_allowed": true 
         },
         "spin-controller": {
-            "k_angle": 48,
+            "k_angle": 46,
             "k_v": 2,
             "angle_tolerance": 0.1
         }
