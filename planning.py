@@ -263,6 +263,7 @@ class RobotGeometry():
     WIDTH: float = 400
     LENGTH: float = 176
     PADDING: float = 80
+    EMERGENCY_PADDING: float = 30
     RADIUS: float = math.sqrt(WIDTH**2 + LENGTH**2)/2
 
     DIGGER_WIDTH: float = 110
@@ -395,18 +396,28 @@ class WaypointSequence(ABC):
         down_emergency = current_y
         up_emergency = 2000 - current_y
         
+        # disregard orthogonal directions
+        if ((current_theta < pi/4) and (current_theta > -pi/4)) or ((current_theta > 3*pi/4) and (current_theta < -3*pi/4)):
+            # disregard vertical
+            up_emergency = math.inf
+            down_emergency = math.inf
+        else:
+            # disregard horiontal
+            left_emergency = math.inf
+            right_emergency = math.inf
+
         # calculate closest point
         emergency_side = min([left_emergency, right_emergency, down_emergency, up_emergency])
 
         # generate relevant waypoint
         if emergency_side == left_emergency:
-            emergency_waypoint = Waypoint(RobotGeometry.LENGTH/2 + RobotGeometry.PADDING, current_y, -pi)
+            emergency_waypoint = Waypoint(RobotGeometry.LENGTH/2 + RobotGeometry.EMERGENCY_PADDING, current_y, -pi)
         elif emergency_side == right_emergency:
-            emergency_waypoint = Waypoint(2000 - RobotGeometry.LENGTH/2 - RobotGeometry.PADDING, current_y, 0)
+            emergency_waypoint = Waypoint(2000 - RobotGeometry.LENGTH/2 - RobotGeometry.EMERGENCY_PADDING, current_y, 0)
         elif emergency_side == up_emergency:
-            emergency_waypoint = Waypoint(current_x, 2000 - RobotGeometry.LENGTH/2 - RobotGeometry.PADDING, pi/2)
+            emergency_waypoint = Waypoint(current_x, 2000 - RobotGeometry.LENGTH/2 - RobotGeometry.EMERGENCY_PADDING, pi/2)
         else:
-            emergency_waypoint = Waypoint(current_x, RobotGeometry.LENGTH/2 + RobotGeometry.PADDING, -pi/2)
+            emergency_waypoint = Waypoint(current_x, RobotGeometry.LENGTH/2 + RobotGeometry.EMERGENCY_PADDING, -pi/2)
         
         # add waypoint
         self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
