@@ -303,9 +303,12 @@ class FowardController(Controller):
         omega = 0
         if (np.linalg.norm(r_to_waypoint) > self.angle_deadzone):
             omega = self.k_angle * angle_error
+            v = self.k_v * np.dot(wr_hat, heading)
+        else:
+            v = self.k_v
 
         # ensure we move in the correct direction
-        v = self.k_v * np.dot(wr_hat, heading)
+        
         if not self.reversing_allowed:
             # wait until we're facing in the correct direction before moving
             v = max(v, 0)

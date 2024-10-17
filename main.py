@@ -22,7 +22,7 @@ ROBOT_STARTED = False
 
 # Extraction configuration
 SCOOP_DURATION = 2  # seconds to finish scooping
-SCOOP_INTERVAL = 100000  # seconds between each scoop
+SCOOP_INTERVAL = 20000  # seconds between each scoop
 
 # Deposit configuration
 
@@ -111,12 +111,12 @@ class Config():
 
         # load in debogger mode from config file
         if self.config_file["debogger"]["enabled"]:
-            plan.set_debogging_strategy(DeboggingStrategies.ENABLED)
+            plan.set_debogging_strategy(ActiveDebogger())
         else:
-            plan.set_debogging_strategy(DeboggingStrategies.NONE)
+            plan.set_debogging_strategy(NoDebogger())
         
         # pause debogger until started
-        plan.pause_debogger()
+        plan.debog_strategy.pause_debogger()
 
         # load in waypoints from config file
         pathplanner_class: WaypointSequence = eval(self.config_file["pathplan"]["reference-class"])
@@ -225,7 +225,7 @@ def main(configfile, camera):
                 robot_comms.send_control_action(v, omega, do_print=True)
 
                 # TRANSITIONS
-                if old_extraction_time is not None and time.time() - old_extraction_time > SCOOP_INTERVAL and not plan.controller.phase_2 :
+                if time.time() - old_extraction_time > SCOOP_INTERVAL and not plan.controller.phase_2 :
                     robot_state = State.INITIATE_SCOOP
 
             case State.INITIATE_SCOOP:
@@ -252,14 +252,15 @@ def main(configfile, camera):
                 v = plan.desired_velocity
                 omega = plan.desired_angular
                 robot_comms.send_control_action(v, omega, do_print=True)
+
                 # TRANSITIONS
-                if plan.controller.has_reached_goal() and plan.controller.phase_2:
+                if plan.stopFlag:
                     # have reached the deposit zone
-                    robot_state = State.DEPOSIT  # TODO: check with ben, how does deposit work?
-                    # ok by the looks of it, pathplanning handles deposit, we should untangle this
+                    robot_state = State.DEPOSIT
 
             case State.DEPOSIT:
                 # do timers or something
+                robot_state = State.TRAVERSAL
                 pass
 
             case State.EMERGENCY:
@@ -271,7 +272,7 @@ def main(configfile, camera):
                 robot_comms.send_control_action(v, omega, do_print=True)
 
                 if plan.controller.has_reached_goal() and plan.controller.phase_2:
-                    robot_state = State.WAIT  # maybe need separate waiting to restart state?
+                    robot_state = State.TRAVERSAL  # maybe need separate waiting to restart state?
 
 
 
@@ -313,7 +314,9 @@ def main(configfile, camera):
             x, _, y, _, _, _ = np.ravel(positions).tolist()
             theta, _, _, _, _, _ = np.ravel(angles).tolist()
 
-            plan.unpause_debogger()
+            old_extraction_time = time.time() + 2
+
+            plan.debog_strategy.unpause_debogger()
 
             if all([not_none(e) for e in positions]):
                 print("Dynamically setting the delivery waypoint...")
