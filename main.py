@@ -19,7 +19,7 @@ ROBOT_WIFI_PASSWORD = ""
 WIFI_CONNECT_CMD = 'netsh wlan connect name="{0}" ssid="{0}"'
 
 ROBOT_STARTED = False
-SCOOP_DURATION = 3 # seconds to finish scooping
+SCOOP_DURATION = 2 # seconds to finish scooping
 
 class Config():
     '''
@@ -202,6 +202,7 @@ def main(configfile, camera):
                 robot_comms.send_control_action(0, 0, do_print=True)
                 robot_tcp.send_control_command("command=9")
                 scoop_entry_time = time.time()
+                robot_state = State.SCOOPING
             case State.SCOOPING:
                 # display message on image
                 cv.putText(img, "SCOOPING",
