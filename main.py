@@ -19,7 +19,12 @@ ROBOT_WIFI_PASSWORD = ""
 WIFI_CONNECT_CMD = 'netsh wlan connect name="{0}" ssid="{0}"'
 
 ROBOT_STARTED = False
-SCOOP_DURATION = 2 # seconds to finish scooping
+
+# Extraction configuration
+SCOOP_DURATION = 2  # seconds to finish scooping
+SCOOP_INTERVAL = 1  # seconds between each scoop
+
+# Deposit configuration
 
 class Config():
     '''
@@ -107,9 +112,13 @@ class Config():
 
 class State(Enum):
     WAIT = 0
-    TRAVERSAL =  1
+    TRAVERSAL = 1
     SCOOPING = 2
     INITIATE_SCOOP = 3
+    TRAVERSAL_TO_DEPOSIT = 4
+    DEPOSIT = 5
+    EMERGENCY = 6
+
 
 def connect_wifi():
     if platform == "win32":
@@ -117,6 +126,13 @@ def connect_wifi():
                            capture_output=True, text=True).stdout
         print("Connecting to Wifi:")
         print(k)
+
+def move_robot(x, y, theta, plan: Pathplanner, robot_comms: RobotUDP):
+        plan.update_robot_position(x, y, theta)
+        plan.controller_step()
+        v = plan.desired_velocity
+        omega = plan.desired_angular
+        robot_comms.send_control_action(v, omega, do_print=True)
 
 
 def main(configfile, camera):
@@ -147,7 +163,6 @@ def main(configfile, camera):
     robot_state = State.WAIT
 
     old_extraction_time = None
-    extraction_interval = 1
 
     scoop_entry_time = 0
     
@@ -163,15 +178,17 @@ def main(configfile, camera):
         v, omega = 0, 0
 
         positions, angles = localiser.get_position(img)
-
+        x, y, theta = 0, 0, 0
+        not_none = lambda x: x is not None
+        if all([not_none(e) for e in positions]):
+            x, _, y, _, _, _ = np.ravel(positions).tolist()
+            theta, _, _, _, _, _ = np.ravel(angles).tolist()
         # draw current waypoint on screen
         localiser.annotate_xy(img, plan.current_waypoint.x, plan.current_waypoint.y)
         
         ### PATH PLANNING
         # set to zero so printouts will work even if nothing has been sent
-        x, y, theta = 0, 0, 0
         v, omega = 0, 0
-        not_none = lambda x: x is not None
         
         # STATE MACHINE
         match robot_state:
@@ -179,26 +196,17 @@ def main(configfile, camera):
                 pass
             case State.TRAVERSAL:
                 # ACTIONS
-                if all([not_none(e) for e in positions]):
-                    x, _, y, _, _, _ = np.ravel(positions).tolist()
-                    theta, _, _, _, _, _ = np.ravel(angles).tolist()
+                plan.update_robot_position(x, y, theta)
+                plan.controller_step()
+                v = plan.desired_velocity
+                omega = plan.desired_angular
+                robot_comms.send_control_action(v, omega, do_print=True)
 
-                    plan.update_robot_position(x, y, theta)
-                    if ROBOT_STARTED:
-                        plan.controller_step()
-
-                        v = plan.desired_velocity
-                        omega = plan.desired_angular
-                        
-                        robot_comms.send_control_action(v, omega, do_print=True)
-                
                 # TRANSITIONS
-                if old_extraction_time is not None and time.time() - old_extraction_time > extraction_interval and not plan.controller.phase_2 :
+                if old_extraction_time is not None and time.time() - old_extraction_time > SCOOP_INTERVAL and not plan.controller.phase_2 :
                     robot_state = State.INITIATE_SCOOP
 
             case State.INITIATE_SCOOP:
-                # if old_extraction_time is not None and time.time() - old_extraction_time > extraction_interval and not plan.controller.phase_2 :
-                    # plan.signal_extraction_execute()
                 robot_comms.send_control_action(0, 0, do_print=True)
                 robot_tcp.send_control_command("command=9")
                 scoop_entry_time = time.time()
@@ -215,6 +223,35 @@ def main(configfile, camera):
                 if time.time() - scoop_entry_time > SCOOP_DURATION:
                     old_extraction_time = time.time()
                     robot_state = State.TRAVERSAL
+            
+            case State.TRAVERSAL_TO_DEPOSIT:
+                plan.update_robot_position(x, y, theta)
+                plan.controller_step()
+                v = plan.desired_velocity
+                omega = plan.desired_angular
+                robot_comms.send_control_action(v, omega, do_print=True)
+                # TRANSITIONS
+                if plan.controller.has_reached_goal() and plan.controller.phase_2:
+                    # have reached the deposit zone
+                    robot_state = State.DEPOSIT  # TODO: check with ben, how does deposit work?
+                    # ok by the looks of it, pathplanning handles deposit, we should untangle this
+
+            case State.DEPOSIT:
+                # do timers or something
+                pass
+
+            case State.EMERGENCY:
+                # just want to move, don't extract
+                plan.update_robot_position(x, y, theta)
+                plan.controller_step()
+                v = plan.desired_velocity
+                omega = plan.desired_angular
+                robot_comms.send_control_action(v, omega, do_print=True)
+
+                if plan.controller.has_reached_goal() and plan.controller.phase_2:
+                    robot_state = State.WAIT  # maybe need separate waiting to restart state?
+
+
 
        
 
