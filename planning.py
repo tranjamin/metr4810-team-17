@@ -17,18 +17,6 @@ class ExtractionStrategies(Enum):
     CONTINUOUS = 2 # always runs extraction (on forward controllers)
     PERIODIC = 3 # only runs extraction at each waypoint
 
-class DeboggingStrategies(Enum):
-    '''
-    A choice of debogging strategies the robot can be configured to.
-    '''
-    NONE = 1 # does not debog
-    ENABLED = 2 # debogs
-
-DEBOG_EPISLON_X = 30 # in mm
-DEBOG_EPSILON_THETA = pi/6 # in rad
-DEBOG_PATIENCE = 1.5 # in seconds
-DEBOG_DISTANCE = 200 # in mm, how far to go
-
 class Debogger(ABC):
     @abstractmethod
     def is_bogged(self, current_x: float, current_y: float, current_theta: float) -> bool:
@@ -294,8 +282,8 @@ class Pathplanner():
     def signal_delivery_start(self):
         self.robot.send_control_command("command=0")
         self.stopFlag = False
-        if self.debog_strategy == DeboggingStrategies.ENABLED:
-            self.last_debog_time = time.time() + 23
+        if isinstance(self.debog_strategy, ActiveDebogger):
+            self.debog_strategy.last_debog_time = time.time() + 23
     
     def signal_extraction_start(self):
         if self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
