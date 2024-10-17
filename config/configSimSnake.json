@@ -1,16 +1,17 @@
 {
     "controllers": {
         "forward-controller": {
-            "k_angle": 5,
-            "k_v": 100,
+            "k_angle": 100,
+            "k_v": 65,
             "w": 0.8,
-            "goal_tolerance": 5,
+            "goal_tolerance": 40,
+            "angle_deadzone": 0,
             "reversing_allowed": true 
         },
         "spin-controller": {
-            "k_angle": 5,
+            "k_angle": 55,
             "k_v": 2,
-            "angle_tolerance": 0.05
+            "angle_tolerance": 0.1
         }
     },
     "localisation": {

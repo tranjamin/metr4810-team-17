@@ -444,9 +444,9 @@ class CameraLocalisation(Localisation):
         )
 
         R_dist = 0.05
-        Q_dist = np.array([[1, 0], [0, 1]])
+        Q_dist = 0.4 * np.array([[1, 0], [0, 1]])
         R_angle = 0.01
-        Q_angle = np.array([[1, 0], [0, 1]])
+        Q_angle = 0.4 * np.array([[1, 0], [0, 1]])
 
         config = AprilTagDetector.Config()
         config.debug = False
