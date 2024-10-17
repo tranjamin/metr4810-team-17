@@ -9,9 +9,6 @@ from typing import *
 ROBOT_PWM_ADDRESS: str = "lhs={}&rhs={}"
 ROBOT_CONTROL_ADDRESS: str = "control?command={}"
 
-# maximum pwm to send
-PWM_MAX: float = 100.0
-
 class Robot(ABC):
     '''
     A robot which executes actions.
@@ -20,7 +17,7 @@ class Robot(ABC):
     LOCALISATION_DPS = 3 # the decimal precision to send localisation commands in
     LOCALISATION_WL = 7 # the total word length of a localisation parameter
     
-    def __init__(self, ip: str):
+    def __init__(self, ip: str, min_pwm=0, max_pwm=100):
         '''
         Parameters:
             ip (str): the ip address to the robot is listening on
@@ -28,6 +25,9 @@ class Robot(ABC):
         self.ip = ip
         self.pwm_left = 0
         self.pwm_right = 0
+
+        self.max_pwm = max_pwm
+        self.min_pwm = min_pwm
 
     def send_control_action(self, v: float, omega: float, do_print: bool =False):
         '''
@@ -59,8 +59,14 @@ class Robot(ABC):
             do_print (bool): prints out the request sent
         '''
         # round and saturate pwms
-        self.pwm_left = round(max(min(left, PWM_MAX), -PWM_MAX), Robot.LOCALISATION_DPS)
-        self.pwm_right = round(max(min(right, PWM_MAX), -PWM_MAX), Robot.LOCALISATION_DPS)
+        abs_left = self.min_pwm + abs(left)/100*(self.max_pwm - self.min_pwm)
+        abs_right = self.min_pwm + abs(right)/100*(self.max_pwm - self.min_pwm)
+
+        self.pwm_left = copysign(abs_left, left)
+        self.pwm_right = copysign(abs_right, right)
+
+        self.pwm_left = round(self.pwm_left, Robot.LOCALISATION_DPS)
+        self.pwm_right = round(self.pwm_right, Robot.LOCALISATION_DPS)
 
         # format to 7dp
         command = ROBOT_PWM_ADDRESS.format(
