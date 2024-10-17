@@ -247,19 +247,23 @@ class FowardController(Controller):
     """
 
     def __init__(self, k_angle: float, k_v: float, w: float, 
-                 goal_tolerance: float, reversing_allowed: bool=True):
+                 goal_tolerance: float, angle_deadzone: float, 
+                 reversing_allowed: bool=True):
         '''
         Parameters:
             k_angle (float): the angle proportional gain
             k_v (float): the velocity proportional gain
             w (float): the line equation parameter
             goal_tolerance (float): the acceptable closeness to the target angle
+            angle_deadzone (float): distance along path from waypoint within
+            which to not apply angle corrections
             reversing_allowed (bool): whether moving backwards is allowed
         '''
         self.k_angle = k_angle
         self.k_v = k_v
         self.w = w
         self.goal_tolerance = goal_tolerance
+        self.angle_deadzone = angle_deadzone
         self.reversing_allowed = reversing_allowed
         super().__init__()
 
@@ -296,7 +300,9 @@ class FowardController(Controller):
                 # it would be easier to reverse
                 angle_error = other_possibility
         
-        omega = self.k_angle * angle_error
+        omega = 0
+        if (np.linalg.norm(r_to_waypoint) > self.angle_deadzone):
+            omega = self.k_angle * angle_error
 
         # ensure we move in the correct direction
         v = self.k_v * np.dot(wr_hat, heading)

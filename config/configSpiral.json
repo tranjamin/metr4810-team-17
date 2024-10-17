@@ -5,6 +5,7 @@
             "k_v": 48,
             "w": 0.8,
             "goal_tolerance": 30,
+            "angle_deadzone": 80,
             "reversing_allowed": true 
         },
         "spin-controller": {
