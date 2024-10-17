@@ -22,7 +22,7 @@ ROBOT_STARTED = False
 
 # Extraction configuration
 SCOOP_DURATION = 2  # seconds to finish scooping
-SCOOP_INTERVAL = 1  # seconds between each scoop
+SCOOP_INTERVAL = 100000  # seconds between each scoop
 
 # Deposit configuration
 
@@ -280,11 +280,11 @@ def main(configfile, camera):
         if key == ord('q'): # stop robot and exit
             plan.signal_extraction_stop()
             break
-        elif key == ord('d') and ROBOT_STARTED: # return to delivery
+        elif key == ord('d') and ROBOT_STARTED:  # return to delivery
             plan.add_delivery()
-        elif key == ord('e') and ROBOT_STARTED: # go to high ground
+        elif key == ord('e') and ROBOT_STARTED:  # go to high ground
             plan.add_emergency()
-        elif key == ord('f') and ROBOT_STARTED: # start depositing bean
+        elif key == ord('f') and ROBOT_STARTED:  # start depositing bean
             plan.signal_delivery_start()
         elif key == ord('s'): # start robot sending
             positions, angles = localiser.get_position(img)

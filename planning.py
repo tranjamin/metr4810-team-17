@@ -303,6 +303,12 @@ class Waypoint():
         assert self.y <= 2000 and self.y >= 0
         assert self.heading is None or (self.heading >= -pi and self.heading <= pi)    
 
+    def __str__(self):
+        repr(self)
+    
+    def __repr__(self):
+        return f"{self.x}, {self.y}, {self.heading}"
+
 class DepositWaypoint(Waypoint):
     '''
     The specific waypoint of being next to the deposit chamber.
@@ -585,7 +591,10 @@ class SpiralWaypointSequenceChamfered(WaypointSequence):
             while True:
                 x = x_min
                 y = min(y_min + chamfer + point_spacing*j, y_max - chamfer)
-                target_heading = pi/2
+                if y == y_max - chamfer:
+                    target_heading = pi/4
+                else:
+                    target_heading = pi/2
 
                 waypoint = Waypoint(
                     x, y, heading=target_heading
@@ -602,7 +611,10 @@ class SpiralWaypointSequenceChamfered(WaypointSequence):
             while True:
                 x = min(x_min + chamfer + point_spacing*i, x_max - chamfer)
                 y = y_max
-                target_heading = 0
+                if x == x_max - chamfer:
+                    target_heading = -pi/4
+                else:
+                    target_heading = 0
 
                 waypoint = Waypoint(
                     x, y, heading=target_heading
@@ -621,7 +633,10 @@ class SpiralWaypointSequenceChamfered(WaypointSequence):
             while True:
                 x = x_max
                 y = max(y_max - chamfer - point_spacing*j, y_min + chamfer)
-                target_heading = -pi/2
+                if y == y_min + chamfer:
+                    target_heading = -3*pi/4
+                else:
+                    target_heading = -pi/2
 
                 waypoint = Waypoint(
                     x, y, heading=target_heading
@@ -638,7 +653,10 @@ class SpiralWaypointSequenceChamfered(WaypointSequence):
             while True:
                 x = max(x_max - chamfer - point_spacing*i, x_min + chamfer)
                 y = y_min
-                target_heading = pi
+                if x == x_min + chamfer:
+                    target_heading = 3 * pi/4
+                else:
+                    target_heading = pi
 
                 waypoint = Waypoint(
                     x, y, heading=target_heading
