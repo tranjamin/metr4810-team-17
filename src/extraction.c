@@ -84,6 +84,7 @@ void vExtractionTask() {
                 if (xSemaphoreTake(extractionSemaphoreStop, SEMPH_TICKS) == pdTRUE) {  
                     SET_EXTRACTION_STOPPED();
                     extraction_state = EXTRACTION_IDLE; 
+                    vDebugLog("Re-enabling UDP");
                     enableUDP();
                 }
                 break;
