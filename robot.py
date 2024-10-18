@@ -275,7 +275,14 @@ class FowardController(Controller):
 
     def get_control_action(self, x: float, y: float, theta: float) -> tuple[float, float]:
         r = np.array([x, y]) # robot position vector
-        d = self.p1 - self.p0
+        d = self.p1 - self.p0        
+        
+        # check if goal has been reached
+        if np.linalg.norm(r - self.p1) < self.goal_tolerance or self.reached_goal or not np.any(d):
+            self.reached_goal = True
+            # if goal has been reached, don't move
+            return 0, 0
+
         k = 1/np.linalg.norm(d)**2 * np.dot(d, r - self.p0)
         
         # location of closest point on path to the robot
@@ -318,12 +325,6 @@ class FowardController(Controller):
         if not self.reversing_allowed:
             # wait until we're facing in the correct direction before moving
             v = max(v, 0)
-
-        # check if goal has been reached
-        if np.linalg.norm(r - self.p1) < self.goal_tolerance or self.reached_goal:
-            self.reached_goal = True
-            # if goal has been reached, don't move
-            return 0, 0
 
         return v, omega
 
