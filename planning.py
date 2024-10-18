@@ -527,7 +527,8 @@ class SnakeWaypointSequence(WaypointSequence):
     ENV_WIDTH: float = 2000
 
     def __init__(self, 
-                 points_per_line: int,
+                 points_per_line: int = 2,
+                 snake_spacing = RobotGeometry.DIGGER_WIDTH,
                  theta_agnostic=False):
         super().__init__()
         
@@ -537,8 +538,8 @@ class SnakeWaypointSequence(WaypointSequence):
         reversed_y_coords: list[float] = y_coords[::-1]
 
         # calculate the x coordinates
-        num_lines: int = math.ceil((SnakeWaypointSequence.ENV_WIDTH - 2*SnakeWaypointSequence.BORDER_PADDING)/(RobotGeometry.DIGGER_WIDTH))
-        x_coords: list[float] = [min(SnakeWaypointSequence.BORDER_PADDING + i*RobotGeometry.DIGGER_WIDTH, SnakeWaypointSequence.ENV_WIDTH - SnakeWaypointSequence.BORDER_PADDING) for i in range(num_lines)]
+        num_lines: int = math.ceil((SnakeWaypointSequence.ENV_WIDTH - 2*SnakeWaypointSequence.BORDER_PADDING)/(snake_spacing))
+        x_coords: list[float] = [min(SnakeWaypointSequence.BORDER_PADDING + i*snake_spacing, SnakeWaypointSequence.ENV_WIDTH - SnakeWaypointSequence.BORDER_PADDING) for i in range(num_lines)]
 
         for i, x in enumerate(x_coords):
             for j, y in enumerate(reversed_y_coords if i % 2 else y_coords): # toggle the direction of each line
@@ -721,6 +722,9 @@ class RectangleWaypointSequence(WaypointSequence):
                 vel=0 if RectangleWaypointSequence.STOPPING else None))
         
         self.repeat_waypoints = self.waypoints.copy()
+
+class ShiftingWindowSequence(WaypointSequence):
+    pass
 
 class MockLocalisationWaypointSequence(WaypointSequence):
     '''

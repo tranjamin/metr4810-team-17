@@ -29,7 +29,7 @@
         "emergency-padding": 30
     },
     "pathplan": {
-        "reference-class": "SnakeWaypointSequence",
+        "reference-class": "SpiralWaypointSequence",
         "args": {
             "line_spacing": 100,
             "chamfer_size": 0
