@@ -1,31 +1,32 @@
-#include "pico/stdlib.h"
+// RTOS INCLUDES
 #include "FreeRTOS.h"
 #include "task.h"
 
-#ifdef CYW43_WL_GPIO_LED_PIN
-    #include "pico/cyw43_arch.h"
-#endif
+// Pico INCLUDES
+#include "pico/stdlib.h"
+#include "pico/cyw43_arch.h"
 
-#define VDELAY 250
+#define VDELAY 250 // the delay between blinks
 
-int pico_led_init(void) {
-    #if defined(LED_PIN)
-        gpio_init(PICO_DEFAULT_LED_PIN);
-        gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-        return PICO_OK;
-    #elif defined(CYW43_WL_GPIO_LED_PIN)
-        return cyw43_arch_init();
-    #endif
+// Function Prototypes
+static void pico_set_led(bool);
+void vBlinkTask();
+void vBlinkInit();
+
+/**
+Sets the onboard LED as on/off
+
+Parameters:
+    led_on: true to set the LED on, false otherwise
+ */
+static void pico_set_led(bool led_on) {
+    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_on);
 }
 
-void pico_set_led(bool led_on) {
-    #if defined(PICO_DEFAULT_LED_PIN)
-        gpio_put(PICO_DEFAULT_LED_PIN, led_on);
-    #elif defined(CYW43_WL_GPIO_LED_PIN)
-        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_on);
-    #endif
-}
-
+/**
+Main task loop for the heartbeat (blink) signal. Continuously flashes the LED.
+Does not return.
+ */
 void vBlinkTask() {
    for (;;) {
         pico_set_led(true);
@@ -35,6 +36,9 @@ void vBlinkTask() {
     }
 }
 
+/**
+Initialises the CYW43 firmware for the LED.
+ */
 void vBlinkInit() {
-    hard_assert(pico_led_init() == PICO_OK);
+    hard_assert(cyw43_arch_init() == PICO_OK);
 }
