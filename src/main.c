@@ -30,6 +30,7 @@ void main() {
     vWifiInit();
     vDigitalIOInit();
     vWatchdogInit();
+    vMotorsInit();
 
     // store references to each task for diagnostics
     TaskHandle_t xDeliveryHandle;
