@@ -724,7 +724,33 @@ class RectangleWaypointSequence(WaypointSequence):
         self.repeat_waypoints = self.waypoints.copy()
 
 class ShiftingWindowSequence(WaypointSequence):
-    pass
+    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING 
+    ENV_LENGTH: float = 2000
+    ENV_WIDTH: float = 2000
+
+    def __init__(self, line_spacing):
+        super().__init__()
+
+        origin_x = ShiftingWindowSequence.BORDER_PADDING
+        min_y = ShiftingWindowSequence.BORDER_PADDING
+        max_y = ShiftingWindowSequence.ENV_LENGTH - ShiftingWindowSequence.BORDER_PADDING
+
+        while origin_x < 1000:
+            self.waypoints.append(Waypoint(origin_x, min_y, pi/2))
+            self.waypoints.append(Waypoint(origin_x, max_y, 0))
+            self.waypoints.append(Waypoint(origin_x + 1000 - ShiftingWindowSequence.BORDER_PADDING, max_y, -pi/2))
+            self.waypoints.append(Waypoint(origin_x + 1000 - ShiftingWindowSequence.BORDER_PADDING, min_y, pi))
+
+            origin_x += line_spacing
+        
+        self.repeat_waypoints = self.waypoints.copy()
+        self.waypoints.pop(0)
+
+class StraightLineWaypointSequence(WaypointSequence):
+    def __init__(self):
+        super().__init__()
+
+        self.waypoints.append(Waypoint(0, 0, 0))
 
 class MockLocalisationWaypointSequence(WaypointSequence):
     '''

@@ -29,10 +29,9 @@
         "emergency-padding": 30
     },
     "pathplan": {
-        "reference-class": "SpiralWaypointSequence",
+        "reference-class": "ShiftingWindowSequence",
         "args": {
-            "line_spacing": 100,
-            "chamfer_size": 0
+            "line_spacing": 100
         }
     },
     "debogger": {

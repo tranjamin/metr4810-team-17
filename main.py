@@ -238,6 +238,14 @@ def main(configfile, camera):
                 except AssertionError:
                     print("Dynamic setting failed... reverting")
 
+                if isinstance(plan.waypoints, StraightLineWaypointSequence):
+                    endpoint_x = x + 2000*math.cos(theta)
+                    endpoint_y = y + 2000*math.sin(theta)
+                    plan.waypoints.waypoints = [Waypoint(endpoint_x, endpoint_y, theta)]
+                    plan.waypoints.repeat_waypoints = plan.waypoints.waypoints.copy()
+                    plan.set_waypoints(plan.waypoints)
+    
+
             ROBOT_STARTED = True
             plan.extractionFlag = True
             old_extraction_time = time.time()
