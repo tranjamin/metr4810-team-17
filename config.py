@@ -63,7 +63,7 @@ class Config():
             (Localisation): the localisation object
         '''
         config_localiser: str = self.config_file["localisation"]
-        config_localiser_args: dict = config_localiser["args"]
+        config_localiser_args: dict = config_localiser.get("args", {})
         localiser: Localisation =  eval(config_localiser["localisation-class"])(**config_localiser_args)
         assert isinstance(localiser, Localisation)
 
@@ -87,21 +87,25 @@ class Config():
         plan.set_controller(controller)
 
         # load in extraction mode from config file
-        extraction_mode: str = self.config_file["extraction"]["type"]
+        extraction_mode: str = self.config_file.get("extraction", {}).get("type", "NONE")
+        assert extraction_mode.upper() in ["NONE", "PERIODOIC", "CONTINUOUS"]
         plan.set_extraction_strategy(eval(f"ExtractionStrategies.{extraction_mode.upper()}"))
 
         # load in debogger mode from config file
-        if self.config_file["debogger"]["enabled"]:
-            plan.set_debogging_strategy(ActiveDebogger())
-        else:
-            plan.set_debogging_strategy(NoDebogger())
+        debogger_config = self.config_file.get("debogger")
+        if debogger_config:
+            if debogger_config.get("enabled"):
+                debogger_args = debogger_config.get("args", {})
+                plan.set_debogging_strategy(ActiveDebogger(**debogger_args))
+            else:
+                plan.set_debogging_strategy(NoDebogger())
         
         # pause debogger until started
         plan.debog_strategy.pause_debogger()
 
         # load in waypoints from config file
         pathplanner_class: WaypointSequence = eval(self.config_file["pathplan"]["reference-class"])
-        pathplanner_kwargs = self.config_file["pathplan"]["args"]
+        pathplanner_kwargs = self.config_file["pathplan"].get("args", {})
         plan.set_waypoints(pathplanner_class(**pathplanner_kwargs))
 
         return plan
@@ -109,9 +113,9 @@ class Config():
     def load_robot(self):
         robot_config = self.config_file["robot"]
         robot_class = eval(robot_config["robot-class"])
-        robot_comms: Robot = robot_class(**robot_config["args"])
+        robot_comms: Robot = robot_class(**robot_config.get("args", {}))
 
-        RobotGeometry.PADDING = robot_config["padding"]
-        RobotGeometry.EMERGENCY_PADDING = robot_config["emergency-padding"]
+        RobotGeometry.PADDING = robot_config.get("padding", RobotGeometry.PADDING)
+        RobotGeometry.EMERGENCY_PADDING = robot_config.get("emergency-padding", RobotGeometry.EMERGENCY_PADDING)
 
         return robot_comms
