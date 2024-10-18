@@ -250,6 +250,29 @@ class DepositWaypoint(Waypoint):
             stopMovement=True
         )
 
+    @staticmethod
+    def redefine_deposit(x, y, theta):
+        print("Dynamically setting the delivery waypoint...")
+
+        backwards_length = DepositWaypoint.DEPOSIT_SIZE/2 + RobotGeometry.RADIUS
+
+        new_helper_x = x - backwards_length*math.cos(theta)
+        new_helper_y = y - backwards_length*math.sin(theta)
+
+        try:
+            assert new_helper_x <= 2000 and new_helper_x >= 0
+            assert new_helper_y <= 2000 and new_helper_y >= 0
+
+            new_helper_x = max(new_helper_x, RobotGeometry.RADIUS + 10)
+            new_helper_y = max(new_helper_y, RobotGeometry.RADIUS + 10)
+            DepositWaypoint.DEPOSIT_HEADING = theta
+            DepositWaypoint.DEPOSIT_X = x
+            DepositWaypoint.DEPOSIT_Y = y
+            DepositHelperWaypoint.DEPOSIT_HELPER_X = new_helper_x
+            DepositHelperWaypoint.DEPOSIT_HELPER_Y = new_helper_y
+        except AssertionError:
+            print("Dynamic setting failed... reverting")
+
 class DepositHelperWaypoint(Waypoint):
     '''
     The specific waypoint of being just underneath the deposit chamber.
@@ -273,7 +296,20 @@ class WaypointSequence(ABC):
     '''
     def __init__(self):
         self.waypoints: list[float] = list() # the list of waypoints
+        self.nonrepeat_waypoints: list = list()
         self.repeat_waypoints: list[float] = list()
+        self.dynamic_aim = False
+    
+    def aim_enable(self):
+        self.dynamic_aim = True
+    
+    def aim_assist_on(self, x, y, theta):
+        straight_aim = StraightLineWaypointSequence()
+        straight_aim.aim_line(x, y, theta)
+        self.waypoints = straight_aim.waypoints.copy()
+    
+    def aim_assist_off(self):
+        self.nonrepeat_waypoints.copy()
     
     def plan_to_deposit(self, current_x: float, current_y: float, current_theta: float):
         '''
@@ -413,6 +449,7 @@ class SnakeWaypointSequence(WaypointSequence):
 
         self.repeat_waypoints = self.waypoints.copy()
         self.waypoints.pop(0)
+        self.nonrepeat_waypoints = self.waypoints.copy()
 
 class SpiralWaypointSequence(WaypointSequence):
     '''
@@ -544,6 +581,7 @@ class SpiralWaypointSequence(WaypointSequence):
         self.repeat_waypoints = self.waypoints.copy()
         if chamfer:
             self.waypoints.pop(0)
+        self.nonrepeat_waypoints = self.waypoints.copy()
 
 class RectangleWaypointSequence(WaypointSequence):
     '''
@@ -578,6 +616,7 @@ class RectangleWaypointSequence(WaypointSequence):
                 vel=0 if RectangleWaypointSequence.STOPPING else None))
         
         self.repeat_waypoints = self.waypoints.copy()
+        self.nonrepeat_waypoints = self.waypoints.copy()
 
 class ShiftingWindowSequence(WaypointSequence):
     BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING 
@@ -601,12 +640,23 @@ class ShiftingWindowSequence(WaypointSequence):
         
         self.repeat_waypoints = self.waypoints.copy()
         self.waypoints.pop(0)
+        self.nonrepeat_waypoints = self.waypoints.copy()
 
 class StraightLineWaypointSequence(WaypointSequence):
     def __init__(self):
         super().__init__()
 
         self.waypoints.append(Waypoint(0, 0, 0))
+    
+    def aim_line(self, current_x, current_y, current_theta):
+        self.waypoints = []
+
+        endpoint_x = current_x + 2000*math.cos(current_theta)
+        endpoint_y = current_y + 2000*math.sin(current_theta)
+
+        self.waypoints = [Waypoint(endpoint_x, endpoint_y, current_theta)]
+        self.repeat_waypoints = self.waypoints.copy()
+        self.nonrepeat_waypoints = self.waypoints.copy()
 
 class MockLocalisationWaypointSequence(WaypointSequence):
     '''
@@ -617,6 +667,7 @@ class MockLocalisationWaypointSequence(WaypointSequence):
 
         self.waypoints.append(Waypoint(500, 500, heading=None))
         self.repeat_waypoints = self.waypoints.copy()
+        self.nonrepeat_waypoints = self.waypoints.copy()
 
 
 class Debogger(ABC):

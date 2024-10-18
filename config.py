@@ -108,6 +108,9 @@ class Config():
         pathplanner_kwargs = self.config_file["pathplan"].get("args", {})
         plan.set_waypoints(pathplanner_class(**pathplanner_kwargs))
 
+        if self.config_file["pathplan"]["aim-enabled"]:
+            plan.waypoints.aim_enable()
+
         return plan
 
     def load_robot(self):
