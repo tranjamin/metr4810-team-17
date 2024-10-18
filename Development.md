@@ -9,12 +9,11 @@ Miscellaneous
 
 WiFi-specific files:
 - `dhcpserver`: source code files for setting up the DHCP server
-- `dnsserver`: source code files for setting us the DNS server
 - `lwipopts`: config file for wifi (lwip == Lightweight TCP/IP)
 
 Source code:
 - `main.c`: the main file which is built as the target for the make process
-- `xyz.c`/`xyz.h`: files for each individual task
+- `xyz.c`/`xyz.h`: files for each individual task/driver
 
 ## FreeRTOS Crash Course
 
