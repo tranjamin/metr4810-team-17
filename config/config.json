@@ -39,6 +39,8 @@
         "enabled": false
     },
     "extraction": {
-        "type": "NONE"
+        "reference-class": "ExtractionNone",
+        "args": {
+        }
     }
 }

@@ -87,10 +87,10 @@ class Config():
         plan.set_controller(controller)
 
         # load in extraction mode from config file
-        extraction_mode: str = self.config_file.get("extraction", {}).get("type", "NONE")
-        assert extraction_mode.upper() in ["NONE", "PERIODOIC", "CONTINUOUS"]
-        plan.set_extraction_strategy(eval(f"ExtractionStrategies.{extraction_mode.upper()}"))
-
+        extraction_mode: str = self.config_file["extraction"]["reference-class"]
+        extraction_args: dict = self.config_file["extraction"].get("args", {})
+        plan.set_extraction_strategy(eval(extraction_mode)(**extraction_args))
+        
         # load in debogger mode from config file
         debogger_config = self.config_file.get("debogger")
         if debogger_config:

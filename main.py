@@ -77,6 +77,8 @@ def main(configfile, camera):
     robot_tcp = RobotTCP("192.168.4.1")
 
     plan.set_robot(robot_comms)
+    plan.extraction_strategy.attach_agents(robot_comms)
+    plan.extraction_strategy.reset_extraction()
     robot_state = State.WAIT
 
     old_extraction_time = None
@@ -196,7 +198,7 @@ def main(configfile, camera):
         cv.imshow('frame', img)
         key = cv.waitKey(1)
         if key == ord('q'): # stop robot and exit
-            plan.signal_extraction_stop()
+            plan.extraction_strategy.pause_extraction()
             break
         elif key == ord('d') and ROBOT_STARTED:  # return to delivery
             plan.add_delivery()
@@ -250,13 +252,11 @@ def main(configfile, camera):
             plan.extractionFlag = True
             old_extraction_time = time.time()
             robot_state = State.TRAVERSAL
-            plan.signal_extraction_start()
+            plan.extraction_strategy.unpause_extraction()
         elif key == ord('k'): # allow extraction
-            plan.extraction_allowed = True
-            plan.signal_extraction_execute()
+            plan.extraction_strategy.unpause_extraction()
         elif key == ord('m'): # manually extraction
-            plan.extraction_allowed = False
-            plan.signal_extraction_stop()
+            plan.extraction_strategy.pause_extraction()
         elif key == ord('w'):
             connect_wifi()
             

@@ -9,14 +9,7 @@ import time
 
 from controllers import *
 from robot import *
-
-class ExtractionStrategies(Enum):
-    '''
-    A choice of extraction strategies the robot can be configured to.
-    '''
-    NONE = 1 # does not run extraction
-    CONTINUOUS = 2 # always runs extraction (on forward controllers)
-    PERIODIC = 3 # only runs extraction at each waypoint
+from extraction import *
 
 class Pathplanner():
     '''
@@ -42,11 +35,10 @@ class Pathplanner():
 
         self.stopFlag = False
         self.extractionFlag = False
-        self.extraction_allowed = True
 
-        self.extraction_strategy: ExtractionStrategies = None
+        self.extraction_strategy: ExtractionModes = None
 
-    def set_extraction_strategy(self, strategy: ExtractionStrategies):
+    def set_extraction_strategy(self, strategy: ExtractionModes):
         '''
         Sets the extraction strategy to be used
         '''
@@ -97,10 +89,10 @@ class Pathplanner():
                 print("Should be stopping now")
                 self.signal_pathplanning_stop()
             if self.current_waypoint.suspendFlag:
-                self.signal_extraction_stop()
+                self.extraction_strategy.pause_extraction()
                 self.extractionFlag = False
             if self.current_waypoint.resumeFlag:
-                self.signal_extraction_start()
+                self.extraction_strategy.unpause_extraction()
                 self.signal_pathplanning_start()
 
             self.previous_waypoint = self.current_waypoint.coords
@@ -127,21 +119,21 @@ class Pathplanner():
             if self.update_controller_path:
                 self.controller.set_path(self.previous_waypoint, self.current_waypoint.coords, self.current_waypoint.heading)
                 self.update_controller_path = False
-                if self.extractionFlag and self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
-                    self.signal_extraction_start()
 
-            if self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
-                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta,
-                on_spin_start=(lambda: self.signal_extraction_stop(), self.pause_debogger()),
-                on_spin_end=self.unpause_debogger)
-            elif self.extraction_strategy == ExtractionStrategies.PERIODIC and self.extraction_strategy:
-                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta,
-                on_spin_start=self.pause_debogger,
-                on_spin_end=(lambda: self.signal_extraction_execute(), self.unpause_debogger()))
-            else:
-                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta,
-                on_spin_start=self.pause_debogger,
-                on_spin_end=self.unpause_debogger)
+                if self.extractionFlag:
+                    self.extraction_strategy.unpause_extraction()
+                
+            def spin_start_func():
+                self.extraction_strategy.pause_extraction()
+                self.pause_debogger()
+            
+            def spin_stop_func():
+                self.extraction_strategy.unpause_extraction()
+                self.unpause_debogger()
+            
+            self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta,
+                on_spin_start=spin_start_func,
+                on_spin_end=spin_stop_func)
 
             if self.stopFlag:
                 self.desired_angular = 0
@@ -152,7 +144,7 @@ class Pathplanner():
         self.waypoints.plan_to_emergency(self.current_x, self.current_y, self.current_theta)
         self.current_waypoint = self.waypoints.get_current_waypoint()
         self.update_controller_path = True
-        self.signal_extraction_stop()
+        self.extraction_strategy.pause_extraction()
         self.extractionFlag = False
 
     def add_delivery(self):
@@ -160,7 +152,7 @@ class Pathplanner():
         self.waypoints.plan_to_deposit(self.current_x, self.current_y, self.current_theta)
         self.current_waypoint = self.waypoints.get_current_waypoint()
         self.update_controller_path = True
-        self.signal_extraction_stop()
+        self.extraction_strategy.unpause_extraction()
         self.extractionFlag = False
 
     def signal_delivery_start(self):
@@ -169,14 +161,6 @@ class Pathplanner():
         if isinstance(self.debog_strategy, ActiveDebogger):
             self.debog_strategy.last_debog_time = time.time() + 23
 
-    def signal_extraction_start(self):
-        if self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
-            self.robot.send_control_command("command=7")
-
-    def signal_extraction_stop(self):
-        if self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
-            self.robot.send_control_command("command=8")
-
     def signal_pathplanning_stop(self):
         self.stopFlag = True
         self.pause_debogger()
@@ -184,11 +168,6 @@ class Pathplanner():
     def signal_pathplanning_start(self):
         self.stopFlag = False
         self.unpause_debogger()
-
-    def signal_extraction_execute(self):
-        print("sending commands")
-        for _ in range(20):
-            self.robot.send_control_command("command=9")
 
     def signal_robot_forward(self):
         self.robot.send_control_command("command=1")

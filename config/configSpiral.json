@@ -37,6 +37,10 @@
         "enabled": false
     },
     "extraction": {
-        "type": "NONE"
+        "reference-class": "ExtractionPeriodic",
+        "args": {
+            "duration": 2.0,
+            "interval": 2.0
+        }
     }
 }
