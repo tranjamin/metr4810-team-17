@@ -4,7 +4,8 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-from robot import Robot, wrapToPi
+from robot import Robot
+from utils import wrapToPi
 from localisation import Localisation
 
 class RobotSim(Robot, Localisation):

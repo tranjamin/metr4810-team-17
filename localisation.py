@@ -2,8 +2,9 @@ import cv2 as cv
 import numpy as np
 from robotpy_apriltag import AprilTagDetector
 from scipy.spatial.transform import Rotation as R
-from estimators import RigidBodyTracker
 import time
+
+from estimators import RigidBodyTracker
 
 MARKER_SIZE = 100  # 97 # mm
 ORIGIN_X_DELTA = -59

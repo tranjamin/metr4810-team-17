@@ -1,9 +1,11 @@
 import json
 
 from localisation import *
+from controllers import *
 from planning import *
 from robot import *
 from fmi import *
+
 
 class Config():
     '''

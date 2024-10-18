@@ -4,10 +4,11 @@ from typing import *
 from abc import ABC, abstractmethod
 from math import pi, atan2
 from enum import Enum
-from robot import wrapToPi
+
 import time
 
-from robot import Controller, Robot, LineFollowerController
+from controllers import *
+from robot import *
 
 class ExtractionStrategies(Enum):
     '''
@@ -16,123 +17,6 @@ class ExtractionStrategies(Enum):
     NONE = 1 # does not run extraction
     CONTINUOUS = 2 # always runs extraction (on forward controllers)
     PERIODIC = 3 # only runs extraction at each waypoint
-
-class Debogger(ABC):
-    @abstractmethod
-    def is_bogged(self, current_x: float, current_y: float, current_theta: float) -> bool:
-        pass
-
-    @abstractmethod
-    def attempt_debog(self, planner: Pathplanner) -> bool:
-        pass
-
-    @abstractmethod
-    def pause_debogger(self):
-        pass
-
-    @abstractmethod
-    def unpause_debogger(self):
-        pass
-
-
-class NoDebogger(Debogger):
-    def is_bogged(self, current_x, current_y, current_theta) -> bool:
-        return False
-    
-    def attempt_debog(self, planner) -> bool:
-        return super().attempt_debog(planner)
-    
-    def pause_debogger(self):
-        return super().pause_debogger()
-    
-    def unpause_debogger(self):
-        return super().unpause_debogger()
-
-class ActiveDebogger(Debogger):
-    EPSILON_X: float
-    EPSILON_THETA: float
-    PATIENCE: float
-    REVERSE_DISTANCE: float
-    ANGLE_DEVIATION: float
-
-    def __init__(self, 
-                 epsilon_x=30, 
-                 epsilon_theta=pi/4,
-                 patience=2,
-                 reverse_distance=400,
-                 angle_deviation=pi/6):
-        
-        ActiveDebogger.EPSILON_X = epsilon_x
-        ActiveDebogger.EPSILON_THETA = epsilon_theta
-        ActiveDebogger.PATIENCE = patience
-        ActiveDebogger.REVERSE_DISTANCE = reverse_distance
-        ActiveDebogger.ANGLE_DEVIATION = angle_deviation
-
-        self.last_debog_position: tuple[float, float, float] = None
-        self.last_debog_time: float = None
-        self.debogger_enabled: bool = True
-        self.debogger_pause_time: float = None
-
-    def is_bogged(self, current_x: float, current_y: float, current_theta: float) -> bool:
-        if self.last_debog_position is None:
-            self.last_debog_position = (current_x, current_y, current_theta)
-        if self.last_debog_time is None:
-            self.last_debog_time = time.time()
-
-        debog_x, debog_y, debog_theta = self.last_debog_position
-        x_deviation = math.sqrt((current_x - debog_x)**2 + (current_y - debog_y)**2)
-        theta_deviation = abs(current_theta - debog_theta)
-
-        if (x_deviation > ActiveDebogger.EPSILON_X or theta_deviation > ActiveDebogger.EPSILON_THETA):
-                # we have not bogged
-                self.last_debog_time = time.time()
-                self.last_debog_position = (current_x, current_y, current_theta)
-                return False
-        elif time.time() - self.last_debog_time > ActiveDebogger.PATIENCE:
-                return True
-        return False
-
-
-    def attempt_debog(self, planner) -> bool:
-        reverse = -1 if planner.desired_velocity > 0 else 1
-        print("Reversing: ", reverse)
-
-        new_x = min(max(planner.current_x + reverse*math.cos(planner.current_theta)*ActiveDebogger.REVERSE_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS)
-        new_y = min(max(planner.current_y + reverse*math.sin(planner.current_theta)*ActiveDebogger.REVERSE_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS)
-
-        theta_option_one = wrapToPi(planner.current_theta + ActiveDebogger.ANGLE_DEVIATION)
-        theta_option_two = wrapToPi(planner.current_theta - ActiveDebogger.ANGLE_DEVIATION)
-
-        distance_option_one = (abs(1000 - (new_x + math.cos(theta_option_one))))**2 + (abs(1000 - (new_y + math.ain(theta_option_one))))**2
-        distance_option_two = (abs(1000 - (new_x + math.cos(theta_option_two))))**2 + (abs(1000 - (new_y + math.ain(theta_option_two))))**2
-
-        new_heading = theta_option_one if distance_option_one < distance_option_two else theta_option_two
-
-        new_waypoint = Waypoint(new_x, new_y, heading=new_heading)
-
-        planner.waypoints.waypoints.insert(0, new_waypoint)
-        planner.current_waypoint = new_waypoint
-        planner.previous_waypoint = (planner.current_x, planner.current_y)
-
-        print("Current position: ", (planner.current_x, planner.current_y))
-        print("New waypoint: ", planner.current_waypoint.coords)
-
-        # update debog parameters
-        self.last_debog_time = time.time()
-        self.last_debog_position = (planner.current_x, planner.current_y, planner.current_theta)
-
-        planner.update_controller_path = True
-    
-    def pause_debogger(self):
-        self.debogger_enabled = False
-        self.debogger_pause_time = time.time()
-    
-    def unpause_debogger(self):
-        self.debogger_enabled = True
-
-        if self.debogger_pause_time is not None and self.last_debog_time is not None:
-            self.last_debog_time = time.time() - (self.debogger_pause_time - self.last_debog_time)
-
 
 class Pathplanner():
     '''
@@ -228,7 +112,7 @@ class Pathplanner():
                 self.current_waypoint = self.waypoints.get_current_waypoint()
             print("---- MOVE TO NEXT WAYPOINT ----")
             print(f"(Next waypoint is at: {self.current_waypoint.coords})")
-    
+
     def controller_step(self):
         '''
         Use the controller to calcualte the desired movements
@@ -245,13 +129,13 @@ class Pathplanner():
                 self.update_controller_path = False
                 if self.extractionFlag and self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
                     self.signal_extraction_start()
-            
+
             if self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
-                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta, 
+                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta,
                 on_spin_start=(lambda: self.signal_extraction_stop(), self.pause_debogger()),
                 on_spin_end=self.unpause_debogger)
             elif self.extraction_strategy == ExtractionStrategies.PERIODIC and self.extraction_strategy:
-                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta, 
+                self.desired_velocity, self.desired_angular = self.controller.get_control_action(self.current_x, self.current_y, self.current_theta,
                 on_spin_start=self.pause_debogger,
                 on_spin_end=(lambda: self.signal_extraction_execute(), self.unpause_debogger()))
             else:
@@ -270,7 +154,7 @@ class Pathplanner():
         self.update_controller_path = True
         self.signal_extraction_stop()
         self.extractionFlag = False
-    
+
     def add_delivery(self):
         self.previous_waypoint = (self.current_x, self.current_y)
         self.waypoints.plan_to_deposit(self.current_x, self.current_y, self.current_theta)
@@ -284,11 +168,11 @@ class Pathplanner():
         self.stopFlag = False
         if isinstance(self.debog_strategy, ActiveDebogger):
             self.debog_strategy.last_debog_time = time.time() + 23
-    
+
     def signal_extraction_start(self):
         if self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
             self.robot.send_control_command("command=7")
-    
+
     def signal_extraction_stop(self):
         if self.extraction_strategy == ExtractionStrategies.CONTINUOUS:
             self.robot.send_control_command("command=8")
@@ -320,7 +204,7 @@ class Pathplanner():
 
     def unpause_debogger(self):
         self.debog_strategy.unpause_debogger()
-    
+
 class RobotGeometry():
     '''
     A class to represent the physical bounds of the robot
@@ -761,3 +645,119 @@ class MockLocalisationWaypointSequence(WaypointSequence):
 
         self.waypoints.append(Waypoint(500, 500, heading=None))
         self.repeat_waypoints = self.waypoints.copy()
+
+
+class Debogger(ABC):
+    @abstractmethod
+    def is_bogged(self, current_x: float, current_y: float, current_theta: float) -> bool:
+        pass
+
+    @abstractmethod
+    def attempt_debog(self, planner: Pathplanner) -> bool:
+        pass
+
+    @abstractmethod
+    def pause_debogger(self):
+        pass
+
+    @abstractmethod
+    def unpause_debogger(self):
+        pass
+
+class NoDebogger(Debogger):
+    def is_bogged(self, current_x, current_y, current_theta) -> bool:
+        return False
+
+    def attempt_debog(self, planner) -> bool:
+        return super().attempt_debog(planner)
+
+    def pause_debogger(self):
+        return super().pause_debogger()
+
+    def unpause_debogger(self):
+        return super().unpause_debogger()
+
+class ActiveDebogger(Debogger):
+    EPSILON_X: float
+    EPSILON_THETA: float
+    PATIENCE: float
+    REVERSE_DISTANCE: float
+    ANGLE_DEVIATION: float
+
+    def __init__(self,
+                 epsilon_x=30,
+                 epsilon_theta=pi/4,
+                 patience=2,
+                 reverse_distance=400,
+                 angle_deviation=pi/6):
+
+        ActiveDebogger.EPSILON_X = epsilon_x
+        ActiveDebogger.EPSILON_THETA = epsilon_theta
+        ActiveDebogger.PATIENCE = patience
+        ActiveDebogger.REVERSE_DISTANCE = reverse_distance
+        ActiveDebogger.ANGLE_DEVIATION = angle_deviation
+
+        self.last_debog_position: tuple[float, float, float] = None
+        self.last_debog_time: float = None
+        self.debogger_enabled: bool = True
+        self.debogger_pause_time: float = None
+
+    def is_bogged(self, current_x: float, current_y: float, current_theta: float) -> bool:
+        if self.last_debog_position is None:
+            self.last_debog_position = (current_x, current_y, current_theta)
+        if self.last_debog_time is None:
+            self.last_debog_time = time.time()
+
+        debog_x, debog_y, debog_theta = self.last_debog_position
+        x_deviation = math.sqrt((current_x - debog_x)**2 + (current_y - debog_y)**2)
+        theta_deviation = abs(current_theta - debog_theta)
+
+        if (x_deviation > ActiveDebogger.EPSILON_X or theta_deviation > ActiveDebogger.EPSILON_THETA):
+            # we have not bogged
+            self.last_debog_time = time.time()
+            self.last_debog_position = (current_x, current_y, current_theta)
+            return False
+        elif time.time() - self.last_debog_time > ActiveDebogger.PATIENCE:
+            return True
+        return False
+
+
+    def attempt_debog(self, planner) -> bool:
+        reverse = -1 if planner.desired_velocity > 0 else 1
+        print("Reversing: ", reverse)
+
+        new_x = min(max(planner.current_x + reverse*math.cos(planner.current_theta)*ActiveDebogger.REVERSE_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS)
+        new_y = min(max(planner.current_y + reverse*math.sin(planner.current_theta)*ActiveDebogger.REVERSE_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS)
+
+        theta_option_one = wrapToPi(planner.current_theta + ActiveDebogger.ANGLE_DEVIATION)
+        theta_option_two = wrapToPi(planner.current_theta - ActiveDebogger.ANGLE_DEVIATION)
+
+        distance_option_one = (abs(1000 - (new_x + math.cos(theta_option_one))))**2 + (abs(1000 - (new_y + math.sin(theta_option_one))))**2
+        distance_option_two = (abs(1000 - (new_x + math.cos(theta_option_two))))**2 + (abs(1000 - (new_y + math.sin(theta_option_two))))**2
+
+        new_heading = theta_option_one if distance_option_one < distance_option_two else theta_option_two
+
+        new_waypoint = Waypoint(new_x, new_y, heading=new_heading)
+
+        planner.waypoints.waypoints.insert(0, new_waypoint)
+        planner.current_waypoint = new_waypoint
+        planner.previous_waypoint = (planner.current_x, planner.current_y)
+
+        print("Current position: ", (planner.current_x, planner.current_y))
+        print("New waypoint: ", planner.current_waypoint.coords)
+
+        # update debog parameters
+        self.last_debog_time = time.time()
+        self.last_debog_position = (planner.current_x, planner.current_y, planner.current_theta)
+
+        planner.update_controller_path = True
+    
+    def pause_debogger(self):
+        self.debogger_enabled = False
+        self.debogger_pause_time = time.time()
+    
+    def unpause_debogger(self):
+        self.debogger_enabled = True
+
+        if self.debogger_pause_time is not None and self.last_debog_time is not None:
+            self.last_debog_time = time.time() - (self.debogger_pause_time - self.last_debog_time)
