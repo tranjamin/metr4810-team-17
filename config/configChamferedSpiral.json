@@ -1,35 +1,37 @@
 {
     "controllers": {
         "forward-controller": {
-            "k_angle": 100,
-            "k_v": 65,
-            "w": 0.8,
-            "goal_tolerance": 40,
+            "k_angle": 5,
+            "k_v": 200,
+            "w": 0.5,
+            "goal_tolerance": 5,
             "angle_deadzone": 0,
             "reversing_allowed": true 
         },
         "spin-controller": {
-            "k_angle": 55,
-            "k_v": 2,
+            "k_angle": 5,
+            "k_v": 0,
             "angle_tolerance": 0.1
         }
     },
     "localisation": {
-        "localisation-class": "CameraLocalisation",
+        "localisation-class": "RobotSim",
         "args": {
-            
+            "filename": "sim/tank_sim.fmu"
         }
     },
     "robot": {
-        "robot-class": "RobotUDP",
+        "robot-class": "RobotSim",
         "args": {
-            "ip": "192.168.4.1"
-        }
+            "filename": "sim/tank_sim.fmu" 
+        },
+        "padding": 50,
+        "emergency-padding": 30
     },
     "pathplan": {
         "reference-class": "SpiralWaypointSequence",
         "args": {
-            "line_spacing": 300,
+            "line_spacing": 100,
             "chamfer_size": 200
         }
     },

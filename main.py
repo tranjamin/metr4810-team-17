@@ -49,7 +49,7 @@ def move_robot(x, y, theta, plan: Pathplanner, robot_comms: RobotUDP):
         plan.controller_step()
         v = plan.desired_velocity
         omega = plan.desired_angular
-        robot_comms.send_control_action(v, omega, do_print=True)
+        robot_comms.send_control_action(v, omega, do_print=False)
 
 
 def main(configfile, camera):
@@ -117,14 +117,14 @@ def main(configfile, camera):
                 plan.controller_step()
                 v = plan.desired_velocity
                 omega = plan.desired_angular
-                robot_comms.send_control_action(v, omega, do_print=True)
+                robot_comms.send_control_action(v, omega, do_print=False)
 
                 # TRANSITIONS
                 if time.time() - old_extraction_time > SCOOP_INTERVAL and not plan.controller.phase_2 :
                     robot_state = State.INITIATE_SCOOP
 
             case State.INITIATE_SCOOP:
-                robot_comms.send_control_action(0, 0, do_print=True)
+                robot_comms.send_control_action(0, 0, do_print=False)
                 robot_tcp.send_control_command("command=9")
                 scoop_entry_time = time.time()
                 robot_state = State.SCOOPING
@@ -146,7 +146,7 @@ def main(configfile, camera):
                 plan.controller_step()
                 v = plan.desired_velocity
                 omega = plan.desired_angular
-                robot_comms.send_control_action(v, omega, do_print=True)
+                robot_comms.send_control_action(v, omega, do_print=False)
 
                 # TRANSITIONS
                 if plan.stopFlag:
@@ -164,7 +164,7 @@ def main(configfile, camera):
                 plan.controller_step()
                 v = plan.desired_velocity
                 omega = plan.desired_angular
-                robot_comms.send_control_action(v, omega, do_print=True)
+                robot_comms.send_control_action(v, omega, do_print=False)
 
                 if plan.controller.has_reached_goal() and plan.controller.phase_2:
                     robot_state = State.TRAVERSAL  # maybe need separate waiting to restart state?

@@ -327,7 +327,7 @@ class RobotGeometry():
     '''
     WIDTH: float = 400
     LENGTH: float = 176
-    PADDING: float = 80
+    PADDING: float = 50
     EMERGENCY_PADDING: float = 30
     RADIUS: float = math.sqrt(WIDTH**2 + LENGTH**2)/2
 
@@ -567,105 +567,22 @@ class SpiralWaypointSequence(WaypointSequence):
     ENV_WIDTH: float = 2000
 
     def __init__(self, 
-                 points_per_line: int,
-                 chamfered: bool,
-                 theta_agnostic=False):
-        super().__init__()
-        
-        # calculate the y coordinates
-        y_spacing: float = (SpiralWaypointSequence.ENV_LENGTH - 2*SpiralWaypointSequence.BORDER_PADDING)/(points_per_line - 1)
-        y_coords: list[float] = [SpiralWaypointSequence.BORDER_PADDING + i*y_spacing for i in range(points_per_line)]
-
-        # calculate the x coordinates
-        x_coords: list[float] = y_coords.copy()
-
-        while len(x_coords) and len(y_coords):
-            for j, y in enumerate(y_coords):
-                target_heading = pi/2 if j != (len(y_coords) - 1) else 0
-                waypoint: Waypoint = Waypoint(
-                    x_coords[0], y,
-                    heading = None if theta_agnostic else target_heading,
-                    vel = 0 if j == 0 or j == len(y_coords) else None
-                )
-                if j != len(y_coords) - 1 or not chamfered:
-                    self.waypoints.append(waypoint)
-            x_coords.pop(0)
-
-            if not len(x_coords):
-                break
-            
-            for i, x in enumerate(x_coords):
-                target_heading = 0 if i != (len(x_coords) - 1) else -pi/2
-                waypoint: Waypoint = Waypoint(
-                    x, y_coords[-1],
-                    heading = None if theta_agnostic else target_heading,
-                    vel = 0 if i == 0 or i == len(y_coords) else None
-                )
-                if i != len(x_coords) - 1 or not chamfered:
-                    self.waypoints.append(waypoint)
-            y_coords.pop(-1)
-
-            if not len(y_coords):
-                break
-
-            for j, y in enumerate(y_coords[::-1]):
-                target_heading = -pi/2 if j != (len(y_coords) - 1) else pi
-                waypoint: Waypoint = Waypoint(
-                    x_coords[-1], y,
-                    heading = None if theta_agnostic else target_heading,
-                    vel = 0 if j == 0 or j == len(y_coords) else None
-                )
-                if j != len(y_coords) - 1 or not chamfered:
-                    self.waypoints.append(waypoint)
-            x_coords.pop(-1)
-
-            if not len(x_coords):
-                break
-            
-            for i, x in enumerate(x_coords[::-1]):
-                target_heading = pi if i != (len(x_coords) - 1) else pi/2
-                waypoint: Waypoint = Waypoint(
-                    x, y_coords[0],
-                    heading = None if theta_agnostic else target_heading,
-                    vel = 0 if i == 0 or i == len(y_coords) else None
-                )
-                if i != len(x_coords) - 1 or not chamfered:
-                    self.waypoints.append(waypoint)
-            y_coords.pop(0)
-
-            if not len(y_coords):
-                break
-
-        while self.waypoints[0].y < 700:
-            self.waypoints.pop(0)
-
-        self.repeat_waypoints = self.waypoints.copy()
-
-class SpiralWaypointSequenceChamfered(WaypointSequence):
-    '''
-    A sequence of waypoints based on a snake search.
-    '''
-
-    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING 
-    ENV_LENGTH: float = 2000
-    ENV_WIDTH: float = 2000
-
-    def __init__(self, 
-                 point_spacing: float,
                  line_spacing: float,
+                 point_spacing: float = 2000,
+                 chamfer_size: Optional[float] = 200,
                  theta_agnostic=False):
         super().__init__()
         
         y_initial = SpiralWaypointSequence.BORDER_PADDING
         x_initial = SpiralWaypointSequence.BORDER_PADDING
 
-        y_min = y_initial
+        y_min = y_initial - line_spacing
         y_max = SpiralWaypointSequence.ENV_LENGTH - SpiralWaypointSequence.BORDER_PADDING
         x_min = x_initial
         x_max = SpiralWaypointSequence.ENV_WIDTH - SpiralWaypointSequence.BORDER_PADDING
 
-        chamfer = 200
-
+        chamfer = chamfer_size
+        
         i = 0
         j = 0
         while True:
@@ -673,14 +590,16 @@ class SpiralWaypointSequenceChamfered(WaypointSequence):
                 x = x_min
                 y = min(y_min + chamfer + point_spacing*j, y_max - chamfer)
                 if y == y_max - chamfer:
-                    target_heading = pi/4
+                    target_heading = pi/4 if chamfer else 0
                 else:
                     target_heading = pi/2
 
                 waypoint = Waypoint(
                     x, y, heading=target_heading
                 )
-                self.waypoints.append(waypoint)
+
+                if chamfer or j != 0:
+                    self.waypoints.append(waypoint)
 
                 if y == y_max - chamfer:
                     break
@@ -693,14 +612,17 @@ class SpiralWaypointSequenceChamfered(WaypointSequence):
                 x = min(x_min + chamfer + point_spacing*i, x_max - chamfer)
                 y = y_max
                 if x == x_max - chamfer:
-                    target_heading = -pi/4
+                    target_heading = -pi/4 if chamfer else -pi/2
                 else:
                     target_heading = 0
 
                 waypoint = Waypoint(
                     x, y, heading=target_heading
                 )
-                self.waypoints.append(waypoint)
+                
+                if chamfer or i != 0:
+                    self.waypoints.append(waypoint)
+
 
                 if x == x_max - chamfer:
                     break
@@ -715,14 +637,17 @@ class SpiralWaypointSequenceChamfered(WaypointSequence):
                 x = x_max
                 y = max(y_max - chamfer - point_spacing*j, y_min + chamfer)
                 if y == y_min + chamfer:
-                    target_heading = -3*pi/4
+                    target_heading = -3*pi/4 if chamfer else pi
                 else:
                     target_heading = -pi/2
 
                 waypoint = Waypoint(
                     x, y, heading=target_heading
                 )
-                self.waypoints.append(waypoint)
+
+                if chamfer or j != 0:
+                    self.waypoints.append(waypoint)
+
 
                 if y == y_min + chamfer:
                     break
@@ -735,14 +660,17 @@ class SpiralWaypointSequenceChamfered(WaypointSequence):
                 x = max(x_max - chamfer - point_spacing*i, x_min + chamfer)
                 y = y_min
                 if x == x_min + chamfer:
-                    target_heading = 3 * pi/4
+                    target_heading = 3 * pi/4 if chamfer else pi/2
                 else:
                     target_heading = pi
 
                 waypoint = Waypoint(
                     x, y, heading=target_heading
                 )
-                self.waypoints.append(waypoint)
+
+                if chamfer or i != 0:
+                    self.waypoints.append(waypoint)
+
 
                 if x == x_min + chamfer:
                     break
@@ -753,11 +681,12 @@ class SpiralWaypointSequenceChamfered(WaypointSequence):
             i = 0
             j = 0
 
-            if (x_max - x_min) < line_spacing or (y_max - y_min) < line_spacing:
+            if (x_max - x_min) < 2*line_spacing or (y_max - y_min) < 2*line_spacing:
                 break
     
         self.repeat_waypoints = self.waypoints.copy()
-        self.waypoints.pop(0)
+        if chamfer:
+            self.waypoints.pop(0)
 
 class RectangleWaypointSequence(WaypointSequence):
     '''

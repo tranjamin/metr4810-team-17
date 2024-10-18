@@ -3,7 +3,7 @@ import json
 from localisation import *
 from planning import *
 from robot import *
-
+from fmi import *
 
 class Config():
     '''
@@ -108,5 +108,8 @@ class Config():
         robot_config = self.config_file["robot"]
         robot_class = eval(robot_config["robot-class"])
         robot_comms: Robot = robot_class(**robot_config["args"])
+
+        RobotGeometry.PADDING = robot_config["padding"]
+        RobotGeometry.EMERGENCY_PADDING = robot_config["emergency-padding"]
 
         return robot_comms
