@@ -34,7 +34,6 @@ class Pathplanner():
         self.update_controller_path = True
 
         self.stopFlag = False
-        self.extractionFlag = False
 
         self.extraction_strategy: ExtractionModes = None
 
@@ -90,7 +89,6 @@ class Pathplanner():
                 self.signal_pathplanning_stop()
             if self.current_waypoint.suspendFlag:
                 self.extraction_strategy.pause_extraction()
-                self.extractionFlag = False
             if self.current_waypoint.resumeFlag:
                 self.extraction_strategy.unpause_extraction()
                 self.signal_pathplanning_start()
@@ -119,9 +117,6 @@ class Pathplanner():
             if self.update_controller_path:
                 self.controller.set_path(self.previous_waypoint, self.current_waypoint.coords, self.current_waypoint.heading)
                 self.update_controller_path = False
-
-                if self.extractionFlag:
-                    self.extraction_strategy.unpause_extraction()
                 
             def spin_start_func():
                 self.extraction_strategy.pause_extraction()
@@ -145,7 +140,6 @@ class Pathplanner():
         self.current_waypoint = self.waypoints.get_current_waypoint()
         self.update_controller_path = True
         self.extraction_strategy.pause_extraction()
-        self.extractionFlag = False
 
     def add_delivery(self):
         self.previous_waypoint = (self.current_x, self.current_y)
@@ -153,7 +147,6 @@ class Pathplanner():
         self.current_waypoint = self.waypoints.get_current_waypoint()
         self.update_controller_path = True
         self.extraction_strategy.unpause_extraction()
-        self.extractionFlag = False
 
     def signal_delivery_start(self):
         self.robot.send_control_command("command=0")
