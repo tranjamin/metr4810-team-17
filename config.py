@@ -1,3 +1,7 @@
+'''
+Processes and parses the config files
+'''
+
 import json
 
 from localisation import *
@@ -5,7 +9,6 @@ from controllers import *
 from planning import *
 from robot import *
 from fmi import *
-
 
 class Config():
     '''
@@ -16,7 +19,7 @@ class Config():
             - forward-controller: an object with the following fields
                 - k_angle (float): the angle gain of the forward path
                 - k_v (float): the velocity gain of the forward path
-                - w (float): the line parameter
+                - w (float): the line parameter of the forward path
                 - goal_tolerance (float): the linear margin of error to classify a waypoint as reached [mm]
                 - reversing_allowed (bool): whether the robot is permitted to reverse
             - spin-controller: an object with the following fields
@@ -29,13 +32,18 @@ class Config():
         - robot: an object with the following fields
             - robot-class (str): the name of the robot class to instantiate
             - args (dict): a dictionary of arguments the robot class' init accepts
+            - padding (float): the robot padding to consider for the path planner
+            - emergency-padding (float): the robot padding to consider when moving to high ground
         - pathplan: an object with the following fields
             - reference-class (str): the name of the pathplan's waypoint class to instantiate
             - args (dict): a dictionary of arguments the reference class' init accepts
+            - aim-enabled (bool): allows aim assist for the plan
         - debogger: an object with the following fields
             - enabled (bool): whether to enable the debogger or not
+            - args (dict): an optional dictionary of arguments the debogger accepts
         - extraction: an object with the following fields
-            - type (str): the enumerated name of the extraction mode to select
+            - reference-class (str): the name of the extraction strategy class to instantiate
+            - args (dict): a dictionary of arguments the reference class' init accepts
 
     Example Usage:
         cfg = Config(config_filename)
@@ -68,7 +76,7 @@ class Config():
         assert isinstance(localiser, Localisation)
 
         return localiser
-    
+
     def load_pathplanning(self) -> Pathplanner:
         '''
         Load the pathplanner from the config file.
@@ -90,7 +98,7 @@ class Config():
         extraction_mode: str = self.config_file["extraction"]["reference-class"]
         extraction_args: dict = self.config_file["extraction"].get("args", {})
         plan.set_extraction_strategy(eval(extraction_mode)(**extraction_args))
-        
+
         # load in debogger mode from config file
         debogger_config = self.config_file.get("debogger")
         if debogger_config:
@@ -99,9 +107,6 @@ class Config():
                 plan.set_debogging_strategy(ActiveDebogger(**debogger_args))
             else:
                 plan.set_debogging_strategy(NoDebogger())
-        
-        # pause debogger until started
-        plan.debog_strategy.pause_debogger()
 
         # load in waypoints from config file
         pathplanner_class: WaypointSequence = eval(self.config_file["pathplan"]["reference-class"])
@@ -113,11 +118,20 @@ class Config():
 
         return plan
 
-    def load_robot(self):
+    def load_robot(self) -> Robot:
+        '''
+        Load the robot from the config file.
+
+        Returns:
+            (Robot): the robot.
+        '''
+
+        # get the robot class
         robot_config = self.config_file["robot"]
         robot_class = eval(robot_config["robot-class"])
         robot_comms: Robot = robot_class(**robot_config.get("args", {}))
 
+        # set the robot geometry
         RobotGeometry.PADDING = robot_config.get("padding", RobotGeometry.PADDING)
         RobotGeometry.EMERGENCY_PADDING = robot_config.get("emergency-padding", RobotGeometry.EMERGENCY_PADDING)
 

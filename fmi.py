@@ -1,3 +1,8 @@
+'''
+Functionality for integrating the Simulink model to the pathplanning via the Functional Mockup Interface (FMI).
+For more information on FMI, see https://fmi-standard.org/
+'''
+
 import fmpy
 import fmpy.fmi2
 import time
@@ -5,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from robot import Robot
-from utils import wrapToPi
+from utils import wrap_to_pi
 from localisation import Localisation
 
 
@@ -69,7 +74,7 @@ class RobotSim(Robot, Localisation):
         self.results: list = []
 
     def setup(self):
-        pass
+        return # no setup necessary
 
     def get_position(self, *args):
 
@@ -82,7 +87,7 @@ class RobotSim(Robot, Localisation):
             [self.vrs["x"], self.vrs["y"], self.vrs["theta"]]
         )
         _ = 0
-        theta = wrapToPi(theta)
+        theta = wrap_to_pi(theta)
         return (x, _, y, _, _, _), (theta, _, _, _, _, _)
 
     def step(self):
@@ -118,7 +123,7 @@ class RobotSim(Robot, Localisation):
     def send_control_action(self, v: float, omega: float, do_print=False):
         if do_print:
             print(f"v: {v}, omega: {omega}")
-
+ 
         self.fmu.setReal([self.vrs["v"], self.vrs["omega"]], [v, omega])
 
     def send_control_command(self, command: str):
@@ -130,8 +135,8 @@ class RobotSim(Robot, Localisation):
     def plot_results(self):
         """
         Plot the results of the FMU simulation
-        """
-
+        '''
+ 
         # plot robot positions over time
         fmpy.util.plot_result(
             np.array(
@@ -153,6 +158,3 @@ class RobotSim(Robot, Localisation):
         plt.xlim((0, 2000))
         plt.ylim((0, 2000))
         plt.show()
-
-
-pass

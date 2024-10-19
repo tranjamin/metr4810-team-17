@@ -1,8 +1,18 @@
+'''
+Stores all localisation functionality
+
+Classes:
+    Localisation(): an abstract class which represents a method of localising the robot.
+        MockLocalisation(): a class which is used to mock out real localisation
+        CameraLocalisation(): a class which uses AprilTags to detect the position of the robot.
+'''
+
 import cv2 as cv
 import numpy as np
 from robotpy_apriltag import AprilTagDetector
 from scipy.spatial.transform import Rotation as R
 import time
+from abc import ABC, abstractmethod
 
 from estimators import RigidBodyTracker
 
@@ -19,21 +29,37 @@ ORIGIN_XOFFSET = 50
 ORIGIN_YOFFSET = 50
 
 
-class Localisation:
+class Localisation(ABC):
+    '''
+    An abstract class representing a localisation method.
+    '''
+
     def deinit(self):
-        pass
+        '''
+        Tears down and closes any hanging resources once the localisation has been terminated.
+        '''
 
     def setup(self):
-        pass
+        '''
+        Sets up the localisation.
+        '''
 
     def get_position(self):
-        pass
+        '''
+        Gets the position of the robot, according to the localisation.
+        '''
 
-    def annotate_xy(self, img, x, y):
-        pass
+    def annotate_xy(self, img: cv.typing.MatLike, x: float, y: float):
+        '''
+        Annotates an image with a set of coordinates
 
+        Parameters:
+            img (cv.typing.MatLike): the image to annotate
+            x (float): the x coordinate to annotate
+            y (float): the y coordinate to annotate
+        '''
 
-class MarkerCollection:
+class MarkerCollection():
     """
     Class to represent an object we want to track that has a variety of markers
     rigidly connected to it.
@@ -152,7 +178,6 @@ class MarkerCollection:
         relevant_corners = np.concatenate(corner_collection)
 
         # find relevant object points
-
         objpts_collection = [
             self._points[id[0]]
             for id in ids
@@ -162,7 +187,6 @@ class MarkerCollection:
         relevant_object_points = np.concatenate(objpts_collection)
 
         # have tvecs changed a ton since the last measurement?
-
         _, rvecs, tvecs = cv.solvePnP(
             relevant_object_points,
             relevant_corners,
@@ -279,6 +303,9 @@ def get_frame_image_coords(
 
 
 class MockLocalisation(Localisation):
+    '''
+    A dummy class which simply returns the origin.
+    '''
     def get_position(self, img):
         return (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0)
 

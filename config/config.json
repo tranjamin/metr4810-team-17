@@ -1,47 +1,42 @@
 {
     "controllers": {
         "forward-controller": {
-            "k_angle": 5,
-            "k_v": 200,
-            "w": 0.5,
-            "goal_tolerance": 5,
+            "k_angle": 100,
+            "k_v": 48,
+            "w": 0.8,
+            "goal_tolerance": 40,
             "angle_deadzone": 0,
             "reversing_allowed": true 
         },
         "spin-controller": {
-            "k_angle": 5,
-            "k_v": 0,
+            "k_angle": 55,
+            "k_v": 2,
             "angle_tolerance": 0.1
         }
     },
     "localisation": {
-        "localisation-class": "RobotSim",
+        "localisation-class": "CameraLocalisation",
         "args": {
-            "filename": "sim/tank_sim.fmu"
+            
         }
     },
     "robot": {
-        "robot-class": "RobotSim",
+        "robot-class": "RobotMixed",
         "args": {
-            "filename": "sim/tank_sim.fmu" 
-        },
-        "padding": 50,
-        "emergency-padding": 30
+            "ip": "192.168.4.1"
+        }
     },
     "pathplan": {
-        "reference-class": "SpiralWaypointSequence",
+        "reference-class": "SnakeWaypointSequence",
         "args": {
-            "line_spacing": 100,
-            "chamfer_size": 0
+            "snake_spacing": 110
         },
-        "aim-enabled": false
+        "aim-enabled": true
     },
     "debogger": {
         "enabled": false
     },
     "extraction": {
-        "reference-class": "ExtractionNone",
-        "args": {
-        }
+        "reference-class": "ExtractionContinuous"
     }
 }
