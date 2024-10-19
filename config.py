@@ -1,3 +1,7 @@
+'''
+Processes and parses the config files
+'''
+
 import json
 
 from localisation import *
@@ -5,7 +9,6 @@ from controllers import *
 from planning import *
 from robot import *
 from fmi import *
-
 
 class Config():
     '''
@@ -16,7 +19,7 @@ class Config():
             - forward-controller: an object with the following fields
                 - k_angle (float): the angle gain of the forward path
                 - k_v (float): the velocity gain of the forward path
-                - w (float): the line parameter
+                - w (float): the line parameter of the forward path
                 - goal_tolerance (float): the linear margin of error to classify a waypoint as reached [mm]
                 - reversing_allowed (bool): whether the robot is permitted to reverse
             - spin-controller: an object with the following fields
@@ -29,13 +32,18 @@ class Config():
         - robot: an object with the following fields
             - robot-class (str): the name of the robot class to instantiate
             - args (dict): a dictionary of arguments the robot class' init accepts
+            - padding (float): the robot padding to consider for the path planner
+            - emergency-padding (float): the robot padding to consider when moving to high ground
         - pathplan: an object with the following fields
             - reference-class (str): the name of the pathplan's waypoint class to instantiate
             - args (dict): a dictionary of arguments the reference class' init accepts
+            - aim-enabled (bool): allows aim assist for the plan
         - debogger: an object with the following fields
             - enabled (bool): whether to enable the debogger or not
+            - args (dict): an optional dictionary of arguments the debogger accepts
         - extraction: an object with the following fields
-            - type (str): the enumerated name of the extraction mode to select
+            - reference-class (str): the name of the extraction strategy class to instantiate
+            - args (dict): a dictionary of arguments the reference class' init accepts
 
     Example Usage:
         cfg = Config(config_filename)
