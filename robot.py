@@ -182,10 +182,10 @@ class RobotMixed(Robot):
     def __init__(self, ip: str):
         self.udp_robot = RobotUDP(ip)
         self.tcp_robot = RobotTCP(ip)
-    
+
     def send_control_command(self, command: str):
         self.tcp_robot.send_control_command(command)
-    
+
     def send_control_action(self, v: float, omega: float, do_print: bool = False):
         self.udp_robot.send_control_action(v, omega, do_print)
 

@@ -56,7 +56,6 @@ class Controller(ABC):
         Returns:
             (v, omega) (tuple[float, float]): the desired linear and angular velocity
         '''
-        pass
 
 class SpinController(Controller):
     '''
@@ -73,7 +72,7 @@ class SpinController(Controller):
         self.k_v = k_v
         self.angle_tolerance = angle_tolerance
         super().__init__()
-    
+
     def get_control_action(self, x: float, y: float, theta: float) -> tuple[float, float]:
         r = np.array([x, y]) # robot position vector
 
@@ -89,7 +88,7 @@ class SpinController(Controller):
 
         # calculate the wrapped angle
         angle_error = atan2(sin_angle_error, cos_angle_error)
-        
+
         omega = copysign(self.k_angle, angle_error)
 
         # ensure we move in the correct direction
@@ -108,8 +107,8 @@ class FowardController(Controller):
     Controller to make robot track along a straight path
     """
 
-    def __init__(self, k_angle: float, k_v: float, w: float, 
-                 goal_tolerance: float, angle_deadzone: float, 
+    def __init__(self, k_angle: float, k_v: float, w: float,
+                 goal_tolerance: float, angle_deadzone: float,
                  reversing_allowed: bool=True):
         '''
         Parameters:
@@ -131,8 +130,8 @@ class FowardController(Controller):
 
     def get_control_action(self, x: float, y: float, theta: float) -> tuple[float, float]:
         r = np.array([x, y]) # robot position vector
-        d = self.p1 - self.p0        
-        
+        d = self.p1 - self.p0
+
         # check if goal has been reached
         if np.linalg.norm(r - self.p1) < self.goal_tolerance or self.reached_goal or not np.any(d):
             self.reached_goal = True
@@ -140,7 +139,7 @@ class FowardController(Controller):
             return 0, 0
 
         k = 1/np.linalg.norm(d)**2 * np.dot(d, r - self.p0)
-        
+
         # location of closest point on path to the robot
         s = k*d + self.p0
 
@@ -168,7 +167,7 @@ class FowardController(Controller):
             if abs(other_possibility) < abs(angle_error):
                 # it would be easier to reverse
                 angle_error = other_possibility
-        
+
         omega = 0
         if (np.linalg.norm(r_to_waypoint) > self.angle_deadzone):
             omega = self.k_angle * angle_error
@@ -177,7 +176,7 @@ class FowardController(Controller):
             v = self.k_v
 
         # ensure we move in the correct direction
-        
+
         if not self.reversing_allowed:
             # wait until we're facing in the correct direction before moving
             v = max(v, 0)
@@ -216,7 +215,7 @@ class LineFollowerController(Controller):
 
         super().set_path(p0, p1, theta_target)
 
-    def get_control_action(self, x: float, y: float, theta: float, 
+    def get_control_action(self, x: float, y: float, theta: float,
                            on_spin_start: Optional[Callable] = None,
                            on_spin_end: Optional[Callable] = None) -> tuple[float, float]:
         '''
@@ -236,7 +235,7 @@ class LineFollowerController(Controller):
         if not self.phase_2 and not self.forward_controller.has_reached_goal():
             # keep progressing along the foward path
             return self.forward_controller.get_control_action(x, y, theta)
-        
+
         if self.spin_controller.has_reached_goal() or (self.forward_controller.has_reached_goal() and self.theta_agnostic):
             # goal has been reached
             print("CONTROLLER REACHED GOAL")

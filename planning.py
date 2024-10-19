@@ -64,7 +64,7 @@ class Pathplanner():
             strategy (ExtractionModes): the strategy to use
         '''
         self.extraction_strategy = strategy
-    
+
     def set_debogging_strategy(self, strategy: Debogger):
         '''
         Sets the debog strategy to be used by the panner
@@ -88,7 +88,7 @@ class Pathplanner():
         # log information about the first waypoint
         print("---- FIRST WAYPOINT ----")
         print(f"(Next waypoint is at: {self.current_waypoint.coords})")
-    
+
     def set_controller(self, controller: Controller):
         '''
         Sets the controller used for the planning.
@@ -97,7 +97,7 @@ class Pathplanner():
             controller (Controller): the controller to use
         '''
         self.controller = controller
-    
+
     def set_robot(self, robot: Robot):
         '''
         Links the robot which will be used for communication.
@@ -128,7 +128,7 @@ class Pathplanner():
         if self.current_waypoint is None:
             # at the end of the sequence
             return
-        
+
         if self.controller.has_reached_goal() and not self.stopFlag:
             # has reached the waypoint so can move to the next one
 
@@ -165,24 +165,24 @@ class Pathplanner():
         else: # else, get the control actions
             if self.update_controller_path: # update controller path if necessary
                 self.controller.set_path(
-                    self.previous_waypoint, 
-                    self.current_waypoint.coords, 
+                    self.previous_waypoint,
+                    self.current_waypoint.coords,
                     self.current_waypoint.heading
                     )
                 self.update_controller_path = False
-                
+
             def spin_start_func(): # define function to call when spin controller starts
                 self.extraction_strategy.pause_extraction()
                 self.debog_strategy.pause_debogger()
-            
-            def spin_stop_func(): # define function to call when spin controller stops 
+
+            def spin_stop_func(): # define function to call when spin controller stops
                 self.extraction_strategy.unpause_extraction()
                 self.debog_strategy.unpause_debogger()
-            
+
             # get the desired movements from controller
             self.desired_velocity, self.desired_angular = self.controller.get_control_action(
                 self.current_x,
-                self.current_y, 
+                self.current_y,
                 self.current_theta,
                 on_spin_start=spin_start_func,
                 on_spin_end=spin_stop_func
@@ -240,7 +240,6 @@ class Pathplanner():
         # resumes path plan
         self.stopFlag = False
         self.debog_strategy.enable_debogger()
-        s
 
         # pauses the debogger for the predefined time
         if isinstance(self.debog_strategy, ActiveDebogger):
@@ -268,10 +267,10 @@ class Waypoint():
     A coordinate and heading which the robot will move through. Coordinates are measured through the geometric centre of the robot.
     '''
 
-    def __init__(self, 
-                 x: float, 
-                 y: float, 
-                 heading: Optional[float] = None, 
+    def __init__(self,
+                 x: float,
+                 y: float,
+                 heading: Optional[float] = None,
                  vel: Optional[float] = None,
                  suspendExtraction: bool = False,
                  resumeExtraction: bool = False,
@@ -297,11 +296,11 @@ class Waypoint():
         # ensures the waypoint is within the bounds of the environment
         assert self.x <= 2000 and self.x >= 0
         assert self.y <= 2000 and self.y >= 0
-        assert self.heading is None or (self.heading >= -pi and self.heading <= pi)    
+        assert self.heading is None or (self.heading >= -pi and self.heading <= pi)
 
     def __str__(self):
         return f"{self.x}, {self.y}, {self.heading}"
-    
+
     def __repr__(self):
         return f"{self.x}, {self.y}, {self.heading}"
 
@@ -391,13 +390,13 @@ class WaypointSequence(ABC):
         self.nonrepeat_waypoints: list[Waypoint] = list() # a copy of the list
         self.repeat_waypoints: list[Waypoint] = list() # the list of waypoints when restarting the run
         self.dynamic_aim = False # whether aiming from the deposit is permitted
-    
+
     def aim_enable(self):
         '''
         Enable aim assist for the plan. This overwrites the default plan to go in a straight line, if the initial robot position is at an angle different to expected
         '''
         self.dynamic_aim = True
-    
+
     def aim_assist_on(self, x: float, y: float, theta: float):
         '''
         Recalculates the path with the aim assist on.
@@ -410,13 +409,13 @@ class WaypointSequence(ABC):
         straight_aim = StraightLineWaypointSequence()
         straight_aim.aim_line(x, y, theta)
         self.waypoints = straight_aim.waypoints.copy()
-    
+
     def aim_assist_off(self):
         '''
         Recalculates the path with the aim assist off.
         '''
         self.nonrepeat_waypoints.copy()
-    
+
     def plan_to_deposit(self, current_x: float, current_y: float, current_theta: float):
         '''
         Plans to the deposit chamber.
@@ -433,14 +432,14 @@ class WaypointSequence(ABC):
 
         # calculate the return angle after going to the helper waypoint
         return_angle = atan2(
-            current_y - DepositHelperWaypoint.DEPOSIT_HELPER_Y, 
+            current_y - DepositHelperWaypoint.DEPOSIT_HELPER_Y,
             current_x - DepositHelperWaypoint.DEPOSIT_HELPER_X)
-        
+
         # calculate the attack angle to go towards the helper waypoint
         return_angle_2 = atan2(
-            - (current_y - DepositHelperWaypoint.DEPOSIT_HELPER_Y), 
+            - (current_y - DepositHelperWaypoint.DEPOSIT_HELPER_Y),
             - (current_x - DepositHelperWaypoint.DEPOSIT_HELPER_X))
-        
+
         distance_to_return_angle = wrap_to_pi(return_angle - current_theta)
         distance_to_return_angle_2 = wrap_to_pi(return_angle_2 - current_theta)
 
@@ -456,7 +455,7 @@ class WaypointSequence(ABC):
 
         # insert the spin waypoint to do immediately
         self.waypoints.insert(0, Waypoint(current_x, current_y, immediate_rotate_angle))
-    
+
     def plan_to_emergency(self, current_x: float, current_y: float, current_theta: float):
         '''
         Plans to the emergency high ground (the edges of the arena)
@@ -472,7 +471,7 @@ class WaypointSequence(ABC):
         right_emergency = 2000 - current_x
         down_emergency = current_y
         up_emergency = 2000 - current_y
-        
+
         # disregard orthogonal directions
         if ((current_theta < pi/4) and (current_theta > -pi/4)) or \
             ((current_theta > 3*pi/4) and (current_theta < -3*pi/4)):
@@ -496,11 +495,11 @@ class WaypointSequence(ABC):
             emergency_waypoint = Waypoint(current_x, 2000 - RobotGeometry.LENGTH/2 - RobotGeometry.EMERGENCY_PADDING, pi/2)
         else:
             emergency_waypoint = Waypoint(current_x, RobotGeometry.LENGTH/2 + RobotGeometry.EMERGENCY_PADDING, -pi/2)
-        
+
         # add waypoint
         self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
         self.waypoints.insert(0, emergency_waypoint)
-    
+
     def get_current_waypoint(self) -> Waypoint | None:
         '''
         Gets the current waypoint being tracked.
@@ -509,7 +508,7 @@ class WaypointSequence(ABC):
             (Waypoint | None): the current waypoint being tracked, or None if there are no waypoints left.
         '''
         return self.waypoints[0] if len(self.waypoints) else None
-    
+
     def move_to_next_waypoint(self) -> Waypoint | None:
         '''
         Transitions tracking to the next waypoint.
@@ -533,16 +532,16 @@ class SnakeWaypointSequence(WaypointSequence):
     A sequence of waypoints based on a snake search.
     '''
 
-    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING 
+    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING
     ENV_LENGTH: float = 2000
     ENV_WIDTH: float = 2000
 
-    def __init__(self, 
+    def __init__(self,
                  points_per_line: int = 2,
                  snake_spacing = RobotGeometry.DIGGER_WIDTH,
                  theta_agnostic=False):
         super().__init__()
-        
+
         # calculate the y coordinates
         y_spacing: float = (SnakeWaypointSequence.ENV_LENGTH - 2*SnakeWaypointSequence.BORDER_PADDING)/(points_per_line - 1)
         y_coords: list[float] = [SnakeWaypointSequence.BORDER_PADDING + i*y_spacing for i in range(points_per_line)]
@@ -558,7 +557,7 @@ class SnakeWaypointSequence(WaypointSequence):
                     target_heading = pi/2 if not i % 2 else -pi/2
                 else:
                     target_heading = 0
-                
+
                 waypoint = Waypoint(
                     x, y,
                     heading = None if theta_agnostic else target_heading,
@@ -575,17 +574,17 @@ class SpiralWaypointSequence(WaypointSequence):
     A sequence of waypoints based on a snake search.
     '''
 
-    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING 
+    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING
     ENV_LENGTH: float = 2000
     ENV_WIDTH: float = 2000
 
-    def __init__(self, 
+    def __init__(self,
                  line_spacing: float,
                  point_spacing: float = 2000,
                  chamfer_size: Optional[float] = 200,
                  theta_agnostic=False):
         super().__init__()
-        
+
         y_initial = SpiralWaypointSequence.BORDER_PADDING
         x_initial = SpiralWaypointSequence.BORDER_PADDING
 
@@ -595,7 +594,7 @@ class SpiralWaypointSequence(WaypointSequence):
         x_max = SpiralWaypointSequence.ENV_WIDTH - SpiralWaypointSequence.BORDER_PADDING
 
         chamfer = chamfer_size
-        
+
         i = 0
         j = 0
         while True:
@@ -620,7 +619,7 @@ class SpiralWaypointSequence(WaypointSequence):
                 j += 1
 
             y_min = y_min + line_spacing
-            
+
             while True:
                 x = min(x_min + chamfer + point_spacing*i, x_max - chamfer)
                 y = y_max
@@ -632,16 +631,16 @@ class SpiralWaypointSequence(WaypointSequence):
                 waypoint = Waypoint(
                     x, y, heading=target_heading
                 )
-                
+
                 if chamfer or i != 0:
                     self.waypoints.append(waypoint)
 
 
                 if x == x_max - chamfer:
                     break
-            
+
                 i += 1
-    
+
             x_min = x_min + line_spacing
             i = 0
             j = 0
@@ -666,9 +665,9 @@ class SpiralWaypointSequence(WaypointSequence):
                     break
 
                 j += 1
-            
+
             y_max = y_max - line_spacing
-            
+
             while True:
                 x = max(x_max - chamfer - point_spacing*i, x_min + chamfer)
                 y = y_min
@@ -687,7 +686,7 @@ class SpiralWaypointSequence(WaypointSequence):
 
                 if x == x_min + chamfer:
                     break
-            
+
                 i += 1
 
             x_max = x_max - line_spacing
@@ -696,7 +695,7 @@ class SpiralWaypointSequence(WaypointSequence):
 
             if (x_max - x_min) < 2*line_spacing or (y_max - y_min) < 2*line_spacing:
                 break
-    
+
         self.repeat_waypoints = self.waypoints.copy()
         if chamfer:
             self.waypoints.pop(0)
@@ -714,31 +713,31 @@ class RectangleWaypointSequence(WaypointSequence):
 
         for i in range(num_loops):
             self.waypoints.append(Waypoint(
-                origin_x, 
-                origin_y + length_y, 
-                heading=None if angle_agnostic else 0, 
+                origin_x,
+                origin_y + length_y,
+                heading=None if angle_agnostic else 0,
                 vel=0 if RectangleWaypointSequence.STOPPING else None))
             self.waypoints.append(Waypoint(
-                origin_x + length_x, 
-                origin_y + length_y, 
+                origin_x + length_x,
+                origin_y + length_y,
                 heading=None if angle_agnostic else -pi/2,
                 vel=0 if RectangleWaypointSequence.STOPPING else None))
             self.waypoints.append(Waypoint(
-                origin_x + length_x, 
-                origin_y, 
-                heading=None if angle_agnostic else pi, 
+                origin_x + length_x,
+                origin_y,
+                heading=None if angle_agnostic else pi,
                 vel=0 if RectangleWaypointSequence.STOPPING else None))
             self.waypoints.append(Waypoint(
-                origin_x, 
-                origin_y, 
-                heading=None if angle_agnostic else pi/2, 
+                origin_x,
+                origin_y,
+                heading=None if angle_agnostic else pi/2,
                 vel=0 if RectangleWaypointSequence.STOPPING else None))
-        
+
         self.repeat_waypoints = self.waypoints.copy()
         self.nonrepeat_waypoints = self.waypoints.copy()
 
 class ShiftingWindowSequence(WaypointSequence):
-    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING 
+    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING
     ENV_LENGTH: float = 2000
     ENV_WIDTH: float = 2000
 
@@ -756,7 +755,7 @@ class ShiftingWindowSequence(WaypointSequence):
             self.waypoints.append(Waypoint(origin_x + 1000 - ShiftingWindowSequence.BORDER_PADDING, min_y, pi))
 
             origin_x += line_spacing
-        
+
         self.repeat_waypoints = self.waypoints.copy()
         self.waypoints.pop(0)
         self.nonrepeat_waypoints = self.waypoints.copy()
@@ -766,7 +765,7 @@ class StraightLineWaypointSequence(WaypointSequence):
         super().__init__()
 
         self.waypoints.append(Waypoint(0, 0, 0))
-    
+
     def aim_line(self, current_x, current_y, current_theta):
         self.waypoints = []
 
@@ -870,7 +869,7 @@ class NoDebogger(Debogger):
 
     def unpause_debogger(self):
         return super().unpause_debogger()
-    
+
     def delay(self, delay_time: float):
         return super().delay()
 
@@ -973,14 +972,14 @@ class ActiveDebogger(Debogger):
 
         # flag to update the controller path
         planner.update_controller_path = True
-    
+
     def pause_debogger(self):
         '''
         Pause the debogger
         '''
         self.debogger_enabled = False
         self.debogger_pause_time = time.time()
-    
+
     def unpause_debogger(self):
         '''
         Resume the debogger

@@ -24,12 +24,12 @@ class RobotSim(Robot, Localisation):
         if not hasattr(cls, 'instance'):
             cls.instance = super(RobotSim, cls).__new__(cls)
             cls.instance.init(filename)
-            
+
         return cls.instance
-    
+
     def __init__(self, filename):
         pass
-    
+
     def init(self, filename: str):
         '''
         Initialises the robot simulator.
@@ -47,7 +47,7 @@ class RobotSim(Robot, Localisation):
         self.vrs: dict = {}
         for variable in self.variables:
             self.vrs[variable.name] = variable.valueReference
-        
+
         # intialise FMU slave
         self.fmu = fmpy.fmi2.FMU2Slave(
             guid = self.model_description.guid,
@@ -69,12 +69,12 @@ class RobotSim(Robot, Localisation):
 
         # store results of simulator
         self.results: list = []
-        
+
     def setup(self):
         return # no setup necessary
-    
+
     def get_position(self, *args):
-        
+
         # make a simulator step if it is time
         while time.time() - self.last_sim_time >= self.step_size:
             self.step()
@@ -84,7 +84,7 @@ class RobotSim(Robot, Localisation):
         _ = 0
         theta = wrap_to_pi(theta)
         return (x, _, y, _, _, _), (theta, _, _, _, _, _)
-    
+
     def step(self):
         '''
         Step the simulator one time step.
@@ -104,24 +104,24 @@ class RobotSim(Robot, Localisation):
         self.plot_results()
         self.fmu.terminate()
         self.fmu.freeInstance()
-    
+
     def send_control_action(self, v: float, omega: float, do_print=False):
         if do_print:
             print(f"v: {v}, omega: {omega}")
-        
+ 
         self.fmu.setReal([self.vrs["v"], self.vrs["omega"]], [v, omega])
-    
+
     def send_control_command(self, command: str):
         print(f"Would send command {command}")
 
     def send_command(self, command):
         print(f"Would send command {command}")
-    
+
     def plot_results(self):
         '''
         Plot the results of the FMU simulation
         '''
-        
+ 
         # plot robot positions over time
         fmpy.util.plot_result(np.array(self.results, dtype=np.dtype([('time', np.float64), ('x', np.float64),  ('y', np.float64),  ('theta', np.float64)])))
 
@@ -131,6 +131,3 @@ class RobotSim(Robot, Localisation):
         plt.xlim((0, 2000))
         plt.ylim((0, 2000))
         plt.show()
-
-
-pass

@@ -59,7 +59,7 @@ class ExtractionModes(ABC):
             robot (Robot): the robot that will be used to send commands
         '''
         self.robot = robot
-    
+
     @abstractmethod
     def spin(self):
         '''
@@ -88,12 +88,12 @@ class ExtractionPeriodic(ExtractionModes):
         self.paused = False
 
         self.extraction_start_time = None
-    
+
     def pause_extraction(self):
         if self.enabled:
             self.extraction_pause_time = time.time()
             self.paused = True
-    
+
     def unpause_extraction(self):
         if self.enabled:
             if self.extraction_pause_time is not None:
@@ -101,11 +101,11 @@ class ExtractionPeriodic(ExtractionModes):
                 self.old_extraction_time = time.time() - (self.extraction_pause_time - self.old_extraction_time)
                 self.extraction_pause_time = None
                 self.paused = False
-    
+
     def enable_extraction(self):
         self.reset_extraction()
         return super().enable_extraction()
-    
+
     def disable_extraction(self):
         return super().disable_extraction()
 
@@ -120,7 +120,7 @@ class ExtractionPeriodic(ExtractionModes):
                 if time.time() - self.extraction_start_time > self.EXTRACTION_DURATION:
                     self.old_extraction_time = time.time()
                     self.extraction_start_time = None
-    
+
     def reset_extraction(self):
         self.old_extraction_time = time.time()
 
@@ -135,16 +135,16 @@ class ExtractionContinuous(ExtractionModes):
         # send the stop command if enabled
         if self.enabled:
             self.robot.send_control_command("command=8")
-    
+
     def unpause_extraction(self):
         # send the start command
         if self.enabled:
             self.robot.send_control_command("command=7")
-    
+
     def disable_extraction(self):
         self.pause_extraction()
         super().disable_extraction()
-    
+
     def enable_extraction(self):
         super().enable_extraction()
         self.unpause_extraction()
@@ -164,6 +164,6 @@ class ExtractionNone(ExtractionModes):
 
     def unpause_extraction(self):
         return
-    
+
     def spin(self):
         return

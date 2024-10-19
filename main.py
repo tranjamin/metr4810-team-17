@@ -79,7 +79,7 @@ def main(configfile, camera):
 
     # state in the FSM
     robot_state = State.WAIT
-    
+
     # Main loop
     while True:
         # read in an image
@@ -98,7 +98,7 @@ def main(configfile, camera):
 
         # draw current waypoint on screen
         localiser.annotate_xy(img, plan.current_waypoint.x, plan.current_waypoint.y)
-        
+
         # state machine
         match robot_state:
             case State.WAIT:
@@ -127,7 +127,7 @@ def main(configfile, camera):
         array_theta.append(theta)
         array_omega.append(omega)
         array_v.append(v)
-        
+
         # draw position info on screen
         labels = ["x", "y", "theta"]
         for index, val in enumerate([x, y, theta*180/pi]):
@@ -171,7 +171,7 @@ def main(configfile, camera):
             if all([e is not None for e in positions]):
                 # redefine deposit to be the current position
                 DepositWaypoint.redefine_deposit(x, y, theta)
-                
+
                 # if using a point and fire, dynamically set the waypoint
                 if isinstance(plan.waypoints, StraightLineWaypointSequence):
                     plan.waypoints.aim_line(x, y, theta)
@@ -187,10 +187,10 @@ def main(configfile, camera):
                         # redefine the helper waypoint to not exist
                         DepositHelperWaypoint.DEPOSIT_HELPER_X = DepositWaypoint.DEPOSIT_X
                         DepositHelperWaypoint.DEPOSIT_HELPER_Y = DepositWaypoint.DEPOSIT_Y
-                    
+
                     # update waypoints
                     plan.set_waypoints(plan.waypoints)
-    
+
             robot_state = State.TRAVERSAL # update robot state
 
             # enable extraction and debogging
@@ -198,7 +198,7 @@ def main(configfile, camera):
             plan.debog_strategy.enable_debogger()
         elif key == ord('w'): # connect to the wifi
             connect_wifi()
-            
+
     # deinit camera and cv
     cap.release()
     cv.destroyAllWindows()
@@ -226,5 +226,5 @@ if __name__ == "__main__":
         "theta": array_theta, 
         "v": array_v, 
         "omega": array_omega})
-    
+
     df.to_csv("log.csv")

@@ -76,7 +76,7 @@ class Config():
         assert isinstance(localiser, Localisation)
 
         return localiser
-    
+
     def load_pathplanning(self) -> Pathplanner:
         '''
         Load the pathplanner from the config file.
@@ -98,7 +98,7 @@ class Config():
         extraction_mode: str = self.config_file["extraction"]["reference-class"]
         extraction_args: dict = self.config_file["extraction"].get("args", {})
         plan.set_extraction_strategy(eval(extraction_mode)(**extraction_args))
-        
+
         # load in debogger mode from config file
         debogger_config = self.config_file.get("debogger")
         if debogger_config:
