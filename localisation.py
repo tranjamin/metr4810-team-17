@@ -171,12 +171,8 @@ class MarkerCollection:
             flags=cv.SOLVEPNP_SQPNP,
         )
 
-        # TODO: maybe remove this old feature
-        MAX_TVEC_CHANGE = 100  # have somehow moved 10cm between measurements
-
         use_guess = False
-        if self.last_rvecs is not None and self.last_tvecs is not None:  # and \
-            # MAX_TVEC_CHANGE > np.linalg.norm(tvecs - self.last_tvecs):
+        if self.last_rvecs is not None and self.last_tvecs is not None:
             use_guess = True
             _, rvecs, tvecs = cv.solvePnP(
                 relevant_object_points,
@@ -189,12 +185,6 @@ class MarkerCollection:
                 flags=cv.SOLVEPNP_ITERATIVE,
             )
 
-        # rvecs, tvecs = cv.solvePnPRefineLM(relevant_object_points,
-        #                                    relevant_corners,
-        #                                    camera_matrix,
-        #                                    dist_coeffs,
-        #                                    rvecs,
-        #                                    tvecs)
         self.last_rvecs = rvecs
         self.last_tvecs = tvecs
         return True, rvecs, tvecs
@@ -225,12 +215,28 @@ class MarkerCollection:
 
 
 def get_relative_pose(
-    rvec_camera_to_origin,
-    p_origin_camera_frame,
-    rvec_camera_to_target,
-    p_target_camera_frame,
+    rvec_camera_to_origin: np.ndarray,
+    p_origin_camera_frame: np.ndarray,
+    rvec_camera_to_target: np.ndarray,
+    p_target_camera_frame: np.ndarray,
 ) -> tuple[R, np.ndarray]:
+    """Calculate the transform from the given origin frame to the given target
+        frame.
 
+    Args:
+        rvec_camera_to_origin (np.ndarray): rotation from the camera frame to
+            the origin, expressed as a rotation vector
+        p_origin_camera_frame (np.ndarray): translation vector from the camera
+            frame to the origin
+        rvec_camera_to_target (np.ndarray): rotation from camera frame to the
+            target, expressed as a rotation vector
+        p_target_camera_frame (np.ndarray): translation vector from the camera
+            frame to the target
+
+    Returns:
+        tuple[R, np.ndarray]: rotation and translation vectors of the target,
+            expressed in the origin frame
+    """
     position_delta_camera_frame = p_target_camera_frame - p_origin_camera_frame
     rot_camera_to_origin = R.from_rotvec(rvec_camera_to_origin.ravel())
     rot_camera_to_target = R.from_rotvec(rvec_camera_to_target.ravel())
@@ -289,7 +295,6 @@ class CameraLocalisation(Localisation):
     def setup(self):
         camera_matrix = np.load("camera_matrix.npy")
         dist_coeffs = np.load("dist_coeffs.npy")
-        logger = {}
 
         # define objects to be tracked
         origin = MarkerCollection()
@@ -476,14 +481,27 @@ class CameraLocalisation(Localisation):
 
     def process_image(
         self,
-        img,
-        camera_matrix,
-        dist_coeffs,
+        img: cv.typing.MatLike,
+        camera_matrix: np.ndarray,
+        dist_coeffs: np.ndarray,
         origin: MarkerCollection,
         target: MarkerCollection,
         detector: AprilTagDetector,
-        logger,
-    ):
+    ) -> tuple[bool, R, np.ndarray]:
+        """Calculate the pose of the given target with respect to the given
+        origin in the given image.
+
+        Args:
+            img (_type_): _description_
+            camera_matrix (_type_): _description_
+            dist_coeffs (_type_): _description_
+            origin (MarkerCollection): _description_
+            target (MarkerCollection): _description_
+            detector (AprilTagDetector): _description_
+
+        Returns:
+            tuple[bool, R, np.ndarray]: _description_
+        """
         gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
         stuff = detector.detect(gray)
         if not stuff:
@@ -547,12 +565,6 @@ class CameraLocalisation(Localisation):
             p_target_camera_frame,
         )
 
-        # log the values for statistics
-
-        #         if int(id[0]) not in logger:
-        #             logger[int(id[0])] = [[],[],[]]
-        #         for i in [0, 1, 2]:
-        #             logger[int(id[0])][i].append(position_delta_origin_frame[i][0])
         return True, rot_relative, tvec_relative
 
     def annotate_xy(self, img, x, y):
@@ -592,9 +604,8 @@ class CameraLocalisation(Localisation):
         )
         cv.line(img, pt1, pt2, (255, 0, 255), 10)
 
-    def get_position(self, img):
+    def get_position(self, img: cv.typing.MatLike):
         # UPDATE LOCALISATION
-        # gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
         valid, rot_relative, tvec_relative = self.process_image(
             img,
             self.camera_matrix,
