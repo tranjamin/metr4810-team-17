@@ -1,7 +1,8 @@
-'''
-Functionality for integrating the Simulink model to the pathplanning via the Functional Mockup Interface (FMI).
+"""
+Functionality for integrating the Simulink model to the pathplanning via the
+Functional Mockup Interface (FMI).
 For more information on FMI, see https://fmi-standard.org/
-'''
+"""
 
 import fmpy
 import fmpy.fmi2
@@ -74,7 +75,7 @@ class RobotSim(Robot, Localisation):
         self.results: list = []
 
     def setup(self):
-        return # no setup necessary
+        return  # no setup necessary
 
     def get_position(self, *args):
 
@@ -123,7 +124,7 @@ class RobotSim(Robot, Localisation):
     def send_control_action(self, v: float, omega: float, do_print=False):
         if do_print:
             print(f"v: {v}, omega: {omega}")
- 
+
         self.fmu.setReal([self.vrs["v"], self.vrs["omega"]], [v, omega])
 
     def send_control_command(self, command: str):
@@ -135,8 +136,8 @@ class RobotSim(Robot, Localisation):
     def plot_results(self):
         """
         Plot the results of the FMU simulation
-        '''
- 
+        """
+
         # plot robot positions over time
         fmpy.util.plot_result(
             np.array(
