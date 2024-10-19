@@ -198,7 +198,7 @@ def main(configfile, camera):
         cv.imshow('frame', img)
         key = cv.waitKey(1)
         if key == ord('q'): # stop robot and exit
-            plan.extraction_strategy.pause_extraction()
+            plan.extraction_strategy.disable_extraction()
             break
         elif key == ord('d') and ROBOT_STARTED:  # return to delivery
             plan.add_delivery()
@@ -234,11 +234,11 @@ def main(configfile, camera):
             plan.extractionFlag = True
             old_extraction_time = time.time()
             robot_state = State.TRAVERSAL
-            plan.extraction_strategy.unpause_extraction()
+            plan.extraction_strategy.enable_extraction()
         elif key == ord('k'): # allow extraction
-            plan.extraction_strategy.unpause_extraction()
+            plan.extraction_strategy.enable_extraction()
         elif key == ord('m'): # manually extraction
-            plan.extraction_strategy.pause_extraction()
+            plan.extraction_strategy.disable_extraction()
         elif key == ord('w'):
             connect_wifi()
             

@@ -19,24 +19,37 @@ class ExtractionModes(ABC):
 
     def __init__(self):
         self.robot: Robot = None # the robot linked to the extractor
+        self.enabled: bool = False # whether the extractor is enabled
 
     @abstractmethod
     def pause_extraction(self):
         '''
-        Pauses the extraction mode
+        Pauses the extraction mode. Primarily used for corners
         '''
 
     @abstractmethod
     def unpause_extraction(self):
         '''
-        Unpauses the extraction mode
+        Unpauses the extraction mode. Primarily used for corners
         '''
+
+    def disable_extraction(self):
+        '''
+        Disables the extraction mode. A second-level control which is stricter than pausing
+        '''
+        self.enabled = False
+
+    def enable_extraction(self):
+        '''
+        Enables the extraction mode. A second-level control which is stricter than pausing
+        '''
+        self.enabled = True
 
     def reset_extraction(self):
         '''
         Resets the extraction cycle to the start
         '''
-        self.pause_extraction() # by default just pauses
+        pass # by default does nothing
 
     def attach_agents(self, robot: Robot):
         '''
@@ -46,6 +59,12 @@ class ExtractionModes(ABC):
             robot (Robot): the robot that will be used to send commands
         '''
         self.robot = robot
+    
+    @abstractmethod
+    def spin(self):
+        '''
+        A function to call extraction logic every loop iteration.
+        '''
 
 class ExtractionPeriodic(ExtractionModes):
     '''
@@ -68,17 +87,28 @@ class ExtractionPeriodic(ExtractionModes):
         self.extraction_pause_time = None
     
     def pause_extraction(self):
-        self.extraction_pause_time = time.time()
+        if self.enabled:
+            self.extraction_pause_time = time.time()
     
     def unpause_extraction(self):
-        if self.extraction_pause_time is not None:
-            # offsets the extraction time according to time already paid
-            self.old_extraction_time = time.time() - (self.extraction_pause_time - self.old_extraction_time)
-            self.extraction_pause_time = None
+        if self.enabled:
+            if self.extraction_pause_time is not None:
+                # offsets the extraction time according to time already paid
+                self.old_extraction_time = time.time() - (self.extraction_pause_time - self.old_extraction_time)
+                self.extraction_pause_time = None
+    
+    def enable_extraction(self):
+        self.reset_extraction()
+        return super().enable_extraction()
+    
+    def disable_extraction(self):
+        return super().disable_extraction()
+
+    def spin(self):
+        return super().spin()
     
     def reset_extraction(self):
         self.old_extraction_time = time.time()
-        super().reset_extraction()
 
 class ExtractionContinuous(ExtractionModes):
     '''
@@ -88,12 +118,22 @@ class ExtractionContinuous(ExtractionModes):
         super().__init__()
 
     def pause_extraction(self):
-        # send the stop command
-        self.robot.send_control_command("command=8")
+        # send the stop command if enabled
+        if self.enabled:
+            self.robot.send_control_command("command=8")
     
     def unpause_extraction(self):
         # send the start command
-        self.robot.send_control_command("command=7")
+        if self.enabled:
+            self.robot.send_control_command("command=7")
+    
+    def disable_extraction(self):
+        self.pause_extraction()
+        super().disable_extraction()
+    
+    def enable_extraction(self):
+        super().enable_extraction()
+        self.unpause_extraction()
 
 class ExtractionNone(ExtractionModes):
     '''

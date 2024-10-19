@@ -134,11 +134,11 @@ class Pathplanner():
 
             if self.current_waypoint.stopFlag: # stops pathplanning if flag set
                 self.signal_pathplanning_stop()
-                self.extraction_strategy.pause_extraction()
+                self.extraction_strategy.disable_extraction()
             if self.current_waypoint.suspendFlag: # stops extraction if flag set
-                self.extraction_strategy.pause_extraction()
+                self.extraction_strategy.disable_extraction()
             if self.current_waypoint.resumeFlag: # resumes extraction if flag set
-                self.extraction_strategy.unpause_extraction()
+                self.extraction_strategy.enable_extraction()
                 self.signal_pathplanning_start()
 
             # update the previous and current waypoint
@@ -209,8 +209,8 @@ class Pathplanner():
         self.current_waypoint = self.waypoints.get_current_waypoint()
         self.update_controller_path = True
 
-        # pause extraction
-        self.extraction_strategy.pause_extraction()
+        # disable extraction
+        self.extraction_strategy.disable_extraction()
 
     def add_delivery(self):
         '''
@@ -227,8 +227,8 @@ class Pathplanner():
         self.current_waypoint = self.waypoints.get_current_waypoint()
         self.update_controller_path = True
 
-        # pause extraction
-        self.extraction_strategy.pause_extraction()
+        # disable extraction
+        self.extraction_strategy.disable_extraction()
 
     def signal_delivery_start(self):
         '''
