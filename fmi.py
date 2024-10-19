@@ -1,3 +1,8 @@
+'''
+Functionality for integrating the Simulink model to the pathplanning via the Functional Mockup Interface (FMI).
+For more information on FMI, see https://fmi-standard.org/
+'''
+
 import fmpy
 import fmpy.fmi2
 import time
@@ -5,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from robot import Robot
-from utils import wrapToPi
+from utils import wrap_to_pi
 from localisation import Localisation
 
 class RobotSim(Robot, Localisation):
@@ -66,9 +71,6 @@ class RobotSim(Robot, Localisation):
         self.results: list = []
         
     def setup(self):
-        '''
-        
-        '''
         return # no setup necessary
     
     def get_position(self, *args):
@@ -80,7 +82,7 @@ class RobotSim(Robot, Localisation):
         # get the simulated robot position
         x, y, theta =  self.fmu.getReal([self.vrs["x"], self.vrs["y"], self.vrs["theta"]])
         _ = 0
-        theta = wrapToPi(theta)
+        theta = wrap_to_pi(theta)
         return (x, _, y, _, _, _), (theta, _, _, _, _, _)
     
     def step(self):

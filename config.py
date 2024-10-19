@@ -118,11 +118,20 @@ class Config():
 
         return plan
 
-    def load_robot(self):
+    def load_robot(self) -> Robot:
+        '''
+        Load the robot from the config file.
+
+        Returns:
+            (Robot): the robot.
+        '''
+
+        # get the robot class
         robot_config = self.config_file["robot"]
         robot_class = eval(robot_config["robot-class"])
         robot_comms: Robot = robot_class(**robot_config.get("args", {}))
 
+        # set the robot geometry
         RobotGeometry.PADDING = robot_config.get("padding", RobotGeometry.PADDING)
         RobotGeometry.EMERGENCY_PADDING = robot_config.get("emergency-padding", RobotGeometry.EMERGENCY_PADDING)
 

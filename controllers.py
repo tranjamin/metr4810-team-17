@@ -1,3 +1,6 @@
+'''
+Stores all functionality for the control systems which govern movement from waypoint to waypoint
+'''
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
@@ -5,7 +8,7 @@ import numpy as np
 from math import cos, sin, atan2, copysign, pi
 from typing import Optional, Callable
 
-from utils import wrapToPi
+from utils import wrap_to_pi
 
 class Controller(ABC):
     '''
@@ -161,7 +164,7 @@ class FowardController(Controller):
         angle_error = atan2(sin_angle_error, cos_angle_error)
 
         if self.reversing_allowed:
-            other_possibility = -wrapToPi(pi - angle_error)
+            other_possibility = -wrap_to_pi(pi - angle_error)
             if abs(other_possibility) < abs(angle_error):
                 # it would be easier to reverse
                 angle_error = other_possibility

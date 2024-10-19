@@ -441,8 +441,8 @@ class WaypointSequence(ABC):
             - (current_y - DepositHelperWaypoint.DEPOSIT_HELPER_Y), 
             - (current_x - DepositHelperWaypoint.DEPOSIT_HELPER_X))
         
-        distance_to_return_angle = wrapToPi(return_angle - current_theta)
-        distance_to_return_angle_2 = wrapToPi(return_angle_2 - current_theta)
+        distance_to_return_angle = wrap_to_pi(return_angle - current_theta)
+        distance_to_return_angle_2 = wrap_to_pi(return_angle_2 - current_theta)
 
         immediate_rotate_angle = return_angle if abs(distance_to_return_angle_2) > abs(distance_to_return_angle) else return_angle_2
 
@@ -948,8 +948,8 @@ class ActiveDebogger(Debogger):
         new_y = min(max(planner.current_y + reverse*math.sin(planner.current_theta)*ActiveDebogger.REVERSE_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS)
 
         # the robot can deviate in either direction after reversing
-        theta_option_one = wrapToPi(planner.current_theta + ActiveDebogger.ANGLE_DEVIATION)
-        theta_option_two = wrapToPi(planner.current_theta - ActiveDebogger.ANGLE_DEVIATION)
+        theta_option_one = wrap_to_pi(planner.current_theta + ActiveDebogger.ANGLE_DEVIATION)
+        theta_option_two = wrap_to_pi(planner.current_theta - ActiveDebogger.ANGLE_DEVIATION)
 
         # calculate where both deviation options will lead
         distance_option_one = (abs(1000 - (new_x + math.cos(theta_option_one))))**2 + (abs(1000 - (new_y + math.sin(theta_option_one))))**2
