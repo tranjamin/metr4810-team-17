@@ -74,16 +74,11 @@ def main(configfile, camera):
 
     plan = cfg.load_pathplanning()
     robot_comms = cfg.load_robot()
-    robot_tcp = RobotTCP("192.168.4.1")
 
     plan.set_robot(robot_comms)
     plan.extraction_strategy.attach_agents(robot_comms)
     plan.extraction_strategy.reset_extraction()
     robot_state = State.WAIT
-
-    old_extraction_time = None
-
-    scoop_entry_time = 0
     
     # Main loop
     while True:
@@ -121,15 +116,12 @@ def main(configfile, camera):
                 omega = plan.desired_angular
                 robot_comms.send_control_action(v, omega, do_print=False)
 
+                plan.extraction_strategy.spin()
+
                 # TRANSITIONS
-                if time.time() - old_extraction_time > SCOOP_INTERVAL and not plan.controller.phase_2 :
-                    robot_state = State.INITIATE_SCOOP
 
             case State.INITIATE_SCOOP:
-                robot_comms.send_control_action(0, 0, do_print=False)
-                robot_tcp.send_control_command("command=9")
-                scoop_entry_time = time.time()
-                robot_state = State.SCOOPING
+                pass
             case State.SCOOPING:
                 # display message on image
                 cv.putText(img, "SCOOPING",
@@ -138,10 +130,6 @@ def main(configfile, camera):
                            2,
                            (0, 0, 255),
                            4)
-
-                if time.time() - scoop_entry_time > SCOOP_DURATION:
-                    old_extraction_time = time.time()
-                    robot_state = State.TRAVERSAL
             
             case State.TRAVERSAL_TO_DEPOSIT:
                 plan.update_robot_position(x, y, theta)

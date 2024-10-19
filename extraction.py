@@ -85,10 +85,14 @@ class ExtractionPeriodic(ExtractionModes):
         # initialise the extraction parameters
         self.old_extraction_time = time.time()
         self.extraction_pause_time = None
+        self.paused = False
+
+        self.extraction_start_time = None
     
     def pause_extraction(self):
         if self.enabled:
             self.extraction_pause_time = time.time()
+            self.paused = True
     
     def unpause_extraction(self):
         if self.enabled:
@@ -96,6 +100,7 @@ class ExtractionPeriodic(ExtractionModes):
                 # offsets the extraction time according to time already paid
                 self.old_extraction_time = time.time() - (self.extraction_pause_time - self.old_extraction_time)
                 self.extraction_pause_time = None
+                self.paused = False
     
     def enable_extraction(self):
         self.reset_extraction()
@@ -105,7 +110,16 @@ class ExtractionPeriodic(ExtractionModes):
         return super().disable_extraction()
 
     def spin(self):
-        return super().spin()
+        if self.enabled and not self.paused:
+            if self.extraction_start_time is None: # we haven't started extraction
+                if time.time() - self.old_extraction_time > self.EXTRACTION_INTERVAL:
+                    self.robot.send_control_action(0, 0, do_print=False)
+                    self.robot.send_control_command("command=9")
+                    self.extraction_start_time = time.time()
+            else:
+                if time.time() - self.extraction_start_time > self.EXTRACTION_DURATION:
+                    self.old_extraction_time = time.time()
+                    self.extraction_start_time = None
     
     def reset_extraction(self):
         self.old_extraction_time = time.time()
@@ -135,15 +149,21 @@ class ExtractionContinuous(ExtractionModes):
         super().enable_extraction()
         self.unpause_extraction()
 
+    def spin(self):
+        return
+
 class ExtractionNone(ExtractionModes):
     '''
     Does not run the extraction motor.
     '''
     def __init__(self):
-        pass
+        return
 
     def pause_extraction(self):
-        pass
+        return
 
     def unpause_extraction(self):
-        pass
+        return
+    
+    def spin(self):
+        return

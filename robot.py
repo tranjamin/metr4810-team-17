@@ -5,6 +5,7 @@ Classes:
     Robot(): an abstract base class for different robots.
         RobotTCP(): a robot which communicates via TCP
         RobotUDP(): a robot which communicates via UDP
+        RobotMixed(): a robot which communicates via both TCP and UDP
 '''
 
 from abc import ABC, abstractmethod
@@ -173,3 +174,17 @@ class RobotUDP(Robot):
             self.sock.sendto(bytes(RobotUDP.CONTROL_PREFIX + command, RobotUDP.ENCODING), (self.ip, RobotUDP.UDP_PORT))
         except OSError:
             print("Failed to send command")
+
+class RobotMixed(Robot):
+    '''
+    A robot which sends localisation commands via UDP and control commands via TCP
+    '''
+    def __init__(self, ip: str):
+        self.udp_robot = RobotUDP(ip)
+        self.tcp_robot = RobotTCP(ip)
+    
+    def send_control_command(self, command: str):
+        self.tcp_robot.send_control_command(command)
+    
+    def send_control_action(self, v: float, omega: float, do_print: bool = False):
+        self.udp_robot.send_control_action(v, omega, do_print)
