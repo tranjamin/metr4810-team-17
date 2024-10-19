@@ -66,7 +66,10 @@ class RobotSim(Robot, Localisation):
         self.results: list = []
         
     def setup(self):
-        pass
+        '''
+        
+        '''
+        return # no setup necessary
     
     def get_position(self, *args):
         
