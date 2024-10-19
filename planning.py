@@ -133,13 +133,11 @@ class Pathplanner():
             # has reached the waypoint so can move to the next one
 
             if self.current_waypoint.stopFlag: # stops pathplanning if flag set
-                self.signal_pathplanning_stop()
                 self.extraction_strategy.disable_extraction()
             if self.current_waypoint.suspendFlag: # stops extraction if flag set
                 self.extraction_strategy.disable_extraction()
             if self.current_waypoint.resumeFlag: # resumes extraction if flag set
                 self.extraction_strategy.enable_extraction()
-                self.signal_pathplanning_start()
 
             # update the previous and current waypoint
             self.previous_waypoint = self.current_waypoint.coords
@@ -358,8 +356,8 @@ class DepositWaypoint(Waypoint):
 
         try:
             # ensure the helper is within the bounds of the environment
-            assert new_helper_x <= 2000 and new_helper_x >= 0
-            assert new_helper_y <= 2000 and new_helper_y >= 0
+            # assert new_helper_x <= 2000 and new_helper_x >= 0
+            # assert new_helper_y <= 2000 and new_helper_y >= 0
 
             # ensure the helper is not too close to the edge
             new_helper_x = max(new_helper_x, RobotGeometry.RADIUS + DepositWaypoint.HELPER_PADDING)
@@ -451,6 +449,11 @@ class WaypointSequence(ABC):
         return_angle_2 = atan2(
             - (current_y - DepositHelperWaypoint.DEPOSIT_HELPER_Y), 
             - (current_x - DepositHelperWaypoint.DEPOSIT_HELPER_X))
+        
+        distance_to_return_angle = wrapToPi(return_angle - current_theta)
+        distance_to_return_angle_2 = wrapToPi(return_angle_2 - current_theta)
+
+        immediate_rotate_angle = return_angle if abs(distance_to_return_angle_2) > abs(distance_to_return_angle) else return_angle_2
 
         # insert the return waypoint
         self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
@@ -461,7 +464,7 @@ class WaypointSequence(ABC):
         self.waypoints.insert(0, DepositHelperWaypoint())
 
         # insert the spin waypoint to do immediately
-        self.waypoints.insert(0, Waypoint(current_x, current_y, return_angle_2))
+        self.waypoints.insert(0, Waypoint(current_x, current_y, immediate_rotate_angle))
     
     def plan_to_emergency(self, current_x: float, current_y: float, current_theta: float):
         '''
@@ -776,8 +779,8 @@ class StraightLineWaypointSequence(WaypointSequence):
     def aim_line(self, current_x, current_y, current_theta):
         self.waypoints = []
 
-        endpoint_x = current_x + 2000*math.cos(current_theta)
-        endpoint_y = current_y + 2000*math.sin(current_theta)
+        endpoint_x = max(min(2000, current_x + 2000*math.cos(current_theta)), 0)
+        endpoint_y = max(min(2000, current_y + 2000*math.sin(current_theta)), 0)
 
         self.waypoints = [Waypoint(endpoint_x, endpoint_y, current_theta)]
         self.repeat_waypoints = self.waypoints.copy()

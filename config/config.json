@@ -2,7 +2,7 @@
     "controllers": {
         "forward-controller": {
             "k_angle": 100,
-            "k_v": 65,
+            "k_v": 48,
             "w": 0.8,
             "goal_tolerance": 40,
             "angle_deadzone": 0,
@@ -27,21 +27,16 @@
         }
     },
     "pathplan": {
-        "reference-class": "SpiralWaypointSequence",
+        "reference-class": "SnakeWaypointSequence",
         "args": {
-            "line_spacing": 300,
-            "chamfer_size": 200
+            "snake_spacing": 110
         },
-        "aim-enabled": false
+        "aim-enabled": true
     },
     "debogger": {
         "enabled": false
     },
     "extraction": {
-        "reference-class": "ExtractionPeriodic",
-        "args": {
-            "duration": 2.0,
-            "interval": 2.0
-        }
+        "reference-class": "ExtractionNone"
     }
 }

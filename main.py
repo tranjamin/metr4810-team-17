@@ -12,6 +12,8 @@ from fmi import *
 from localisation import *
 from config import *
 
+import pandas as pd
+
 import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
@@ -23,7 +25,14 @@ ROBOT_STARTED = False
 
 # Extraction configuration
 SCOOP_DURATION = 2  # seconds to finish scooping
-SCOOP_INTERVAL = 20000  # seconds between each scoop
+SCOOP_INTERVAL = 2  # seconds between each scoop
+
+array_times = []
+array_x = []
+array_y = []
+array_theta = []
+array_v = []
+array_omega = []
 
 # Deposit configuration
 
@@ -160,9 +169,13 @@ def main(configfile, camera):
                     robot_state = State.TRAVERSAL  # maybe need separate waiting to restart state?
 
 
-
-       
-
+        array_times.append(time.time())
+        array_x.append(x)
+        array_y.append(y)
+        array_theta.append(theta)
+        array_omega.append(omega)
+        array_v.append(v)
+        
         # draw position info on screen
         labels = ["x", "y", "theta"]
         for index, val in enumerate([x, y, theta*180/pi]):
@@ -213,8 +226,10 @@ def main(configfile, camera):
                 if plan.waypoints.dynamic_aim:
                     if theta > 2*pi/3: # then we go normal
                         plan.waypoints.aim_assist_off()
-                    else:
+                    else:  # then we go to aim assist
                         plan.waypoints.aim_assist_on(x, y, theta)
+                        DepositHelperWaypoint.DEPOSIT_HELPER_X = DepositWaypoint.DEPOSIT_X
+                        DepositHelperWaypoint.DEPOSIT_HELPER_Y = DepositWaypoint.DEPOSIT_Y
                     plan.set_waypoints(plan.waypoints)
     
 
@@ -249,3 +264,6 @@ if __name__ == "__main__":
 
     # run main function
     main(args.filename, int(args.camera))
+
+    df = pd.DataFrame({"t": array_times, "x": array_x, "y": array_y, "theta": array_theta, "v": array_v, "omega": array_omega})
+    df.to_csv("log.csv")

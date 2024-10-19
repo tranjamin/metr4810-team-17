@@ -188,3 +188,6 @@ class RobotMixed(Robot):
     
     def send_control_action(self, v: float, omega: float, do_print: bool = False):
         self.udp_robot.send_control_action(v, omega, do_print)
+
+    def send_command(self, command: str):
+        self.tcp_robot.send_command(command)
