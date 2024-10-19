@@ -207,14 +207,11 @@ def main(configfile, camera):
             plan.add_emergency()
         elif key == ord('f') and ROBOT_STARTED:  # start depositing bean
             plan.signal_delivery_start()
+            plan.debog_strategy.delay(22)
         elif key == ord('s'): # start robot sending
             positions, angles = localiser.get_position(img)
             x, _, y, _, _, _ = np.ravel(positions).tolist()
             theta, _, _, _, _, _ = np.ravel(angles).tolist()
-
-            old_extraction_time = time.time() + 2
-
-            plan.debog_strategy.unpause_debogger()
 
             if all([not_none(e) for e in positions]):
                 DepositWaypoint.redefine_deposit(x, y, theta)
@@ -232,16 +229,12 @@ def main(configfile, camera):
                         DepositHelperWaypoint.DEPOSIT_HELPER_Y = DepositWaypoint.DEPOSIT_Y
                     plan.set_waypoints(plan.waypoints)
     
-
             ROBOT_STARTED = True
             plan.extractionFlag = True
-            old_extraction_time = time.time()
+            
             robot_state = State.TRAVERSAL
             plan.extraction_strategy.enable_extraction()
-        elif key == ord('k'): # allow extraction
-            plan.extraction_strategy.enable_extraction()
-        elif key == ord('m'): # manually extraction
-            plan.extraction_strategy.disable_extraction()
+            plan.debog_strategy.enable_debogger()
         elif key == ord('w'):
             connect_wifi()
             

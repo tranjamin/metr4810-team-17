@@ -37,6 +37,6 @@
         "enabled": false
     },
     "extraction": {
-        "reference-class": "ExtractionNone"
+        "reference-class": "ExtractionContinuous"
     }
 }

@@ -107,9 +107,6 @@ class Config():
                 plan.set_debogging_strategy(ActiveDebogger(**debogger_args))
             else:
                 plan.set_debogging_strategy(NoDebogger())
-        
-        # pause debogger until started
-        plan.debog_strategy.pause_debogger()
 
         # load in waypoints from config file
         pathplanner_class: WaypointSequence = eval(self.config_file["pathplan"]["reference-class"])

@@ -134,6 +134,7 @@ class Pathplanner():
 
             if self.current_waypoint.stopFlag: # stops pathplanning if flag set
                 self.extraction_strategy.disable_extraction()
+                self.debog_strategy.disable_debogger()
             if self.current_waypoint.suspendFlag: # stops extraction if flag set
                 self.extraction_strategy.disable_extraction()
             if self.current_waypoint.resumeFlag: # resumes extraction if flag set
@@ -172,11 +173,11 @@ class Pathplanner():
                 
             def spin_start_func(): # define function to call when spin controller starts
                 self.extraction_strategy.pause_extraction()
-                self.pause_debogger()
+                self.debog_strategy.pause_debogger()
             
             def spin_stop_func(): # define function to call when spin controller stops 
                 self.extraction_strategy.unpause_extraction()
-                self.unpause_debogger()
+                self.debog_strategy.unpause_debogger()
             
             # get the desired movements from controller
             self.desired_velocity, self.desired_angular = self.controller.get_control_action(
@@ -238,22 +239,12 @@ class Pathplanner():
 
         # resumes path plan
         self.stopFlag = False
+        self.debog_strategy.enable_debogger()
+        s
 
         # pauses the debogger for the predefined time
         if isinstance(self.debog_strategy, ActiveDebogger):
             self.debog_strategy.last_debog_time = time.time() + 23
-
-    def pause_debogger(self):
-        '''
-        Pauses the debogger.
-        '''
-        self.debog_strategy.pause_debogger()
-
-    def unpause_debogger(self):
-        '''
-        Unpauses the debogger.
-        '''
-        self.debog_strategy.unpause_debogger()
 
 class RobotGeometry():
     '''
@@ -802,6 +793,9 @@ class Debogger(ABC):
     '''
     A class which attempts to debog the robot.
     '''
+    def __init__(self) -> None:
+        self.paused = False
+        self.enabled = False
 
     @abstractmethod
     def is_bogged(self, current_x: float, current_y: float, current_theta: float) -> bool:
@@ -815,7 +809,6 @@ class Debogger(ABC):
         Returns:
             True if the robot is bogged
         '''
-        pass
 
     @abstractmethod
     def attempt_debog(self, planner: Pathplanner):
@@ -825,26 +818,47 @@ class Debogger(ABC):
         Parameters:
             planner (Pathplanner): the plan to modify.
         '''
-        pass
 
     @abstractmethod
     def pause_debogger(self):
         '''
         Pauses the debogger.
         '''
-        pass
 
     @abstractmethod
     def unpause_debogger(self):
         '''
         Resumes the debogger.
         '''
-        pass
+
+    @abstractmethod
+    def disable_debogger(self):
+        '''
+        Disables the debogger. A stricter condition than pausing.
+        '''
+        self.enabled = False
+
+    @abstractmethod
+    def enable_debogger(self):
+        '''
+        Enables the debogger. A stricter condition than pausing.
+        '''
+        self.enabled = True
+
+    @abstractmethod
+    def delay(self, delay_time: float):
+        '''
+        Delay the debogger to only activate after a certain time.
+
+        Parameters:
+            delay_time (float): the time in seconds to delay forward.
+        '''
 
 class NoDebogger(Debogger):
     '''
     A class representing debogging being disabled.
     '''
+
     def is_bogged(self, current_x: float, current_y: float, current_theta: float) -> bool:
         return False
 
@@ -856,6 +870,9 @@ class NoDebogger(Debogger):
 
     def unpause_debogger(self):
         return super().unpause_debogger()
+    
+    def delay(self, delay_time: float):
+        return super().delay()
 
 class ActiveDebogger(Debogger):
     '''
@@ -973,3 +990,6 @@ class ActiveDebogger(Debogger):
         # shift the debog time to account for time already measured
         if self.debogger_pause_time is not None and self.last_debog_time is not None:
             self.last_debog_time = time.time() - (self.debogger_pause_time - self.last_debog_time)
+
+    def delay(self, delay_time):
+        self.last_debog_time = time.time() + delay_time
