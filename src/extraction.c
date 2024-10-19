@@ -20,12 +20,12 @@
 // RTOS BLOCKING TIMES
 #define VDELAY 3
 #define SEMPH_TICKS 1000
-#define EXRACTION_TIMEOUT 3500 // time to wait if extraction is stuck
+#define EXRACTION_TIMEOUT 35000 // time to wait if extraction is stuck
 
 // PWM CONFIGURATION OPTIONS
 #define CLK_DIVIDER 128
 #define PWM_TOP 8192
-#define EXTRACTION_PWM_SPEED 90 // PWM speed to run the extraction motor
+#define EXTRACTION_PWM_SPEED 100 // PWM speed to run the extraction motor
 
 // STATE MACHINE STATES
 #define EXTRACTION_IDLE 0
@@ -38,6 +38,7 @@ SemaphoreHandle_t extractionSemaphoreStop; // controls when to stop the extracti
 // Function Prototyeps
 void extractionProcedureSignalStart();
 void extractionProcedureSignalStop();
+void waitExtractionStopOnSense();
 
 void vExtractionTask();
 void vExtractionInit();
@@ -54,6 +55,13 @@ Start the extraction procedure.
  */
 void extractionProcedureSignalStart() {
     xSemaphoreGiveFromISR(extractionSemaphoreStart, NULL);
+}
+
+/**
+Stops the extraction motor when the optical sensor detects
+ */
+void waitExtractionStopOnSense() {
+    extraction_state = EXTRACTION_RUNNING;
 }
 
 /**

@@ -6,7 +6,7 @@ Functions:
     vExtractionTask(): the main loop of this task
     extractionProcedureStart(): starts the extraction sequence.
     extractionProcedureStop(): stops the extraction sequence.
-
+    waitExtractionStopOnSense(): stops the extraction when it hits the optical sensor
 
 Definitions:
     EXTRACTION_INA: The pico GPIO pin corresponding to motor driver INA
@@ -51,5 +51,6 @@ void vExtractionInit();
 void vExtractionTask();
 void extractionProcedureSignalStop();
 void extractionProcedureSignalStart();
+void waitExtractionStopOnSense();
 
 #endif

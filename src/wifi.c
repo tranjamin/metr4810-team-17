@@ -314,7 +314,7 @@ void udp_server_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_ad
                     setRGB_COLOUR_DARK_RED();
                     break;
                 case 8: // stop extract
-                    SET_EXTRACTION_STOPPED();
+                    waitExtractionStopOnSense();
                     setRGB_COLOUR_DARK_GREEN();
                     break;
                 case 9: // extract method
@@ -614,7 +614,7 @@ int generate_response(const char *request, const char *params, char *result, siz
                     setRGB_COLOUR_DARK_RED();
                     break;
                 case 8:
-                    SET_EXTRACTION_STOPPED();
+                    waitExtractionStopOnSense();
                     setRGB_COLOUR_DARK_GREEN();
                     break;
                 case 9:
