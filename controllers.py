@@ -44,7 +44,7 @@ class Controller(ABC):
         return self.reached_goal
 
     @abstractmethod
-    def get_control_action(self, x: float, y: float, theta: float, **kwargs) -> tuple[float, float]:
+    def get_control_action(self, x: float, y: float, theta: float) -> tuple[float, float]:
         '''
         Calculates the required linear and angular velocity to move along the controller path
 

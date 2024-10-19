@@ -39,6 +39,8 @@ class Pathplanner():
         self.waypoints: WaypointSequence = None
         self.controller: LineFollowerController = None
         self.extraction_strategy: ExtractionModes = None
+        self.debog_strategy: Debogger = None
+        self.robot: Robot = None
 
         # desired signals derived from the controller
         self.desired_velocity: float = 0
@@ -561,7 +563,6 @@ class SnakeWaypointSequence(WaypointSequence):
                 waypoint = Waypoint(
                     x, y,
                     heading = None if theta_agnostic else target_heading,
-                    vel = 0 if j == 0 or j == len(y_coords) else None, # set velocity to 0 if it is the first or last in a line
                 )
                 self.waypoints.append(waypoint)
 
@@ -581,123 +582,142 @@ class SpiralWaypointSequence(WaypointSequence):
     def __init__(self,
                  line_spacing: float,
                  point_spacing: float = 2000,
-                 chamfer_size: Optional[float] = 200,
-                 theta_agnostic=False):
+                 chamfer_size: Optional[float] = 200):
         super().__init__()
 
+        # define the initial position
         y_initial = SpiralWaypointSequence.BORDER_PADDING
         x_initial = SpiralWaypointSequence.BORDER_PADDING
 
+        # dynamically update the bounding box of the spiral
         y_min = y_initial - line_spacing
         y_max = SpiralWaypointSequence.ENV_LENGTH - SpiralWaypointSequence.BORDER_PADDING
         x_min = x_initial
         x_max = SpiralWaypointSequence.ENV_WIDTH - SpiralWaypointSequence.BORDER_PADDING
 
-        chamfer = chamfer_size
-
+        # iterators for moving vertically (j) and horizontally (i)
         i = 0
         j = 0
         while True:
             while True:
                 x = x_min
-                y = min(y_min + chamfer + point_spacing*j, y_max - chamfer)
-                if y == y_max - chamfer:
-                    target_heading = pi/4 if chamfer else 0
+                
+                # move along the left edge until reaching the top
+                y = min(y_min + chamfer_size + point_spacing*j, y_max - chamfer_size)
+
+                # cut corner if at the end
+                if y == y_max - chamfer_size:
+                    target_heading = pi/4 if chamfer_size else 0
                 else:
                     target_heading = pi/2
 
-                waypoint = Waypoint(
-                    x, y, heading=target_heading
-                )
-
-                if chamfer or j != 0:
+                # if no chamfers, do not add the first waypoint
+                if chamfer_size or j != 0:
+                    waypoint = Waypoint(x, y, heading=target_heading)
                     self.waypoints.append(waypoint)
 
-                if y == y_max - chamfer:
+                # stop moving along the edge when we reach the top
+                if y == y_max - chamfer_size:
                     break
 
                 j += 1
 
+            # shift the spiral inwards
             y_min = y_min + line_spacing
 
             while True:
-                x = min(x_min + chamfer + point_spacing*i, x_max - chamfer)
                 y = y_max
-                if x == x_max - chamfer:
-                    target_heading = -pi/4 if chamfer else -pi/2
+
+                # move along the top edge until reaching the top
+                x = min(x_min + chamfer_size + point_spacing*i, x_max - chamfer_size)
+
+                # cut corner if at end
+                if x == x_max - chamfer_size:
+                    target_heading = -pi/4 if chamfer_size else -pi/2
                 else:
                     target_heading = 0
 
-                waypoint = Waypoint(
-                    x, y, heading=target_heading
-                )
-
-                if chamfer or i != 0:
+                # if no chamfers, do not add the first waypoint
+                if chamfer_size or i != 0:
+                    waypoint = Waypoint(x, y, heading=target_heading)
                     self.waypoints.append(waypoint)
 
-
-                if x == x_max - chamfer:
+                # stop moving along the edge if we reach the right side
+                if x == x_max - chamfer_size:
                     break
 
                 i += 1
 
+            # shift spiral inwards
             x_min = x_min + line_spacing
+
+            # reset iterators
             i = 0
             j = 0
 
             while True:
                 x = x_max
-                y = max(y_max - chamfer - point_spacing*j, y_min + chamfer)
-                if y == y_min + chamfer:
-                    target_heading = -3*pi/4 if chamfer else pi
+
+                # move along right edge until reaching the bottom
+                y = max(y_max - chamfer_size - point_spacing*j, y_min + chamfer_size)
+
+                # cut corner if at end
+                if y == y_min + chamfer_size:
+                    target_heading = -3*pi/4 if chamfer_size else pi
                 else:
                     target_heading = -pi/2
 
-                waypoint = Waypoint(
-                    x, y, heading=target_heading
-                )
-
-                if chamfer or j != 0:
+                # if no chamfers, do not add the first waypoint
+                if chamfer_size or j != 0:
+                    waypoint = Waypoint(x, y, heading=target_heading)
                     self.waypoints.append(waypoint)
 
-
-                if y == y_min + chamfer:
+                # stop moving along the edge if we reach the bottom
+                if y == y_min + chamfer_size:
                     break
 
                 j += 1
 
+            # shift spiral inwards
             y_max = y_max - line_spacing
 
             while True:
-                x = max(x_max - chamfer - point_spacing*i, x_min + chamfer)
                 y = y_min
-                if x == x_min + chamfer:
-                    target_heading = 3 * pi/4 if chamfer else pi/2
+
+                # move along bottom edge until reaching the left
+                x = max(x_max - chamfer_size - point_spacing*i, x_min + chamfer_size)
+
+                # cut corner if at end
+                if x == x_min + chamfer_size:
+                    target_heading = 3 * pi/4 if chamfer_size else pi/2
                 else:
                     target_heading = pi
 
-                waypoint = Waypoint(
-                    x, y, heading=target_heading
-                )
-
-                if chamfer or i != 0:
+                # if no chamfers, do not add first waypoint
+                if chamfer_size or i != 0:
+                    waypoint = Waypoint(x, y, heading=target_heading)
                     self.waypoints.append(waypoint)
 
-
-                if x == x_min + chamfer:
+                # stop moving along the edge if we reach the left
+                if x == x_min + chamfer_size:
                     break
 
                 i += 1
 
+            # shift spiral inwards
             x_max = x_max - line_spacing
+
+            # reset iterators
             i = 0
             j = 0
 
+            # stop before the spiral gets too tight
             if (x_max - x_min) < 2*line_spacing or (y_max - y_min) < 2*line_spacing:
                 break
 
+        # copy waypoints over
         self.repeat_waypoints = self.waypoints.copy()
-        if chamfer:
+        if chamfer_size:
             self.waypoints.pop(0)
         self.nonrepeat_waypoints = self.waypoints.copy()
 
@@ -706,72 +726,90 @@ class RectangleWaypointSequence(WaypointSequence):
     A sequence of waypoints which is just a rectangle
     '''
 
-    STOPPING = True
-
     def __init__(self, length_x, length_y, origin_x, origin_y, num_loops, angle_agnostic=False):
         super().__init__()
 
-        for i in range(num_loops):
+        for _ in range(num_loops):
+            # add all four corners
             self.waypoints.append(Waypoint(
                 origin_x,
                 origin_y + length_y,
-                heading=None if angle_agnostic else 0,
-                vel=0 if RectangleWaypointSequence.STOPPING else None))
+                heading=None if angle_agnostic else 0))
             self.waypoints.append(Waypoint(
                 origin_x + length_x,
                 origin_y + length_y,
-                heading=None if angle_agnostic else -pi/2,
-                vel=0 if RectangleWaypointSequence.STOPPING else None))
+                heading=None if angle_agnostic else -pi/2))
             self.waypoints.append(Waypoint(
                 origin_x + length_x,
                 origin_y,
-                heading=None if angle_agnostic else pi,
-                vel=0 if RectangleWaypointSequence.STOPPING else None))
+                heading=None if angle_agnostic else pi))
             self.waypoints.append(Waypoint(
                 origin_x,
                 origin_y,
-                heading=None if angle_agnostic else pi/2,
-                vel=0 if RectangleWaypointSequence.STOPPING else None))
+                heading=None if angle_agnostic else pi/2))
 
         self.repeat_waypoints = self.waypoints.copy()
         self.nonrepeat_waypoints = self.waypoints.copy()
 
 class ShiftingWindowSequence(WaypointSequence):
-    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING
-    ENV_LENGTH: float = 2000
-    ENV_WIDTH: float = 2000
+    '''
+    A waypoint sequence which consists of a rectangle which keeps shifting over
+    '''
+
+    BORDER_PADDING: float = RobotGeometry.RADIUS + RobotGeometry.PADDING # the padding around the edge
+    ENV_LENGTH: float = 2000 # the length of the environment
+    ENV_WIDTH: float = 2000 # the width of the environment
 
     def __init__(self, line_spacing):
         super().__init__()
 
-        origin_x = ShiftingWindowSequence.BORDER_PADDING
+        # the min and max y coord
         min_y = ShiftingWindowSequence.BORDER_PADDING
         max_y = ShiftingWindowSequence.ENV_LENGTH - ShiftingWindowSequence.BORDER_PADDING
 
-        while origin_x < 1000:
+        # the position of the origin, dynamically updated as the window shifts
+        origin_x = ShiftingWindowSequence.BORDER_PADDING
+
+        while origin_x < 1000: # while not beyond half way
+            # add the four corners
             self.waypoints.append(Waypoint(origin_x, min_y, pi/2))
             self.waypoints.append(Waypoint(origin_x, max_y, 0))
             self.waypoints.append(Waypoint(origin_x + 1000 - ShiftingWindowSequence.BORDER_PADDING, max_y, -pi/2))
             self.waypoints.append(Waypoint(origin_x + 1000 - ShiftingWindowSequence.BORDER_PADDING, min_y, pi))
 
+            # shift the window over
             origin_x += line_spacing
 
+        # set the waypoints
         self.repeat_waypoints = self.waypoints.copy()
         self.waypoints.pop(0)
         self.nonrepeat_waypoints = self.waypoints.copy()
 
 class StraightLineWaypointSequence(WaypointSequence):
+    '''
+    A sequence of waypoints which moves in a straight line from the deposit.
+    '''
     def __init__(self):
         super().__init__()
 
         self.waypoints.append(Waypoint(0, 0, 0))
 
-    def aim_line(self, current_x, current_y, current_theta):
+    def aim_line(self, current_x: float, current_y: float, current_theta: float):
+        '''
+        Sets the waypoint to be straight forward.
+
+        Parameters:
+            current_x (float): the current x position
+            current_y (float): the current y position
+            current_theta (float): the current angle
+        '''
         self.waypoints = []
 
+        # calculate the coordinates of the end of the line
         endpoint_x = max(min(2000, current_x + 2000*math.cos(current_theta)), 0)
         endpoint_y = max(min(2000, current_y + 2000*math.sin(current_theta)), 0)
 
+        # redefine the waypoint set
         self.waypoints = [Waypoint(endpoint_x, endpoint_y, current_theta)]
         self.repeat_waypoints = self.waypoints.copy()
         self.nonrepeat_waypoints = self.waypoints.copy()
@@ -783,10 +821,10 @@ class MockLocalisationWaypointSequence(WaypointSequence):
     def __init__(self):
         super().__init__()
 
+        # add waypoint
         self.waypoints.append(Waypoint(500, 500, heading=None))
         self.repeat_waypoints = self.waypoints.copy()
         self.nonrepeat_waypoints = self.waypoints.copy()
-
 
 class Debogger(ABC):
     '''
@@ -862,16 +900,16 @@ class NoDebogger(Debogger):
         return False
 
     def attempt_debog(self, planner: Pathplanner):
-        return super().attempt_debog(planner)
+        pass
 
     def pause_debogger(self):
-        return super().pause_debogger()
+        pass
 
     def unpause_debogger(self):
-        return super().unpause_debogger()
+        pass
 
     def delay(self, delay_time: float):
-        return super().delay()
+        pass
 
 class ActiveDebogger(Debogger):
     '''
@@ -898,6 +936,7 @@ class ActiveDebogger(Debogger):
             reverse_distance (float): how far back the robot should reverse when bogged [mm]
             angle_deviation (float): the angle deviation the robot should make after reversing [rad]
         '''
+        super().__init__()
 
         # update parameters of the debogger
         ActiveDebogger.EPSILON_X = epsilon_x
