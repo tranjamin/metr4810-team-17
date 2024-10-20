@@ -194,7 +194,6 @@ def main(configfile, camera):
             plan.extraction_strategy.disable_extraction()
             break
         elif key == ord('d') and robot_state == State.TRAVERSAL:  # return to delivery
-            # plan.robot.send_control_command("command=3")
             robot_comms.send_control_action(0, 0)
             time.sleep(5)
             plan.add_delivery()
@@ -242,6 +241,7 @@ def main(configfile, camera):
             # enable extraction and debogging
             plan.extraction_strategy.enable_extraction(x, y)
             plan.debog_strategy.enable_debogger()
+            plan.stopFlag = False
         elif key == ord("w"):  # connect to the wifi
             connect_wifi()
 

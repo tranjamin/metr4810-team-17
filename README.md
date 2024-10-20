@@ -64,17 +64,34 @@ Navigate to `192.168.4.1` which is the default address (using port 80).
 
 Then, navigate to one of these endpoints (i.e., `192.168.4.1/log`)
 
-### /diagnostics
+#### /diagnostics
 
 This displays diagnostic information about the tasks and how much RAM is remaining
 
-### /log
+#### /log
 
 Displays the debugging log of the system (used by making calls to `vDebugLog`)
 
-### /control
+#### /control
 
 Allows for controlling of the robot. Click the links to send a command
+
+#### /udp
+
+Logs how many UDP commands have been received. Useful for benchmarking
+
+### Running the Client-Side
+
+To run the client-side program, first install all the requirements: `pip install -r requirements.txt` (assuming you have Python installed).
+
+Then, you must identify the config file and camera being used. Once you do so, run `python main.py -c {your-camera-id} --filename {your-config-file}`.
+
+Once you do this, a GUI window will open. You can send keypress commands to the GUI in order to send signals to the robot. You can send the following commands:
+- `s`: Start the deployment
+- `d`: Return to the deposit zone
+- `e`: Move to the emergency zone
+- `f`: Start the deposit ("fire")
+
 
 ## Firmware Development Guide
 
