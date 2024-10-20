@@ -79,7 +79,7 @@ void vDigitalIOInit() {
     gpio_set_irq_enabled(CSENSE_LHS, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(CSENSE_RHS, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(CSENSE_EXTRACTION, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
-    gpio_set_irq_enabled(OPTICAL_SENSOR, GPIO_IRQ_EDGE_RISE, true);
+    gpio_set_irq_enabled(OPTICAL_SENSOR, GPIO_IRQ_EDGE_FALL, true);
 
     gpio_set_irq_callback(&gpioCallback);
 }
@@ -157,7 +157,7 @@ void gpioCallback(uint gpio_number, uint32_t events) {
             break;
         case OPTICAL_SENSOR:
             if (current_time - optical_sensor_debounce_timer > OPTICAL_DEBOUNCE_INTERVAL_MS) {
-                if (events & GPIO_IRQ_EDGE_RISE) {
+                if (events & GPIO_IRQ_EDGE_FALL) {
                     // received rising edge outside of the debounced interval
                     vDebugLog("Sensed on Optical Sensor\n");
                     optical_sensor_debounce_timer = current_time;
