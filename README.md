@@ -101,7 +101,7 @@ The build chain used for firmware is based off https://github.com/aws-iot-builde
 
 You need the following dependencies to build and flash firmware onto the Pico.
 
-For windows:
+For Windows:
 - Git
 - CMake (https://cmake.org/download/)
 - ARM GNU Toolchain (https://developer.arm.com/Tools%20and%20Software/GNU%20Toolchain)
