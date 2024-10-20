@@ -27,17 +27,21 @@
         }
     },
     "pathplan": {
-        "reference-class": "SnakeWaypointSequence",
+        "reference-class": "SpiralWaypointSequence",
         "args": {
-            "points_per_line": 2,
-            "theta_agnostic": false
+            "line_spacing": 300,
+            "chamfer_size": 200
         },
         "aim-enabled": true
     },
     "debogger": {
-        "enabled": true
+        "enabled": false
     },
     "extraction": {
-        "type": "PERIODIC"
+        "reference-class": "ExtractionPeriodic",
+        "args": {
+            "duration": 2.0,
+            "interval": 2.0
+        }
     }
 }

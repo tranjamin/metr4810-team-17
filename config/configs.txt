@@ -1,0 +1,25 @@
+"controllers": {
+    "forward-controller": {
+        "k_angle": 100,
+        "k_v": 46,
+        "w": 0.8,
+        "goal_tolerance": 40,
+        "angle_deadzone": 0,
+        "reversing_allowed": true 
+    },
+    "spin-controller": {
+        "k_angle": 55,
+        "k_v": 2,
+        "angle_tolerance": 0.1
+    }
+},
+
+"args": {
+    "epsilon_x": 60,
+    "epsilon_theta": 10,
+    "debog_epsilon_x": 80,
+    "debog_epsilon_theta": 10,
+    "patience": 2,
+    "reverse_distance": 200,
+    "angle_deviation": 0.01
+}

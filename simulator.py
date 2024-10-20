@@ -29,17 +29,17 @@ class Simulator():
     def draw_grid(self):
         for x in range(0, Simulator.GRID_WIDTH, Simulator.GRID_WIDTH//10):
             pygame.draw.line(self.screen, LIGHT_GRAY, (x, 0), (x, Simulator.GRID_HEIGHT))
-        
+
         for y in range(0, Simulator.GRID_HEIGHT, Simulator.GRID_WIDTH//10):
             pygame.draw.line(self.screen, LIGHT_GRAY, (0, y), (Simulator.WINDOW_WIDTH, y))
-    
+
     def draw_obstacle(self):
         rect = pygame.rect.Rect((2000 - Simulator.OBSTACLE_WIDTH)//Simulator.SCALE, 0//Simulator.SCALE, Simulator.OBSTACLE_WIDTH//Simulator.SCALE, Simulator.OBSTACLE_LENGTH//Simulator.SCALE)
         pygame.draw.rect(self.screen, BLACK, rect)
-    
+
     def set_waypoints(self, waypoints: WaypointSequence):
         self.waypoints = waypoints
-    
+
     def draw_waypoints(self):
         for ind, wp in enumerate(self.waypoints.waypoints):
             if (ind == Simulator.NUM_VISIBLE_WAYPOINTS):
