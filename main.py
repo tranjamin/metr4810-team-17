@@ -82,7 +82,7 @@ def main(configfile, camera):
 
     plan.set_robot(robot_comms)
     plan.extraction_strategy.attach_agents(robot_comms)
-    plan.extraction_strategy.reset_extraction(0, 0) # TODO: I really hope this doesn't cook it
+    plan.extraction_strategy.reset_extraction(0, 0)
  
     # state in the FSM
     robot_state = State.WAIT

@@ -31,7 +31,8 @@
         "args": {
             "line_spacing": 300,
             "chamfer_size": 200
-        }
+        },
+        "aim-enabled": true
     },
     "debogger": {
         "enabled": false
