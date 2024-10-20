@@ -527,6 +527,9 @@ class WaypointSequence(ABC):
         self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
         self.waypoints.insert(0, emergency_waypoint)
 
+        # add immediate rotation waypoint
+        self.waypoints.insert(0, Waypoint(current_x, current_y, emergency_waypoint.heading))
+
     def get_current_waypoint(self) -> Waypoint | None:
         '''
         Gets the current waypoint being tracked.
