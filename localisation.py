@@ -2,9 +2,11 @@
 Stores all localisation functionality
 
 Classes:
-    Localisation(): an abstract class which represents a method of localising the robot.
-        MockLocalisation(): a class which is used to mock out real localisation
-        CameraLocalisation(): a class which uses AprilTags to detect the position of the robot.
+    Localisation(): an abstract class which represents a method of localising
+        the robot.
+    MockLocalisation(): a class which is used to mock out real localisation
+    CameraLocalisation(): a class which uses AprilTags to detect the
+        position of the robot.
 '''
 
 import cv2 as cv
@@ -12,7 +14,7 @@ import numpy as np
 from robotpy_apriltag import AprilTagDetector
 from scipy.spatial.transform import Rotation as R
 import time
-from abc import ABC, abstractmethod
+from abc import ABC
 
 from estimators import RigidBodyTracker
 
@@ -36,7 +38,8 @@ class Localisation(ABC):
 
     def deinit(self):
         '''
-        Tears down and closes any hanging resources once the localisation has been terminated.
+        Tears down and closes any hanging resources once the localisation has
+        been terminated.
         '''
 
     def setup(self):
