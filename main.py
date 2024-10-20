@@ -174,11 +174,9 @@ def main(configfile, camera):
             plan.add_delivery()
         elif key == ord("e") and robot_state == State.TRAVERSAL:  # go to high ground
             plan.add_emergency()
-        elif (
-            key == ord("f") and robot_state == State.TRAVERSAL
-        ):  # start depositing bean
+        elif (key == ord("f") and robot_state == State.TRAVERSAL):  # start depositing bean
             plan.signal_delivery_start()  # start delivery
-            plan.debog_strategy.delay(22)  # resume debogging after 22 seconds
+            robot_state = State.WAIT
         elif key == ord("s"):  # start robot sending
             # get starting position
             positions, angles = localiser.get_position(img)
