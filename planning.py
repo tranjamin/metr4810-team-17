@@ -89,7 +89,7 @@ class Pathplanner():
 
         # log information about the first waypoint
         print("---- FIRST WAYPOINT ----")
-        print(f"(Next waypoint is at: {self.current_waypoint.coords})")
+        print(f"(Next waypoint is at: {self.current_waypoint.coords}, {self.current_waypoint.heading})")
 
     def set_controller(self, controller: Controller):
         '''
@@ -137,6 +137,7 @@ class Pathplanner():
             if self.current_waypoint.stopFlag: # stops pathplanning if flag set
                 self.extraction_strategy.disable_extraction()
                 self.debog_strategy.disable_debogger()
+                self.stopFlag = True
             if self.current_waypoint.suspendFlag: # stops extraction if flag set
                 self.extraction_strategy.disable_extraction()
             if self.current_waypoint.resumeFlag: # resumes extraction if flag set
@@ -154,7 +155,7 @@ class Pathplanner():
                 self.current_waypoint = self.waypoints.get_current_waypoint()
 
             print("---- MOVE TO NEXT WAYPOINT ----")
-            print(f"(Next waypoint is at: {self.current_waypoint.coords})")
+            print(f"(Next waypoint is at: {self.current_waypoint.coords}, {self.current_waypoint.heading})")
 
     def controller_step(self):
         '''
@@ -375,11 +376,11 @@ class DepositHelperWaypoint(Waypoint):
     DEPOSIT_HELPER_X: float = DepositWaypoint.DEPOSIT_X - (DepositWaypoint.DEPOSIT_SIZE/2 + RobotGeometry.RADIUS)*math.cos(DepositWaypoint.DEPOSIT_HEADING)
     DEPOSIT_HELPER_Y: float = DepositWaypoint.DEPOSIT_Y - (DepositWaypoint.DEPOSIT_SIZE/2 + RobotGeometry.RADIUS)*math.sin(DepositWaypoint.DEPOSIT_HEADING)
 
-    def __init__(self, heading=DepositWaypoint.DEPOSIT_HEADING):
+    def __init__(self, heading=None):
         super().__init__(
             DepositHelperWaypoint.DEPOSIT_HELPER_X,
             DepositHelperWaypoint.DEPOSIT_HELPER_Y,
-            heading = heading,
+            heading = heading if heading is not None else DepositWaypoint.DEPOSIT_HEADING,
             vel = None
         )
 
@@ -451,9 +452,9 @@ class WaypointSequence(ABC):
         self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
 
         # insert the deposit waypoint, sandwiched by the helpers
-        self.waypoints.insert(0, DepositHelperWaypoint(heading=return_angle))
-        self.waypoints.insert(0, DepositWaypoint())
-        self.waypoints.insert(0, DepositHelperWaypoint())
+        self.waypoints.insert(0, DepositHelperWaypoint(heading=immediate_rotate_angle)) ### coming out of deposit
+        self.waypoints.insert(0, DepositWaypoint()) ##### deposit
+        self.waypoints.insert(0, DepositHelperWaypoint()) ### coming into deposit
 
         # insert the spin waypoint to do immediately
         self.waypoints.insert(0, Waypoint(current_x, current_y, immediate_rotate_angle))
@@ -909,6 +910,12 @@ class NoDebogger(Debogger):
         pass
 
     def delay(self, delay_time: float):
+        pass
+
+    def disable_debogger(self):
+        pass
+
+    def enable_debogger(self):
         pass
 
 class ActiveDebogger(Debogger):

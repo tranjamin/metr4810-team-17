@@ -639,8 +639,7 @@ class CameraLocalisation(Localisation):
             self.dist_coeffs,
             self.origin,
             self.target,
-            self.detector,
-            self.logger,
+            self.detector
         )
         measurement_time = time.time()
 

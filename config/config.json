@@ -2,7 +2,7 @@
     "controllers": {
         "forward-controller": {
             "k_angle": 100,
-            "k_v": 48,
+            "k_v": 42,
             "w": 0.8,
             "goal_tolerance": 40,
             "angle_deadzone": 0,

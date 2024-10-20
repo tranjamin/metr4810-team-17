@@ -133,7 +133,7 @@ class RobotSim(Robot, Localisation):
         print(f"Would send command {command}")
 
     def plot_results(self):
-        """
+        '''
         Plot the results of the FMU simulation
         '''
  

@@ -156,6 +156,8 @@ def main(configfile, camera):
             plan.extraction_strategy.disable_extraction()
             break
         elif key == ord('d') and robot_state == State.TRAVERSAL:  # return to delivery
+            plan.robot.send_control_command("command=3")
+            time.sleep(5)
             plan.add_delivery()
         elif key == ord('e') and robot_state == State.TRAVERSAL:  # go to high ground
             plan.add_emergency()
@@ -210,8 +212,8 @@ def main(configfile, camera):
 if __name__ == "__main__":
     # load in command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--filename", "-f", default="config/configSimSpiral.json")
-    parser.add_argument("--camera", "-c", default=2)
+    parser.add_argument("--filename", "-f", default="config/config.json")
+    parser.add_argument("--camera", "-c", default=0)
     args = parser.parse_args()
     print(f"Reading file {args.filename} and camera {args.camera}")
 
