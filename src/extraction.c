@@ -1,5 +1,6 @@
 // RTOS INCLUDES
 #include "FreeRTOS.h"
+#include "FreeRTOSConfig.h"
 #include "task.h"
 #include "hardware/pwm.h"
 #include "semphr.h"
@@ -20,16 +21,17 @@
 // RTOS BLOCKING TIMES
 #define VDELAY 3
 #define SEMPH_TICKS 1000
-#define EXRACTION_TIMEOUT 3500 // time to wait if extraction is stuck
+#define EXTRACTION_TIMEOUT 2000 // time to wait if extraction is stuck
 
 // PWM CONFIGURATION OPTIONS
 #define CLK_DIVIDER 128
 #define PWM_TOP 8192
-#define EXTRACTION_PWM_SPEED 90 // PWM speed to run the extraction motor
+#define EXTRACTION_PWM_SPEED 100 // PWM speed to run the extraction motor
 
 // STATE MACHINE STATES
 #define EXTRACTION_IDLE 0
 #define EXTRACTION_RUNNING 1
+#define EXTRACTION_MANUAL 3
 
 volatile int extraction_state; // the current state of the FSM
 SemaphoreHandle_t extractionSemaphoreStart; // controls when to start the extraction procedure
@@ -38,6 +40,8 @@ SemaphoreHandle_t extractionSemaphoreStop; // controls when to stop the extracti
 // Function Prototyeps
 void extractionProcedureSignalStart();
 void extractionProcedureSignalStop();
+void extractionManualStart();
+void extractionManualStop();
 
 void vExtractionTask();
 void vExtractionInit();
@@ -54,6 +58,21 @@ Start the extraction procedure.
  */
 void extractionProcedureSignalStart() {
     xSemaphoreGiveFromISR(extractionSemaphoreStart, NULL);
+}
+
+/**
+Starts the extraction motor manually
+ */
+void extractionManualStart() {
+    SET_EXTRACTION_FORWARD();
+}
+
+/**
+Stops the extraction motor when the optical sensor detects
+ */
+void extractionManualStop() {
+    xSemaphoreTakeFromISR(extractionSemaphoreStop, 0);
+    extraction_state = EXTRACTION_MANUAL;
 }
 
 /**
@@ -102,7 +121,7 @@ void vExtractionTask() {
     for (;;) {
         switch (extraction_state) {
             case EXTRACTION_IDLE:
-                if (xSemaphoreTake(extractionSemaphoreStart, SEMPH_TICKS) == pdTRUE) { // if delivery has been started
+                if (xSemaphoreTake(extractionSemaphoreStart, SEMPH_TICKS) == pdTRUE) { // if extraction has been started
                     vDebugLog("Disabling UDP and Starting Extraction");
 
                     // suspend other tasks
@@ -116,7 +135,8 @@ void vExtractionTask() {
                 }
                 break;
             case EXTRACTION_RUNNING:
-                if (xSemaphoreTake(extractionSemaphoreStop, EXRACTION_TIMEOUT) == pdTRUE) { // if delivery has been stopped
+                xSemaphoreTake(extractionSemaphoreStop, 0);
+                if (xSemaphoreTake(extractionSemaphoreStop, EXTRACTION_TIMEOUT) == pdTRUE) { // if extraction has been stopped
                     vDebugLog("Re-enabling UDP");
 
                     // set the extraction as stopped
@@ -134,6 +154,13 @@ void vExtractionTask() {
                     enableUDP();
                 }
                 break;
+            case EXTRACTION_MANUAL:
+                xSemaphoreTake(extractionSemaphoreStop, EXTRACTION_TIMEOUT);
+
+                // wait until optical sensor or timeout 
+                vDebugLog("STOPPING HERE WOO");
+                SET_EXTRACTION_STOPPED();
+                extraction_state = EXTRACTION_IDLE;
         }
     }
 }
