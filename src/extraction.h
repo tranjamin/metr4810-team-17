@@ -6,7 +6,8 @@ Functions:
     vExtractionTask(): the main loop of this task
     extractionProcedureStart(): starts the extraction sequence.
     extractionProcedureStop(): stops the extraction sequence.
-    waitExtractionStopOnSense(): stops the extraction when it hits the optical sensor
+    extractionManualStart(): manually starts the extraction.
+    extractionManualStop(): stops the extraction in the right configuration.
 
 Definitions:
     EXTRACTION_INA: The pico GPIO pin corresponding to motor driver INA
@@ -30,7 +31,7 @@ Definitions:
 #include "FreeRTOSConfig.h"
 
 // RTOS Task Settings
-#define EXTRACTION_TASK_NAME "Bean Delivery Task"
+#define EXTRACTION_TASK_NAME "Bean Extraction Task"
 #define EXTRACTION_TASK_PRIORITY (tskIDLE_PRIORITY + 8)
 #define EXTRACTION_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE)
 #define EXTRACTION_TASK_COREMASK 0x01
@@ -51,6 +52,7 @@ void vExtractionInit();
 void vExtractionTask();
 void extractionProcedureSignalStop();
 void extractionProcedureSignalStart();
-void waitExtractionStopOnSense();
+void extractionManualStart();
+void extractionManualStop();
 
 #endif
