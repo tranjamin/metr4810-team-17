@@ -21,7 +21,7 @@
 // RTOS BLOCKING TIMES
 #define VDELAY 3
 #define SEMPH_TICKS 1000
-#define EXTRACTION_TIMEOUT 2000 // time to wait if extraction is stuck
+#define EXTRACTION_TIMEOUT 6000 // time to wait if extraction is stuck
 
 // PWM CONFIGURATION OPTIONS
 #define CLK_DIVIDER 128
@@ -72,7 +72,10 @@ Stops the extraction motor when the optical sensor detects
  */
 void extractionManualStop() {
     xSemaphoreTakeFromISR(extractionSemaphoreStop, 0);
+    disableUDP();
     extraction_state = EXTRACTION_MANUAL;
+    SET_TRAVERSAL_LHS_STOPPED();
+    SET_TRAVERSAL_RHS_STOPPED();
 }
 
 /**
@@ -158,9 +161,9 @@ void vExtractionTask() {
                 xSemaphoreTake(extractionSemaphoreStop, EXTRACTION_TIMEOUT);
 
                 // wait until optical sensor or timeout 
-                vDebugLog("STOPPING HERE WOO");
                 SET_EXTRACTION_STOPPED();
                 extraction_state = EXTRACTION_IDLE;
+                enableUDP();
         }
     }
 }
