@@ -126,6 +126,9 @@ class Pathplanner():
         if self.debog_strategy.is_bogged(current_x, current_y, current_theta):
             print("Bogging Detected")
             self.debog_strategy.attempt_debog(self)
+        elif self.debog_strategy.has_unbogged(current_x, current_y, current_theta):
+            print("Unbog detected")
+            self.debog_strategy.stop_debog(self)
 
         if self.current_waypoint is None:
             # at the end of the sequence
@@ -870,12 +873,31 @@ class Debogger(ABC):
         '''
 
     @abstractmethod
+    def has_unbogged(self, current_x: float, current_y: float, current_theta: float) -> bool:
+        '''
+        Determines whether the robot has unbogged itself
+
+        Parameters:
+            current_x (float): the current x coord
+            current_y (float): the current y coord
+            current_theta (float): the current angle
+        Returns:
+            True if the robot is unbogged 
+        '''
+
+    @abstractmethod
     def attempt_debog(self, planner: Pathplanner):
         '''
         Attemps to modify the plan to debog the robot.
 
         Parameters:
             planner (Pathplanner): the plan to modify.
+        '''
+
+    @abstractmethod
+    def stop_debog(self, planner: Pathplanner):
+        '''
+        Stops all pathplanning
         '''
 
     @abstractmethod
@@ -890,14 +912,12 @@ class Debogger(ABC):
         Resumes the debogger.
         '''
 
-    @abstractmethod
     def disable_debogger(self):
         '''
         Disables the debogger. A stricter condition than pausing.
         '''
         self.enabled = False
 
-    @abstractmethod
     def enable_debogger(self):
         '''
         Enables the debogger. A stricter condition than pausing.
@@ -920,8 +940,14 @@ class NoDebogger(Debogger):
 
     def is_bogged(self, current_x: float, current_y: float, current_theta: float) -> bool:
         return False
+    
+    def has_unbogged(self, current_x: float, current_y: float, current_theta: float) -> bool:
+        return False
 
     def attempt_debog(self, planner: Pathplanner):
+        pass
+
+    def stop_debog(self, planner: Pathplanner):
         pass
 
     def pause_debogger(self):
@@ -949,10 +975,14 @@ class ActiveDebogger(Debogger):
     PATIENCE: float # the timeout to consider the robot bogged [s]
     REVERSE_DISTANCE: float # how far back the robot should reverse when bogged [mm]
     ANGLE_DEVIATION: float # the angle deviation the robot should make after reversing [rad]
+    DEBOG_EPSILON_THETA: float # the distance the robot needs to move to be considered unbogged [rad]
+    DEBOG_EPSILON_X: float # the distance the robot needs to move to be considered unbogged [mm]
 
     def __init__(self,
                  epsilon_x: float=30,
-                 epsilon_theta: float=pi/4,
+                 epsilon_theta: float=10,
+                 debog_epsilon_x: float=60,
+                 debog_epsilon_theta: float=10,
                  patience: float=2,
                  reverse_distance: float=400,
                  angle_deviation: float=pi/6):
@@ -973,6 +1003,9 @@ class ActiveDebogger(Debogger):
         ActiveDebogger.REVERSE_DISTANCE = reverse_distance
         ActiveDebogger.ANGLE_DEVIATION = angle_deviation
 
+        ActiveDebogger.DEBOG_EPSILON_X = debog_epsilon_x
+        ActiveDebogger.DEBOG_EPSILON_THETA = debog_epsilon_theta
+
         # the reference position to consider bogging from
         self.last_debog_position: tuple[float, float, float] = None
 
@@ -980,7 +1013,11 @@ class ActiveDebogger(Debogger):
         self.debogger_enabled: bool = True # whether bogging is disabled or not
         self.debogger_pause_time: float = None # the time that the bogging was disabled at
 
+        self.bogged_start_position: tuple[float, float, float] = None # starting position of bog
+
     def is_bogged(self, current_x: float, current_y: float, current_theta: float) -> bool:
+        if self.bogged_start_position is not None:
+            return False
 
         # update parameters if this is the first debog cycle
         if self.last_debog_position is None:
@@ -991,7 +1028,7 @@ class ActiveDebogger(Debogger):
         # calculate how far the robot has moved from the reference
         debog_x, debog_y, debog_theta = self.last_debog_position
         x_deviation = math.sqrt((current_x - debog_x)**2 + (current_y - debog_y)**2)
-        theta_deviation = abs(current_theta - debog_theta)
+        theta_deviation = abs(wrap_to_pi(current_theta - debog_theta))
 
         if (x_deviation > ActiveDebogger.EPSILON_X or theta_deviation > ActiveDebogger.EPSILON_THETA):
             # we have not bogged, update the reference time and position
@@ -1002,60 +1039,80 @@ class ActiveDebogger(Debogger):
             # we have bogged
             return True
         return False
+    
+    def has_unbogged(self, current_x: float, current_y: float, current_theta: float) -> bool:
+        if self.bogged_start_position is None:
+            return False
+        debog_x, debog_y, debog_theta = self.bogged_start_position
+        x_deviation = max(abs(current_x - debog_x), abs(current_y - debog_y))
+        theta_deviation = abs(wrap_to_pi(current_theta - debog_theta))
 
+        if (x_deviation > ActiveDebogger.DEBOG_EPSILON_X or theta_deviation > ActiveDebogger.DEBOG_EPSILON_THETA):
+            # then we have unbogged
+            return True
+        else:
+            return False
 
-    def attempt_debog(self, planner):
-        # determine which direction is reversing
-        reverse = -1 if planner.desired_velocity > 0 else 1
-        print("Reversing: ", reverse)
+    def stop_debog(self, planner: Pathplanner):
+        print("Unbogged. End position is", (planner.current_x, planner.current_y, planner.current_theta))
+        self.bogged_start_position = None
+        planner.extraction_strategy.unpause_extraction()
 
-        # calculate where to reverse to, ensuring to stay within the bounds of the environment
-        new_x = min(max(planner.current_x + reverse*math.cos(planner.current_theta)*ActiveDebogger.REVERSE_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS)
-        new_y = min(max(planner.current_y + reverse*math.sin(planner.current_theta)*ActiveDebogger.REVERSE_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS)
+    def attempt_debog(self, planner: Pathplanner):
+        self.bogged_start_position = (planner.current_x, planner.current_y, planner.current_theta)
+        print("Detected a bog. Starting position is", self.bogged_start_position)
+        planner.extraction_strategy.pause_extraction()
+        # # determine which direction is reversing
+        # reverse = -1 if planner.desired_velocity > 0 else 1
+        # print("Reversing: ", reverse)
 
-        # the robot can deviate in either direction after reversing
-        theta_option_one = wrap_to_pi(planner.current_theta + ActiveDebogger.ANGLE_DEVIATION)
-        theta_option_two = wrap_to_pi(planner.current_theta - ActiveDebogger.ANGLE_DEVIATION)
+        # # calculate where to reverse to, ensuring to stay within the bounds of the environment
+        # new_x = min(max(planner.current_x + reverse*math.cos(planner.current_theta)*ActiveDebogger.REVERSE_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS)
+        # new_y = min(max(planner.current_y + reverse*math.sin(planner.current_theta)*ActiveDebogger.REVERSE_DISTANCE, RobotGeometry.RADIUS), 2000 - RobotGeometry.RADIUS)
 
-        # calculate where both deviation options will lead
-        distance_option_one = (abs(1000 - (new_x + math.cos(theta_option_one))))**2 + (abs(1000 - (new_y + math.sin(theta_option_one))))**2
-        distance_option_two = (abs(1000 - (new_x + math.cos(theta_option_two))))**2 + (abs(1000 - (new_y + math.sin(theta_option_two))))**2
+        # # the robot can deviate in either direction after reversing
+        # theta_option_one = wrap_to_pi(planner.current_theta + ActiveDebogger.ANGLE_DEVIATION)
+        # theta_option_two = wrap_to_pi(planner.current_theta - ActiveDebogger.ANGLE_DEVIATION)
 
-        # choose the deviation option that is further away from the edge
-        new_heading = theta_option_one if distance_option_one < distance_option_two else theta_option_two
+        # # calculate where both deviation options will lead
+        # distance_option_one = (abs(1000 - (new_x + math.cos(theta_option_one))))**2 + (abs(1000 - (new_y + math.sin(theta_option_one))))**2
+        # distance_option_two = (abs(1000 - (new_x + math.cos(theta_option_two))))**2 + (abs(1000 - (new_y + math.sin(theta_option_two))))**2
 
-        # set the debog waypoint
-        new_waypoint = Waypoint(new_x, new_y, heading=new_heading)
-        planner.waypoints.waypoints.insert(0, new_waypoint)
-        planner.current_waypoint = new_waypoint
-        planner.previous_waypoint = (planner.current_x, planner.current_y)
+        # # choose the deviation option that is further away from the edge
+        # new_heading = theta_option_one if distance_option_one < distance_option_two else theta_option_two
 
-        print("Current position: ", (planner.current_x, planner.current_y))
-        print("New waypoint: ", planner.current_waypoint.coords)
+        # # set the debog waypoint
+        # new_waypoint = Waypoint(new_x, new_y, heading=new_heading)
+        # planner.waypoints.waypoints.insert(0, new_waypoint)
+        # planner.current_waypoint = new_waypoint
+        # planner.previous_waypoint = (planner.current_x, planner.current_y)
 
-        # update debog parameters
-        self.last_debog_time = time.time()
-        self.last_debog_position = (planner.current_x, planner.current_y, planner.current_theta)
+        # print("Current position: ", (planner.current_x, planner.current_y))
+        # print("New waypoint: ", planner.current_waypoint.coords)
 
-        # flag to update the controller path
-        planner.update_controller_path = True
+        # # update debog parameters
+        # self.last_debog_time = time.time()
+        # self.last_debog_position = (planner.current_x, planner.current_y, planner.current_theta)
+
+        # # flag to update the controller path
+        # planner.update_controller_path = True
 
     def pause_debogger(self):
         '''
         Pause the debogger
         '''
-        self.debogger_enabled = False
-        self.debogger_pause_time = time.time()
+        if not self.paused and self.enabled:
+            self.paused = True
+            self.debogger_pause_time = time.time()
 
     def unpause_debogger(self):
         '''
         Resume the debogger
         '''
-        self.debogger_enabled = True
-
         # shift the debog time to account for time already measured
-        if self.debogger_pause_time is not None and self.last_debog_time is not None:
-            self.last_debog_time = time.time() - (self.debogger_pause_time - self.last_debog_time)
+        if self.paused and self.enabled:
+            if self.debogger_pause_time is not None and self.last_debog_time is not None:
+                self.last_debog_time = time.time() - (self.debogger_pause_time - self.last_debog_time)
 
     def delay(self, delay_time):
         self.last_debog_time = time.time() + delay_time

@@ -95,7 +95,7 @@ class ExtractionPeriodic(ExtractionModes):
             self.paused = True
 
     def unpause_extraction(self):
-        if self.enabled:
+        if self.enabled and self.paused:
             if self.extraction_pause_time is not None:
                 # offsets the extraction time according to time already paid
                 self.old_extraction_time = time.time() - (self.extraction_pause_time - self.old_extraction_time)

@@ -35,7 +35,16 @@
         "aim-enabled": true
     },
     "debogger": {
-        "enabled": false
+        "enabled": true,
+        "args": {
+            "epsilon_x": 60,
+            "epsilon_theta": 10,
+            "debog_epsilon_x": 80,
+            "debog_epsilon_theta": 10,
+            "patience": 2,
+            "reverse_distance": 200,
+            "angle_deviation": 0.01
+        }
     },
     "extraction": {
         "reference-class": "ExtractionContinuous"
