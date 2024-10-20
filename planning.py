@@ -240,13 +240,18 @@ class Pathplanner():
         # sends the required command through the robot
         self.robot.send_control_command("command=0")
 
+    def resume_plan(self):
+        '''
+        Resumes the path plan.
+        '''
+
         # resumes path plan
         self.stopFlag = False
         self.debog_strategy.enable_debogger()
 
         # pauses the debogger for the predefined time
         if isinstance(self.debog_strategy, ActiveDebogger):
-            self.debog_strategy.last_debog_time = time.time() + 23
+            self.debog_strategy.last_debog_time = time.time()
 
 class RobotGeometry():
     '''
@@ -491,13 +496,29 @@ class WaypointSequence(ABC):
 
         # generate relevant waypoint
         if emergency_side == left_emergency:
-            emergency_waypoint = Waypoint(RobotGeometry.LENGTH/2 + RobotGeometry.EMERGENCY_PADDING, current_y, -pi)
+            emergency_waypoint = Waypoint(
+                RobotGeometry.LENGTH/2 + RobotGeometry.EMERGENCY_PADDING, 
+                current_y, 
+                -pi if (current_theta < -pi/2 or current_theta > pi/2) else 0
+                )
         elif emergency_side == right_emergency:
-            emergency_waypoint = Waypoint(2000 - RobotGeometry.LENGTH/2 - RobotGeometry.EMERGENCY_PADDING, current_y, 0)
+            emergency_waypoint = Waypoint(
+                2000 - RobotGeometry.LENGTH/2 - RobotGeometry.EMERGENCY_PADDING, 
+                current_y, 
+                0 if (current_theta < pi/2 and current_theta > -pi/2) else -pi
+                )
         elif emergency_side == up_emergency:
-            emergency_waypoint = Waypoint(current_x, 2000 - RobotGeometry.LENGTH/2 - RobotGeometry.EMERGENCY_PADDING, pi/2)
+            emergency_waypoint = Waypoint(
+                current_x, 
+                2000 - RobotGeometry.LENGTH/2 - RobotGeometry.EMERGENCY_PADDING, 
+                pi/2 if (current_theta > 0) else -pi/2
+                )
         else:
-            emergency_waypoint = Waypoint(current_x, RobotGeometry.LENGTH/2 + RobotGeometry.EMERGENCY_PADDING, -pi/2)
+            emergency_waypoint = Waypoint(
+                current_x, 
+                RobotGeometry.LENGTH/2 + RobotGeometry.EMERGENCY_PADDING, 
+                -pi/2 if (current_theta < 0) else pi/2
+                )
 
         # add waypoint
         self.waypoints.insert(0, Waypoint(current_x, current_y, current_theta, resumeExtraction=True))
