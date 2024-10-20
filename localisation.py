@@ -36,6 +36,11 @@ class Localisation(ABC):
     An abstract class representing a localisation method.
     '''
 
+    def __init__(self):
+        super().__init__()
+        self.p_origin_camera_frame: np.ndarray = None
+        self.r_camera_to_origin: R = None
+
     def deinit(self):
         '''
         Tears down and closes any hanging resources once the localisation has
@@ -61,6 +66,17 @@ class Localisation(ABC):
             x (float): the x coordinate to annotate
             y (float): the y coordinate to annotate
         '''
+    
+    def project_points(self, object_points: cv.typing.MatLike) -> cv.typing.MatLike:
+        """Projects the given points into the origin frame, so they can be
+        plotted.
+
+        Args:
+            object_points (cv.typing.MatLike): points to be plotted
+
+        Returns:
+            cv.typing.MatLike: locations in image plane
+        """
 
 class MarkerCollection():
     """
@@ -315,12 +331,11 @@ class MockLocalisation(Localisation):
 
 class CameraLocalisation(Localisation):
     def __init__(self):
+        super().__init__()
         self.origin: MarkerCollection
         self.target: MarkerCollection
         self.stats = {"x": [], "y": [], "z": [],
                       "yaw": [], "pitch": [], "roll": []}
-        self.p_origin_camera_frame = None
-        self.r_camera_to_origin = None
 
     def setup(self):
         camera_matrix = np.load("camera_matrix.npy")
@@ -596,6 +611,27 @@ class CameraLocalisation(Localisation):
         )
 
         return True, rot_relative, tvec_relative
+
+    def project_points(self, object_points: cv.typing.MatLike) -> cv.typing.MatLike:
+        """Projects the given points into the origin frame, so they can be
+        plotted.
+
+        Args:
+            object_points (cv.typing.MatLike): points to be plotted
+
+        Returns:
+            cv.typing.MatLike: locations in image plane
+        """
+        img_points = None
+        if self.r_camera_to_origin is not None:
+            img_points, _ = cv.projectPoints(object_points,
+                            self.r_camera_to_origin.as_rotvec(),
+                            self.p_origin_camera_frame,
+                            self.camera_matrix,
+                            self.dist_coeffs
+                            )
+        return img_points
+        
 
     def annotate_xy(self, img, x, y):
         """Annotate given coordinate in origin frame with flag

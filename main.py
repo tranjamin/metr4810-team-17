@@ -106,6 +106,31 @@ def main(configfile, camera):
         # draw current waypoint on screen
         localiser.annotate_xy(img, plan.current_waypoint.x, plan.current_waypoint.y)
 
+        if plan.waypoints.dynamic_aim:
+            if theta <= 2 * pi / 3:
+                endpoint_x = max(min(2000, x + 2000*math.cos(theta)), 0)
+                endpoint_y = max(min(2000, y + 2000*math.sin(theta)), 0)
+                endpoint_z = 0
+                img_points = localiser.project_points(np.array([[x, y, 0],
+                                          [endpoint_x, endpoint_y, endpoint_z]], dtype=np.float64))
+                if img_points is not None:
+                    img_points = img_points.astype(int)
+                    cv.line(img, img_points[0][0], img_points[1][0],
+                            [255, 0, 255],
+                            10)
+
+        # draw square
+        square_points = np.array([
+            [0, 0, 0],
+            [0, 2000, 0],
+            [2000, 2000, 0],
+            [2000, 0, 0]], dtype=np.float64)
+
+        img_points = localiser.project_points(square_points)
+        if img_points is not None:
+            img_points = img_points.astype(int)
+            cv.polylines(img, [img_points], True, [128, 0, 255], 10)
+
         # state machine
         match robot_state:
             case State.WAIT:
@@ -169,7 +194,8 @@ def main(configfile, camera):
             plan.extraction_strategy.disable_extraction()
             break
         elif key == ord('d') and robot_state == State.TRAVERSAL:  # return to delivery
-            plan.robot.send_control_command("command=3")
+            # plan.robot.send_control_command("command=3")
+            robot_comms.send_control_action(0, 0)
             time.sleep(5)
             plan.add_delivery()
         elif key == ord("e") and robot_state == State.TRAVERSAL:  # go to high ground
@@ -234,7 +260,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--filename", "-f",
                         default="config/config.json")
-    parser.add_argument("--camera", "-c", default=0)
+    parser.add_argument("--camera", "-c", default=2)
     args = parser.parse_args()
     print(f"Reading file {args.filename} and camera {args.camera}")
 
