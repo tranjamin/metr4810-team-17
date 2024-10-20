@@ -136,7 +136,7 @@ class RobotSim(Robot, Localisation):
     def plot_results(self):
         '''
         Plot the results of the FMU simulation
-        """
+        '''
 
         # plot robot positions over time
         fmpy.util.plot_result(
