@@ -24,7 +24,8 @@
         "robot-class": "RobotMixed",
         "args": {
             "ip": "192.168.4.1"
-        }
+        },
+        "emergency-padding": 10
     },
     "pathplan": {
         "reference-class": "SnakeWaypointSequence",
