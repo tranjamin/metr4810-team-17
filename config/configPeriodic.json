@@ -2,7 +2,7 @@
     "controllers": {
         "forward-controller": {
             "k_angle": 100,
-            "k_v": 42,
+            "k_v": 46,
             "w": 0.8,
             "goal_tolerance": 40,
             "angle_deadzone": 0,
@@ -28,25 +28,20 @@
         "emergency-padding": 10
     },
     "pathplan": {
-        "reference-class": "SnakeWaypointSequence",
+        "reference-class": "ShiftingWindowSequence",
         "args": {
-            "snake_spacing": 110
+            "line_spacing": 150
         },
         "aim-enabled": true
     },
     "debogger": {
-        "enabled": true,
-        "args": {
-            "epsilon_x": 60,
-            "epsilon_theta": 10,
-            "debog_epsilon_x": 80,
-            "debog_epsilon_theta": 10,
-            "patience": 2,
-            "reverse_distance": 200,
-            "angle_deviation": 0.01
-        }
+        "enabled": false
     },
     "extraction": {
-        "reference-class": "ExtractionContinuous"
+        "reference-class": "ExtractionPeriodic",
+        "args": {
+            "distance": 70,
+            "interval": 1
+        }
     }
 }

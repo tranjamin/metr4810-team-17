@@ -82,8 +82,8 @@ def main(configfile, camera):
 
     plan.set_robot(robot_comms)
     plan.extraction_strategy.attach_agents(robot_comms)
-    plan.extraction_strategy.reset_extraction()
-
+    plan.extraction_strategy.reset_extraction(0, 0) # TODO: I really hope this doesn't cook it
+ 
     # state in the FSM
     robot_state = State.WAIT
 
@@ -150,7 +150,7 @@ def main(configfile, camera):
                 robot_comms.send_control_action(v, omega, do_print=False)
 
                 # iterate the extraction strategy
-                plan.extraction_strategy.spin()
+                plan.extraction_strategy.spin(x, y, debogger=plan.debog_strategy)
 
         # update logs
         array_times.append(time.time())
@@ -201,6 +201,7 @@ def main(configfile, camera):
         elif key == ord("e") and robot_state == State.TRAVERSAL:  # go to high ground
             plan.add_emergency()
         elif (key == ord("f") and robot_state == State.TRAVERSAL):  # start depositing bean
+            print("Firing")
             plan.signal_delivery_start()  # start delivery
             robot_state = State.WAIT
         elif key == ord("s"):  # start robot sending
@@ -239,7 +240,7 @@ def main(configfile, camera):
             robot_state = State.TRAVERSAL  # update robot state
 
             # enable extraction and debogging
-            plan.extraction_strategy.enable_extraction()
+            plan.extraction_strategy.enable_extraction(x, y)
             plan.debog_strategy.enable_debogger()
         elif key == ord("w"):  # connect to the wifi
             connect_wifi()
@@ -258,7 +259,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--filename", "-f",
                         default="config/config.json")
-    parser.add_argument("--camera", "-c", default=2)
+    parser.add_argument("--camera", "-c", default=0)
     args = parser.parse_args()
     print(f"Reading file {args.filename} and camera {args.camera}")
 

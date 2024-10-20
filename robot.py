@@ -135,6 +135,8 @@ class RobotTCP(Robot):
             requests.get(url, timeout=(RobotTCP.REQUEST_TIMEOUT_TIME_LOC, RobotTCP.RESPONSE_TIMEOUT_TIME_LOC))
         except (requests.exceptions.ReadTimeout, requests.exceptions.Timeout):
             pass
+        except:
+            pass
 
     def send_control_command(self, command: str):
         try: # try sending the command
@@ -142,7 +144,7 @@ class RobotTCP(Robot):
             requests.get(url, timeout=(RobotTCP.REQUEST_TIMEOUT_TIME_CTRL, RobotTCP.RESPONSE_TIMEOUT_TIME_CTRL))
         except requests.exceptions.ReadTimeout:
             print("Timed out on read")
-        except requests.exceptions.Timeout:
+        except:
             print("Timed out on something else")
 
 class RobotUDP(Robot):

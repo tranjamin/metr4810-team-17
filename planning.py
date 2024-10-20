@@ -17,6 +17,10 @@ Classes:
     Debogger(): an abstract class which detects bogging and attempts to unbog the robot
         NoDebogger(): a class with debogging disabled
         ActiveDebogger(): a class with debogging enabled
+    ExtractionModes(): an abstract class representing any type of extraction.
+        ExtractionPeriodic(): runs the extraction procedure periodically
+        ExtractionContinuous(): always runs extraction
+        ExtractionNone(): never runs extraction
 '''
 
 from __future__ import annotations
@@ -28,7 +32,6 @@ import time
 
 from controllers import *
 from robot import *
-from extraction import *
 
 class Pathplanner():
     '''
@@ -144,7 +147,7 @@ class Pathplanner():
             if self.current_waypoint.suspendFlag: # stops extraction if flag set
                 self.extraction_strategy.disable_extraction()
             if self.current_waypoint.resumeFlag: # resumes extraction if flag set
-                self.extraction_strategy.enable_extraction()
+                self.extraction_strategy.enable_extraction(current_x, current_y)
 
             # update the previous and current waypoint
             self.previous_waypoint = self.current_waypoint.coords
@@ -182,7 +185,7 @@ class Pathplanner():
                 self.debog_strategy.pause_debogger()
 
             def spin_stop_func(): # define function to call when spin controller stops
-                self.extraction_strategy.unpause_extraction()
+                self.extraction_strategy.unpause_extraction(self.current_x, self.current_y)
                 self.debog_strategy.unpause_debogger()
 
             # get the desired movements from controller
@@ -1059,7 +1062,7 @@ class ActiveDebogger(Debogger):
     def stop_debog(self, planner: Pathplanner):
         print("Unbogged. End position is", (planner.current_x, planner.current_y, planner.current_theta))
         self.bogged_start_position = None
-        planner.extraction_strategy.unpause_extraction()
+        planner.extraction_strategy.unpause_extraction(planner.current_x, planner.current_y)
 
     def attempt_debog(self, planner: Pathplanner):
         self.bogged_start_position = (planner.current_x, planner.current_y, planner.current_theta)
@@ -1119,3 +1122,163 @@ class ActiveDebogger(Debogger):
 
     def delay(self, delay_time):
         self.last_debog_time = time.time() + delay_time
+
+class ExtractionModes(ABC):
+    '''
+    Represents any type of extraction mode.
+    '''
+
+    def __init__(self):
+        self.robot: Robot = None # the robot linked to the extractor
+        self.enabled: bool = False # whether the extractor is enabled
+
+    @abstractmethod
+    def pause_extraction(self):
+        '''
+        Pauses the extraction mode. Primarily used for corners
+        '''
+
+    @abstractmethod
+    def unpause_extraction(self, x, y):
+        '''
+        Unpauses the extraction mode. Primarily used for corners
+        '''
+
+    def disable_extraction(self):
+        '''
+        Disables the extraction mode. A second-level control which is stricter than pausing
+        '''
+        self.enabled = False
+
+    def enable_extraction(self, x, y):
+        '''
+        Enables the extraction mode. A second-level control which is stricter than pausing
+        '''
+        self.enabled = True
+
+    def reset_extraction(self, x, y):
+        '''
+        Resets the extraction cycle to the start
+        '''
+        pass # by default does nothing
+
+    def attach_agents(self, robot: Robot):
+        '''
+        Register the robot agent to the extractor
+
+        Parameters:
+            robot (Robot): the robot that will be used to send commands
+        '''
+        self.robot = robot
+
+    @abstractmethod
+    def spin(self, x: float, y: float, debogger: Optional[Debogger]=None):
+        '''
+        A function to call extraction logic every loop iteration.
+
+        Parameters:
+            x (float): the current x position
+            y (float): the current y position
+            debogger (Debogger | None): the debogger
+        '''
+
+class ExtractionPeriodic(ExtractionModes):
+    '''
+    Runs the extraction procedure (one full revolution) every period.
+    '''
+    def __init__(self, distance: float, interval: float):
+        '''
+        Parameters:
+            duration (float): how long the extraction procedure takes [s]
+            interval (float): the time between the end of one procedure and the start of the other [s]
+        '''
+        super().__init__()
+
+        # sets the hyperparameters
+        self.EXTRACTION_DISTANCE = distance
+        self.EXTRACTION_INTERVAL = interval
+
+        # initialise the extraction parameters
+        self.old_extraction_time = time.time()
+        self.last_extraction_position = None
+        self.extraction_pause_time = None
+        self.paused = False
+
+        self.extraction_start_time = None
+
+    def pause_extraction(self):
+        if self.enabled:
+            self.paused = True
+
+    def unpause_extraction(self, x, y):
+        if self.enabled and self.paused:
+            self.last_extraction_position = (x, y)
+            self.paused = False
+
+    def enable_extraction(self, x, y):
+        self.reset_extraction(x, y)
+        return super().enable_extraction(x, y)
+
+    def disable_extraction(self):
+        return super().disable_extraction()
+
+    def spin(self, x: float, y: float, debogger: Debogger=None):
+        if self.enabled and self.last_extraction_position is None:
+            self.last_extraction_position = (x, y)
+            return
+        last_x, last_y = self.last_extraction_position
+        if (x - last_x) ** 2 + (y - last_y) ** 2 > self.EXTRACTION_DISTANCE ** 2 and \
+            self.enabled and not self.paused:
+            self.robot.send_control_action(0, 0, do_print=False)
+            self.robot.send_control_command("command=9")
+            self.last_extraction_position = (x, y)
+
+            if debogger is not None:
+                debogger.delay(2)
+
+    def reset_extraction(self, x, y):
+        self.last_extraction_position = (x, y)
+
+class ExtractionContinuous(ExtractionModes):
+    '''
+    Continuously runs the extraction motor.
+    '''
+    def __init__(self):
+        super().__init__()
+
+    def pause_extraction(self):
+        # send the stop command if enabled
+        if self.enabled:
+            self.robot.send_control_command("command=8")
+
+    def unpause_extraction(self, x, y):
+        # send the start command
+        if self.enabled:
+            self.robot.send_control_command("command=7")
+
+    def disable_extraction(self):
+        self.pause_extraction()
+        super().disable_extraction()
+
+    def enable_extraction(self, x, y):
+        super().enable_extraction(x, y)
+        self.unpause_extraction(x, y)
+
+    def spin(self, x, y, **kwargs):
+        return
+
+class ExtractionNone(ExtractionModes):
+    '''
+    Does not run the extraction motor.
+    '''
+    def __init__(self):
+        return
+
+    def pause_extraction(self):
+        return
+
+    def unpause_extraction(self, x, y):
+        return
+
+    def spin(self, x, y, **kwargs):
+        return
