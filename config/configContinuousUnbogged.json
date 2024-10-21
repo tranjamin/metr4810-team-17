@@ -38,10 +38,6 @@
         "enabled": false
     },
     "extraction": {
-        "reference-class": "ExtractionPeriodic",
-        "args": {
-            "distance": 70,
-            "interval": 1
-        }
+        "reference-class": "ExtractionContinuous"
     }
 }
