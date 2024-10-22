@@ -11,6 +11,8 @@ from enum import Enum
 import pandas as pd
 import ctypes
 from math import pi
+import datetime
+import os
 
 from robot import *
 from planning import *
@@ -33,6 +35,8 @@ array_y = []
 array_theta = []
 array_v = []
 array_omega = []
+
+DATA_OUTPUT_DIR = "logged_data"
 
 
 class State(Enum):
@@ -278,4 +282,8 @@ if __name__ == "__main__":
         }
     )
 
-    df.to_csv("log.csv")
+    if not os.path.exists(DATA_OUTPUT_DIR):
+        os.makedirs(DATA_OUTPUT_DIR)
+
+    out_file_name = ':{%Y-%m-%d %H:%M:%S}.csv'.format(datetime.datetime.now())
+    df.to_csv(os.path.join(DATA_OUTPUT_DIR, out_file_name))
