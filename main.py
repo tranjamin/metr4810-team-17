@@ -36,6 +36,10 @@ array_theta = []
 array_v = []
 array_omega = []
 
+array_waypoint_x = []
+array_waypoint_y = []
+array_waypoint_theta = []
+
 DATA_OUTPUT_DIR = "logged_data"
 
 
@@ -163,6 +167,9 @@ def main(configfile, camera):
         array_theta.append(theta)
         array_omega.append(omega)
         array_v.append(v)
+        array_waypoint_x.append(plan.current_waypoint.x)
+        array_waypoint_y.append(plan.current_waypoint.y)
+        array_waypoint_theta.append(plan.current_waypoint.heading)
 
         # draw position info on screen
         labels = ["x", "y", "theta"]
@@ -279,6 +286,9 @@ if __name__ == "__main__":
             "theta": array_theta,
             "v": array_v,
             "omega": array_omega,
+            "waypoint_x": array_waypoint_x,
+            "waypoint_y": array_waypoint_y,
+            "waypoint_theta": array_waypoint_theta
         }
     )
 
